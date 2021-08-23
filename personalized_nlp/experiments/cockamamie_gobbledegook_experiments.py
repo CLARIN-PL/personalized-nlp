@@ -54,8 +54,8 @@ if __name__ == '__main__':
                     }
 
                     logger = pl_loggers.WandbLogger(
-                        save_dir=LOGS_DIR, config=hparams, project='human-bias-test',
-                        log_model=False)
+                        save_dir=LOGS_DIR, config=hparams, project='cockamamie',
+                        entity='persemo', log_model=False)
 
                     output_dim = len(data_module.class_dims)
                     text_embedding_dim = data_module.text_embedding_dim
