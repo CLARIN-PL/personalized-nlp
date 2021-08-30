@@ -13,7 +13,7 @@ import numpy as np
 import torch
 import os
 
-os.environ["CUDA_VISIBLE_DEVICES"] = '1'
+os.environ["CUDA_VISIBLE_DEVICES"] = '99'  # '1'
 os.environ["WANDB_START_METHOD"] = "thread"
 
 
@@ -57,7 +57,7 @@ if __name__ == '__main__':
                         save_dir=LOGS_DIR, config=hparams, project='cockamamie-c',
                         entity='persemo', log_model=False)
 
-                    output_dim = len(data_module.class_dims)
+                    output_dim = sum(data_module.class_dims)
                     text_embedding_dim = data_module.text_embedding_dim
 
                     if model_type == 'baseline':
