@@ -54,7 +54,7 @@ if __name__ == '__main__':
                     }
 
                     logger = pl_loggers.WandbLogger(
-                        save_dir=LOGS_DIR, config=hparams, project='cockamamie-b',
+                        save_dir=LOGS_DIR, config=hparams, project='cockamamie-c',
                         entity='persemo', log_model=False)
 
                     output_dim = len(data_module.class_dims)
