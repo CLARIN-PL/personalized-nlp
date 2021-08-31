@@ -60,12 +60,12 @@ class CockamamieGobbledegookDataModule(BaseDataModule):
 
     def prepare_data(self) -> None:
         self.data = pd.read_csv(
-            self.data_dir / 'cockamamie_gobbledegook_texts_d.csv')
+            self.data_dir / 'cockamamie_gobbledegook_texts_e.csv')
         self.data.loc[:, 'text'] = self.data.loc[:, 'text_' + self.language]
         #self.data.dropna(inplace=True)
 
         self.annotations = pd.read_csv(
-            self.data_dir / 'cockamamie_gobbledegook_annotations_d.csv').dropna()
+            self.data_dir / 'cockamamie_gobbledegook_annotations_e.csv').dropna()
         # self.annotators = pd.read_csv(
         #     self.data_dir / 'cockamamie_gobbledegook_annotators.csv')
 
