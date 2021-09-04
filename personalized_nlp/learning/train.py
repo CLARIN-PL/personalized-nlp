@@ -30,7 +30,7 @@ def train_test(datamodule, model, epochs=6, lr=1e-2, experiment_name='default', 
 
     if logger is None:
         logger = pl_loggers.WandbLogger(save_dir=LOGS_DIR, log_model=log_model)
-    checkpoint_dir = logger.experiment.dir
+    checkpoint_dir = CHECKPOINTS_DIR / logger.experiment.name
 
     checkpoint_callback = ModelCheckpoint(dirpath=checkpoint_dir,
                                           save_top_k=1,
