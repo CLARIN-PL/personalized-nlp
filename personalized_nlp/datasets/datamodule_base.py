@@ -120,6 +120,7 @@ class BaseDataModule(LightningDataModule):
             'embeddings': self.text_embeddings,
             'text_tokenized': self.text_tokenized,
             'tokens_sorted': self.tokens_sorted,
+            'raw_texts': self.data['text'].values
         }
 
     def _get_annotator_features(self):
