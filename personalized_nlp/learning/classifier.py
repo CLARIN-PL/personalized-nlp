@@ -3,6 +3,10 @@ import pytorch_lightning as pl
 import torch
 import torch.nn as nn
 from torchmetrics import Accuracy, Precision, Recall, F1
+from transformers import get_scheduler
+from personalized_nlp.utils.metrics import F1Class, PrecisionClass, RecallClass
+from personalized_nlp.models.transformer import Transformer
+from typing import List, Any
 
 
 class Classifier(pl.LightningModule):
@@ -27,12 +31,12 @@ class Classifier(pl.LightningModule):
                 num_classes = class_dims[class_idx]
 
                 class_metrics[f'{split}_accuracy_{class_name}'] = Accuracy()
-                class_metrics[f'{split}_precision_{class_name}'] = Precision(
+                class_metrics[f'{split}_precision_{class_name}'] = PrecisionClass(
                     num_classes=num_classes, average=None)
-                class_metrics[f'{split}_recall_{class_name}'] = Recall(
+                class_metrics[f'{split}_recall_{class_name}'] = RecallClass(
                     num_classes=num_classes, average=None)
-                class_metrics[f'{split}_f1_{class_name}'] = F1(
-                    average=None, num_classes=num_classes)
+                class_metrics[f'{split}_f1_{class_name}'] = F1Class(
+                    average='none', num_classes=num_classes)
                 class_metrics[f'{split}_macro_f1_{class_name}'] = F1(
                     average='macro', num_classes=num_classes)
 
@@ -55,15 +59,13 @@ class Classifier(pl.LightningModule):
 
         return loss
 
-    def training_step(self, batch, batch_idx):
+    def training_step(self, batch, batch_idx, optimizer_idx=None):
         x, y = batch
 
         output = self.forward(x)
         loss = self.step(output=output, y=y)
 
         self.log('train_loss',  loss, on_epoch=True, prog_bar=True)
-        #self.log_all_metrics(output=output, y=y, split='train')
-        
         preds = torch.argmax(output, dim=1)
 
         return {'loss': loss, 'preds': preds}
@@ -89,11 +91,23 @@ class Classifier(pl.LightningModule):
         self.log_all_metrics(output=output, y=y, split='test',
                              on_step=False, on_epoch=True)
 
-        return {"loss": loss}
+        return {"loss": loss, 'output': output, 'y': y}
 
     def configure_optimizers(self):
-        optimizer = torch.optim.Adam(self.parameters(), lr=self.lr)
-        return optimizer
+
+        if isinstance(self.model, Transformer):
+            optimizer_transformer = torch.optim.AdamW(
+                self.model.parameters(), lr=self.lr)
+            lr_scheduler = get_scheduler(
+                "linear",
+                optimizer=optimizer_transformer,
+                num_warmup_steps=0,
+                num_training_steps=18
+            )
+            return [optimizer_transformer], [lr_scheduler]
+
+        else:
+            return torch.optim.AdamW(self.parameters(), lr=self.lr)
 
     def log_all_metrics(self, output, y, split, on_step=None, on_epoch=None):
         class_dims = self.class_dims
@@ -118,6 +132,7 @@ class Classifier(pl.LightningModule):
                     # for non-averaged precision and recall, take positive class score
                     metric_value = metric_value[-1]
 
-                log_dict[metric_key] = metric_value
+                log_dict[metric_key] = self.metrics[metric_key]
 
-            self.log_dict(log_dict, on_step=on_step, on_epoch=on_epoch)
+            self.log_dict(log_dict, on_step=on_step,
+                          on_epoch=on_epoch, prog_bar=True)
