@@ -4,6 +4,8 @@ import torch
 
 from tqdm import tqdm
 import pickle
+import os
+
 
 def _get_embeddings(texts, tokenizer, model, max_seq_len=256, use_cuda=False):
     def batch(iterable, n=1):
@@ -28,7 +30,7 @@ def _get_embeddings(texts, tokenizer, model, max_seq_len=256, use_cuda=False):
             ).to(device)
 
             emb = model(**batch_encoding)
-        
+
         mask = batch_encoding['input_ids'] > 0
         # all_embeddings.append(emb.pooler_output) ## podejscie nr 1 z tokenem CLS
         for i in range(emb[0].size()[0]):
@@ -38,8 +40,10 @@ def _get_embeddings(texts, tokenizer, model, max_seq_len=256, use_cuda=False):
     return torch.cat(all_embeddings, axis=0).to('cpu')
 
 
-def create_embeddings(texts, embeddings_path, model_name='xlm-roberta-base', use_cuda=True,
-                        pickle_embeddings=True):
+def create_embeddings(texts, embeddings_path,
+                      model_name='xlm-roberta-base',
+                      use_cuda=True,
+                      pickle_embeddings=True):
     tokenizer = AutoTokenizer.from_pretrained(model_name)
     model = AutoModel.from_pretrained(model_name)
 
@@ -51,6 +55,9 @@ def create_embeddings(texts, embeddings_path, model_name='xlm-roberta-base', use
     text_idx_to_emb = {}
     for i in range(embeddings.size(0)):
         text_idx_to_emb[i] = embeddings[i].numpy()
+
+    if not os.path.exists(os.path.dirname(embeddings_path)):
+        os.makedirs(os.path.dirname(embeddings_path))
 
     if pickle_embeddings:
         pickle.dump(text_idx_to_emb, open(embeddings_path, 'wb'))
