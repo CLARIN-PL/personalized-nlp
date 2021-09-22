@@ -37,6 +37,8 @@ class Classifier(pl.LightningModule):
                     average='macro', num_classes=num_classes)
 
         self.metrics = nn.ModuleDict(class_metrics)
+        self.test_y = []
+        self.test_y_hat = []
 
     def forward(self, x):
         x = self.model(x)
@@ -92,8 +94,6 @@ class Classifier(pl.LightningModule):
                              on_step=False, on_epoch=True)
 
         y = y.cpu().numpy()
-        self.test_y = []
-        self.test_y_hat = []
         self.test_y.extend(y)
 
         y_hat_batch = y_hat_batch_tags.cpu().numpy()
