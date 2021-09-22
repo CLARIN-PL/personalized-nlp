@@ -69,7 +69,8 @@ class Regressor(pl.LightningModule):
 
         loss = nn.MSELoss()(output, y)
 
-        self.log('test_loss', loss, on_step=False, on_epoch=True)
+        self.log('test_loss', loss,
+                 on_step=False, on_epoch=True)
         self.log_all_metrics(output=output, y=y, split='test',
                              on_step=False, on_epoch=True)
 
