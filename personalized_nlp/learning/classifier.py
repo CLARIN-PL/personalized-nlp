@@ -81,6 +81,8 @@ class Classifier(pl.LightningModule):
 
     def test_step(self, batch, batch_idx):
         x, y = batch
+        y_hat_batch = self.model(x)
+        _, y_hat_batch_tags = torch.max(y_hat_batch, dim=-1)
 
         output = self.forward(x)
         loss = self.step(output=output, y=y)
@@ -88,6 +90,14 @@ class Classifier(pl.LightningModule):
         self.log('test_loss', loss, prog_bar=True)
         self.log_all_metrics(output=output, y=y, split='test',
                              on_step=False, on_epoch=True)
+
+        y = y.cpu().numpy()
+        self.test_y = []
+        self.test_y_hat = []
+        self.test_y.extend(y)
+
+        y_hat_batch = y_hat_batch_tags.cpu().numpy()
+        self.test_y_hat.extend(y_hat_batch)
 
         return {"loss": loss}
 

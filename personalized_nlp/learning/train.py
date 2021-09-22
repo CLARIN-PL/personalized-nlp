@@ -6,7 +6,7 @@ import pytorch_lightning as pl
 from pytorch_lightning.callbacks import ModelCheckpoint
 from pytorch_lightning import loggers as pl_loggers
 
-
+from personalized_nlp.settings import STORAGE_DIR
 from personalized_nlp.settings import LOGS_DIR, CHECKPOINTS_DIR
 from personalized_nlp.learning.regressor import Regressor
 from personalized_nlp.learning.classifier import Classifier
@@ -46,4 +46,11 @@ def train_test(datamodule, model, epochs=6, lr=1e-2, experiment_name='default', 
                          callbacks=[checkpoint_callback])
     trainer.fit(model, train_loader, val_loader)
     trainer.test(test_dataloaders=test_loader)
+    with open(STORAGE_DIR+"/cockkamamie_gobbledegook/texts/true_labels.csv", "w") as y_true_file:
+        for true_y in model.test_y:
+            y_true_file.write(f"{true_y}\n")
+
+    with open(STORAGE_DIR+"/cockkamamie_gobbledegook/texts/predicted_labels.csv", "w") as y_pred_file:
+        for pred_y in model.test_y_hat:
+            y_pred_file.write(f"{pred_y}\n")
 
