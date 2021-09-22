@@ -87,6 +87,7 @@ if __name__ == '__main__':
 
                     train_test(data_module, model, epochs=20, lr=0.008,
                                experiment_name='default', regression=regression,
-                               use_cuda=True, test_fold=fold_num, logger=logger)
+                               use_cuda=True, test_fold=fold_num, logger=logger,
+                               model_type=model_type, fold_num=fold_num)
 
                     logger.experiment.finish()
