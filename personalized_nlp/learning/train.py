@@ -46,11 +46,11 @@ def train_test(datamodule, model, epochs=6, lr=1e-2, experiment_name='default', 
                          callbacks=[checkpoint_callback])
     trainer.fit(model, train_loader, val_loader)
     trainer.test(test_dataloaders=test_loader)
-    with open(STORAGE_DIR+"/cockkamamie_gobbledegook/texts/true_labels.csv", "w") as y_true_file:
+    with open(STORAGE_DIR / "cockkamamie_gobbledegook" / "texts" / "true_labels.csv", "w") as y_true_file:
         for true_y in model.test_y:
             y_true_file.write(f"{true_y}\n")
 
-    with open(STORAGE_DIR+"/cockkamamie_gobbledegook/texts/predicted_labels.csv", "w") as y_pred_file:
+    with open(STORAGE_DIR / "cockkamamie_gobbledegook" / "texts" / "predicted_labels.csv", "w") as y_pred_file:
         for pred_y in model.test_y_hat:
             y_pred_file.write(f"{pred_y}\n")
 
