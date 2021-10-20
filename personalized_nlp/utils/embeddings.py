@@ -1,5 +1,4 @@
-from transformers import AutoTokenizer, AutoModel, AutoModelForMaskedLM
-from transformers import AutoTokenizer, AutoModelForPreTraining
+from transformers import AutoTokenizer, AutoModel
 import torch
 
 from tqdm import tqdm
@@ -40,10 +39,9 @@ def _get_embeddings(texts, tokenizer, model, max_seq_len=256, use_cuda=False):
     return torch.cat(all_embeddings, axis=0).to('cpu')
 
 
-def create_embeddings(texts, embeddings_path,
+def create_embeddings(texts, embeddings_path=None,
                       model_name='xlm-roberta-base',
-                      use_cuda=True,
-                      pickle_embeddings=True):
+                      use_cuda=True):
     tokenizer = AutoTokenizer.from_pretrained(model_name)
     model = AutoModel.from_pretrained(model_name)
 
@@ -59,7 +57,7 @@ def create_embeddings(texts, embeddings_path,
     if not os.path.exists(os.path.dirname(embeddings_path)):
         os.makedirs(os.path.dirname(embeddings_path))
 
-    if pickle_embeddings:
+    if embeddings_path:
         pickle.dump(text_idx_to_emb, open(embeddings_path, 'wb'))
 
     return text_idx_to_emb
