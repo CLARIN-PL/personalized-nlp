@@ -87,9 +87,13 @@ class BaseDataModule(LightningDataModule):
     ):
 
         word_stats_annotation_column = self.word_stats_annotation_column or self.annotation_column
-        annotations = self.annotations[self.annotations]
+
+        annotations = self.annotations
+        data = self.data
+        annotations = annotations.loc[annotations.text_id.isin(
+            data[data.split.isin(['train'])].text_id.values)].copy()
         _, self.text_tokenized, self.idx_to_word, self.tokens_sorted, self.word_stats = get_text_data(self.data,
-                                                                                                      self.annotations,
+                                                                                                      annotations,
                                                                                                       min_word_count=min_word_count,
                                                                                                       min_std=min_std,
                                                                                                       words_per_text=words_per_text,
@@ -115,7 +119,7 @@ class BaseDataModule(LightningDataModule):
         self.text_embeddings = torch.tensor(embeddings)
 
         self.text_id_idx_dict = data.loc[:, ['text_id']].reset_index(
-            ).set_index('text_id').to_dict()['index']
+        ).set_index('text_id').to_dict()['index']
 
         annotator_id_category = annotations['annotator_id'].astype('category')
         self.annotator_id_idx_dict = {a_id: idx for idx, a_id in enumerate(
