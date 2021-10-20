@@ -31,7 +31,7 @@ class BaseDataModule(LightningDataModule):
 
     @property
     def text_embedding_dim(self) -> int:
-        if self.embeddings_type in ['xlmr', 'bert']:
+        if self.embeddings_type in ['xlmr', 'bert', 'labse']:
             return 768
         else:
             return 1024
@@ -47,15 +47,18 @@ class BaseDataModule(LightningDataModule):
                  dims=None,
                  batch_size: int = 3000,
                  embeddings_type: str = 'bert',
-                 major_voting: bool = False):
-        
-        super().__init__(train_transforms=train_transforms,
-                         val_transforms=val_transforms, test_transforms=test_transforms, dims=dims)
+                 major_voting: bool = False,
+                 folds_num=10):
 
-        self.major_voting = False
+        super().__init__(train_transforms=train_transforms,
+                         val_transforms=val_transforms,
+                         test_transforms=test_transforms,
+                         dims=dims)
+
+        self.major_voting = major_voting
         self.batch_size = batch_size
         self.embeddings_type = embeddings_type
-        self.major_voting = major_voting
+        self.folds_num = folds_num
 
     def _create_embeddings(self, use_cuda=None) -> None:
         texts = self.texts_clean
@@ -65,8 +68,6 @@ class BaseDataModule(LightningDataModule):
             model_name = 'xlm-roberta-base'
         elif self.embeddings_type == 'bert':
             model_name = 'bert-base-cased'
-        elif self.embeddings_type == 't5':
-            model_name = 'google/t5-large-ssm'
         elif self.embeddings_type == 'deberta':
             model_name = 'microsoft/deberta-large'
         elif self.embeddings_type == 'labse':
@@ -86,6 +87,7 @@ class BaseDataModule(LightningDataModule):
     ):
 
         word_stats_annotation_column = self.word_stats_annotation_column or self.annotation_column
+        annotations = self.annotations[self.annotations]
         _, self.text_tokenized, self.idx_to_word, self.tokens_sorted, self.word_stats = get_text_data(self.data,
                                                                                                       self.annotations,
                                                                                                       min_word_count=min_word_count,
@@ -122,13 +124,15 @@ class BaseDataModule(LightningDataModule):
         self._assign_folds()
         self.compute_word_stats()
 
-    def compute_major_votes(self):
+    def compute_major_votes(self) -> None:
+        """ Computes mean votes for every texts and replaces
+        each annotator with dummy annotator with id = 0"""
         annotations = self.annotations
 
         annotations['annotator_id'] = 0
         major_votes = annotations.groupby(
             'text_id')[self.annotation_column].mean()
-        #major_votes = major_votes.round()
+        major_votes = major_votes.round()
 
         self.annotations = major_votes.reset_index()
 
@@ -301,7 +305,7 @@ class BaseDataModule(LightningDataModule):
                            annotations: pd.DataFrame,
                            splits: List[str]) -> Tuple[np.ndarray, np.ndarray]:
         """Returns annotations (coded indices of annotators and texts), and 
-        their labels in the dataset.
+        their labels in the dataset for given splits.
 
         :param annotations: DataFrame of annotations from which the data will 
         be extracted.

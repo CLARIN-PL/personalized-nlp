@@ -13,7 +13,6 @@ class WikiDataModule(BaseDataModule):
     def __init__(
             self,
             data_dir: str = STORAGE_DIR / 'wiki_data',
-            only_with_annotator_metadata: bool = False,
             **kwargs,
     ):
         super().__init__(**kwargs)
@@ -29,9 +28,6 @@ class WikiDataModule(BaseDataModule):
         self.train_split_names = ['train']
         self.val_split_names = ['dev']
         self.test_split_names = ['test']
-
-        self.folds_num = 10
-        self.only_with_annotator_metadata = only_with_annotator_metadata
 
     @property
     def class_dims(self):
@@ -73,10 +69,6 @@ class WikiDataModule(BaseDataModule):
         self.annotations = pd.read_csv(
             self.data_dir / (self.annotation_column + '_annotations.tsv'), sep='\t')
         self.annotations = self._remap_column_names(self.annotations)
-
-        if self.only_with_annotator_metadata:
-            self.annotations = self.annotations.loc[self.annotations.annotator_id.isin(
-                self.annotators.annotator_id)]
 
         personal_df = self.annotations_with_data.loc[self.annotations_with_data.split == 'dev']
         self.compute_annotator_biases(personal_df)

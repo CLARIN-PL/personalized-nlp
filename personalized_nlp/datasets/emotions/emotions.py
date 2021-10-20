@@ -1,15 +1,8 @@
-import os
-import pickle
-from typing import Optional, List
+from typing import List
 
 import pandas as pd
-import torch
-from torch.utils.data import DataLoader
 
 from personalized_nlp.settings import STORAGE_DIR
-from personalized_nlp.datasets.dataset import BatchIndexedDataset
-from personalized_nlp.utils.tokenizer import get_text_data
-from personalized_nlp.utils.biases import get_annotator_biases
 from personalized_nlp.utils.data_splitting import split_texts
 from personalized_nlp.datasets.datamodule_base import BaseDataModule
 
@@ -25,10 +18,8 @@ class EmotionsDataModule(BaseDataModule):
     ):
         super().__init__(**kwargs)
 
-        self.folds_num = 10
         self.data_dir = data_dir
         self.data_path = self.data_dir / 'cawi2_texts_multilang.csv'
-        self.data_url = None
         self.split_sizes = split_sizes
         self.language = language
         self.annotation_column = ['OCZEKIWANIE',
@@ -92,5 +83,4 @@ class EmotionsDataModule(BaseDataModule):
         df.loc[:, annotation_column] = df.loc[:, annotation_column] / maxes
 
     def _assign_splits(self):
-        sizes = [0.55, 0.15, 0.15, 0.15]
-        self.data = split_texts(self.data, sizes)
+        self.data = split_texts(self.data, self.split_sizes)

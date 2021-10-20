@@ -1,12 +1,8 @@
-from typing import Optional, List
+from typing import List
 
 import pandas as pd
-from torch.utils.data import DataLoader
 
 from personalized_nlp.settings import STORAGE_DIR
-from personalized_nlp.datasets.dataset import BatchIndexedDataset
-from personalized_nlp.utils.tokenizer import get_text_data
-from personalized_nlp.utils.biases import get_annotator_biases
 from personalized_nlp.utils.data_splitting import split_texts
 from personalized_nlp.datasets.datamodule_base import BaseDataModule
 
@@ -22,10 +18,8 @@ class EmotionsSimpleDataModule(BaseDataModule):
     ):
         super().__init__(**kwargs)
 
-        self.folds_num = 10
         self.data_dir = data_dir
         self.data_path = self.data_dir / 'cawi2_texts_multilang.csv'
-        self.data_url = None
         self.split_sizes = split_sizes
         self.language = language
         self.annotation_column = ['OCZEKIWANIE',
@@ -72,9 +66,9 @@ class EmotionsSimpleDataModule(BaseDataModule):
 
         if self.normalize:
             self.normalize_labels()
-        
+
         self._assign_splits()
-        
+
         personal_df = self.annotations_with_data.loc[self.annotations_with_data.split == 'past']
         self.compute_annotator_biases(personal_df)
 
