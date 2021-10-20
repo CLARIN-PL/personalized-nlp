@@ -1,12 +1,8 @@
-import numpy as np
 import pytorch_lightning as pl
 import torch
 import torch.nn as nn
-from torchmetrics import Accuracy, Precision, Recall, F1
-from transformers import get_scheduler
+from torchmetrics import Accuracy, F1
 from personalized_nlp.utils.metrics import F1Class, PrecisionClass, RecallClass
-from personalized_nlp.models.transformer import Transformer
-from typing import List, Any
 
 
 class Classifier(pl.LightningModule):
@@ -94,20 +90,8 @@ class Classifier(pl.LightningModule):
         return {"loss": loss, 'output': output, 'y': y}
 
     def configure_optimizers(self):
-
-        if isinstance(self.model, Transformer):
-            optimizer_transformer = torch.optim.AdamW(
-                self.model.parameters(), lr=self.lr)
-            lr_scheduler = get_scheduler(
-                "linear",
-                optimizer=optimizer_transformer,
-                num_warmup_steps=0,
-                num_training_steps=18
-            )
-            return [optimizer_transformer], [lr_scheduler]
-
-        else:
-            return torch.optim.AdamW(self.parameters(), lr=self.lr)
+        optimizer = torch.optim.Adam(self.parameters(), lr=self.lr)
+        return optimizer
 
     def log_all_metrics(self, output, y, split, on_step=None, on_epoch=None):
         class_dims = self.class_dims

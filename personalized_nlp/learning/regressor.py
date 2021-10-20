@@ -58,9 +58,6 @@ class Regressor(pl.LightningModule):
 
         return loss
 
-    def validation_epoch_end(self, outs):
-        pass
-
     def test_step(self, batch, batch_idx):
         x, y = batch
         y = y.float()
