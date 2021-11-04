@@ -15,3 +15,4 @@ venv/
 
 # MacOS temp dir
 **/.DS_Store
+env/
