@@ -31,7 +31,7 @@ class BaseDataModule(LightningDataModule):
 
     @property
     def text_embedding_dim(self) -> int:
-        if self.embeddings_type in ['xlmr', 'bert', 'labse']:
+        if self.embeddings_type in ['xlmr', 'bert', 'labse', 'mpnet', 'random']:
             return 768
         else:
             return 1024
@@ -72,7 +72,11 @@ class BaseDataModule(LightningDataModule):
             model_name = 'microsoft/deberta-large'
         elif self.embeddings_type == 'labse':
             model_name = 'sentence-transformers/LaBSE'
-
+        elif self.embeddings_type == 'mpnet':
+            model_name = 'sentence-transformers/paraphrase-multilingual-mpnet-base-v2'
+        elif self.embeddings_type == 'random':
+            model_name = 'random'
+            
         if use_cuda is None:
             use_cuda = torch.cuda.is_available()
 
@@ -90,8 +94,9 @@ class BaseDataModule(LightningDataModule):
 
         annotations = self.annotations
         data = self.data
+        train_split_names = self.train_split_names
         annotations = annotations.loc[annotations.text_id.isin(
-            data[data.split.isin(['train'])].text_id.values)].copy()
+            data[data.split.isin(train_split_names)].text_id.values)].copy()
         _, self.text_tokenized, self.idx_to_word, self.tokens_sorted, self.word_stats = get_text_data(self.data,
                                                                                                       annotations,
                                                                                                       min_word_count=min_word_count,
@@ -139,6 +144,7 @@ class BaseDataModule(LightningDataModule):
         major_votes = major_votes.round()
 
         self.annotations = major_votes.reset_index()
+        self.annotations['annotator_id'] = 0
 
     def compute_annotator_biases(self, personal_df: pd.DataFrame):
         annotator_id_df = pd.DataFrame(

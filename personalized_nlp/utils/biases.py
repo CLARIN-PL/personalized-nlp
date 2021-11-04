@@ -11,7 +11,7 @@ def get_annotator_biases(df: pd.DataFrame, columns: List[str]) -> pd.DataFrame:
         text_stds, rsuffix='_std', on='text_id')
 
     for col in columns:
-        df[col + '_z_score'] = (df[col] - df[col + '_mean']) / df[col + '_std']
+        df[col + '_z_score'] = (df[col] - df[col + '_mean']) / (df[col + '_std'] + 1e-8)
 
     annotator_biases = df.groupby('annotator_id').mean(
     ).loc[:, [col + '_z_score' for col in columns]]

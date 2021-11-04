@@ -1,4 +1,5 @@
 from transformers import AutoTokenizer, AutoModel
+from sentence_transformers import SentenceTransformer
 import torch
 
 from tqdm import tqdm
@@ -30,7 +31,7 @@ def _get_embeddings(texts, tokenizer, model, max_seq_len=256, use_cuda=False):
 
             emb = model(**batch_encoding)
 
-        mask = batch_encoding['input_ids'] > 0
+        mask = batch_encoding['attention_mask'] > 0
         # all_embeddings.append(emb.pooler_output) ## podejscie nr 1 z tokenem CLS
         for i in range(emb[0].size()[0]):
             all_embeddings.append(emb[0][i, mask[i] > 0, :].mean(
@@ -42,17 +43,21 @@ def _get_embeddings(texts, tokenizer, model, max_seq_len=256, use_cuda=False):
 def create_embeddings(texts, embeddings_path=None,
                       model_name='xlm-roberta-base',
                       use_cuda=True):
-    tokenizer = AutoTokenizer.from_pretrained(model_name)
-    model = AutoModel.from_pretrained(model_name)
 
-    if use_cuda:
-        model = model.to('cuda')
+    if model_name == 'random':
+        embeddings = torch.rand(len(texts), 768)
+    else:
+        tokenizer = AutoTokenizer.from_pretrained(model_name)
+        model = AutoModel.from_pretrained(model_name)
 
-    embeddings = _get_embeddings(texts, tokenizer, model, use_cuda=use_cuda)
+        if use_cuda:
+            model = model.to('cuda')
+
+        embeddings = _get_embeddings(texts, tokenizer, model, use_cuda=use_cuda)
 
     text_idx_to_emb = {}
     for i in range(embeddings.size(0)):
-        text_idx_to_emb[i] = embeddings[i].numpy()
+        text_idx_to_emb[i] = embeddings[i].cpu().numpy()
 
     if not os.path.exists(os.path.dirname(embeddings_path)):
         os.makedirs(os.path.dirname(embeddings_path))
