@@ -57,6 +57,9 @@ class JesterDataModule(BaseDataModule):
 
         self._assign_splits()
 
+        if self.past_annotations_limit is not None:
+            self.limit_past_annotations(self.past_annotations_limit)
+            
         personal_df = self.annotations_with_data.loc[self.annotations_with_data.split == 'past']
         self.compute_annotator_biases(personal_df)
 

@@ -13,6 +13,7 @@ class HumorDataModule(BaseDataModule):
             data_dir: str = STORAGE_DIR / 'humor/texts/',
             split_sizes: List[float] = [0.55, 0.15, 0.15, 0.15],
             normalize=False,
+            min_annotations_per_text=None,
             **kwargs,
     ):
         super().__init__(**kwargs)
@@ -22,7 +23,7 @@ class HumorDataModule(BaseDataModule):
         self.split_sizes = split_sizes
         self.annotation_column = ['is_funny']
         self.text_column = 'text'
-
+        
         self.word_stats_annotation_column = 'is_funny'
         self.embeddings_path = STORAGE_DIR / \
             f'humor/embeddings/text_id_to_emb_{self.embeddings_type}.p'
@@ -32,6 +33,7 @@ class HumorDataModule(BaseDataModule):
         self.test_split_names = ['future2']
 
         self.normalize = normalize
+        self.min_annotations_per_text = min_annotations_per_text
 
     @property
     def class_dims(self):
@@ -48,11 +50,16 @@ class HumorDataModule(BaseDataModule):
         self.annotations = pd.read_csv(
             self.data_dir / 'annotations.csv').dropna()
 
+        if self.min_annotations_per_text is not None:
+            text_id_value_counts = self.annotations.text_id.value_counts()
+            text_id_value_counts = text_id_value_counts[text_id_value_counts >= self.min_annotations_per_text]
+            self.annotations = self.annotations.loc[self.annotations.text_id.isin(text_id_value_counts.index.tolist())]
+            
         if self.normalize:
             self.normalize_labels()
 
         self._assign_splits()
-        
+
         if self.past_annotations_limit is not None:
             self.limit_past_annotations(self.past_annotations_limit)
 
