@@ -65,7 +65,7 @@ class CockamamieGobbledegookDataModule(BaseDataModule):
         #self.data.dropna(inplace=True)
 
         self.annotations = pd.read_csv(
-            self.data_dir / 'cockamamie_gobbledegook_annotations_e.csv').dropna()
+            self.data_dir / 'cockamamie_annotations_only_controversial_a_non_empty.csv').dropna()
         # self.annotators = pd.read_csv(
         #     self.data_dir / 'cockamamie_gobbledegook_annotators.csv')
 
