@@ -67,7 +67,7 @@ if __name__ == '__main__':
                         }
 
                         logger = pl_loggers.WandbLogger(
-                            save_dir=LOGS_DIR, config=hparams, project='Jester_fixed_no_folds_v2', 
+                            save_dir=LOGS_DIR, config=hparams, project='Jester_fixed_limit_past', 
                             log_model=False)
 
                         output_dim = len(data_module.class_dims)
