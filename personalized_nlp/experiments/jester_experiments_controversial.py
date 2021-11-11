@@ -34,13 +34,13 @@ if __name__ == '__main__':
     min_word_counts = [5]
     words_per_texts = [1]
     dp_embs = [0.25]
+    limit_past_annotations = range(0, 20)
     
-    #for embeddings_type in ['labse', 'mpnet', 'random']:
-    for min_word_count, words_per_text, dp_emb, in product(min_word_counts, words_per_texts, dp_embs):
-        for embeddings_type in ['xlmr', 'bert', 'deberta', 'mpnet', 'random']:
+    for min_word_count, words_per_text, dp_emb, limit in product(min_word_counts, words_per_texts, dp_embs, limit_past_annotations):
+        for embeddings_type in ['mpnet']:
             seed_everything()
             data_module = JesterDataModule(embeddings_type=embeddings_type, normalize=regression,
-                                            batch_size=3000)
+                                            batch_size=3000, past_annotations_limit=limit)
             data_module.prepare_data()
             data_module.setup()
             data_module.compute_word_stats(
@@ -62,11 +62,12 @@ if __name__ == '__main__':
                             'regression': regression,
                             'words_per_texts': words_per_text,
                             'min_word_count': min_word_count,
-                            'dp_emb': dp_emb
+                            'dp_emb': dp_emb,
+                            'limit_past_annotations': limit
                         }
 
                         logger = pl_loggers.WandbLogger(
-                            save_dir=LOGS_DIR, config=hparams, project='Jester_fixed_v2_folds', 
+                            save_dir=LOGS_DIR, config=hparams, project='Jester_peb_limit', 
                             log_model=False)
 
                         output_dim = len(data_module.class_dims)

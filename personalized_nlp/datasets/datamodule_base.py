@@ -33,6 +33,8 @@ class BaseDataModule(LightningDataModule):
     def text_embedding_dim(self) -> int:
         if self.embeddings_type in ['xlmr', 'bert', 'labse', 'mpnet', 'random']:
             return 768
+        elif self.embeddings_type in ['skipgram', 'cbow']:
+            return 300
         else:
             return 1024
 
@@ -76,8 +78,8 @@ class BaseDataModule(LightningDataModule):
             model_name = 'sentence-transformers/LaBSE'
         elif self.embeddings_type == 'mpnet':
             model_name = 'sentence-transformers/paraphrase-multilingual-mpnet-base-v2'
-        elif self.embeddings_type == 'random':
-            model_name = 'random'
+        else:
+            model_name = self.embeddings_type
             
         if use_cuda is None:
             use_cuda = torch.cuda.is_available()
