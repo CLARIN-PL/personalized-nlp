@@ -33,6 +33,8 @@ class BaseDataModule(LightningDataModule):
     def text_embedding_dim(self) -> int:
         if self.embeddings_type in ['xlmr', 'bert', 'labse', 'mpnet', 'random']:
             return 768 * 2
+        elif self.embeddings_type in ['skipgram', 'cbow']:
+            return 300 * 2
         else:
             return 1024 * 2
 
@@ -48,7 +50,8 @@ class BaseDataModule(LightningDataModule):
                  batch_size: int = 3000,
                  embeddings_type: str = 'bert',
                  major_voting: bool = False,
-                 folds_num=10):
+                 folds_num=10,
+                 past_annotations_limit=None):
 
         super().__init__(train_transforms=train_transforms,
                          val_transforms=val_transforms,
@@ -59,6 +62,7 @@ class BaseDataModule(LightningDataModule):
         self.batch_size = batch_size
         self.embeddings_type = embeddings_type
         self.folds_num = folds_num
+        self.past_annotations_limit = past_annotations_limit
 
     def _create_embeddings(self, use_cuda=None) -> None:
         originals, edited = self.texts_clean
@@ -74,8 +78,8 @@ class BaseDataModule(LightningDataModule):
             model_name = 'sentence-transformers/LaBSE'
         elif self.embeddings_type == 'mpnet':
             model_name = 'sentence-transformers/paraphrase-multilingual-mpnet-base-v2'
-        elif self.embeddings_type == 'random':
-            model_name = 'random'
+        else:
+            model_name = self.embeddings_type
             
         if use_cuda is None:
             use_cuda = torch.cuda.is_available()
@@ -130,6 +134,9 @@ class BaseDataModule(LightningDataModule):
         self.annotator_id_idx_dict = {a_id: idx for idx, a_id in enumerate(
             annotator_id_category.cat.categories)}
 
+        if self.past_annotations_limit is not None:
+            self.limit_past_annotations(self.past_annotations_limit)
+            
         self._assign_folds()
         self.compute_word_stats()
 
@@ -394,3 +401,18 @@ class BaseDataModule(LightningDataModule):
             'annotator_id').agg(neg_conformity=('is_major_vote', 'mean'))
 
         return conformity_df
+
+    def limit_past_annotations(self, limit):
+        past_annotations = self.annotations.merge(self.data[self.data.split == 'past'])
+        
+        text_stds = past_annotations.groupby('text_id')[self.annotation_column].agg('std').reset_index()
+        text_stds.columns = ['text_id', 'std']
+        
+        past_annotations = past_annotations.merge(text_stds)
+        
+        controversial_annotations = past_annotations.groupby('annotator_id').apply(lambda x: x.sort_values(by='std', ascending=False)[:limit])
+
+        past_split_text_ids = self.data[self.data.split == 'past'].text_id.tolist()
+        non_past_annotations = self.annotations[~self.annotations['text_id'].isin(past_split_text_ids)]
+        
+        self.annotations = pd.concat([non_past_annotations, controversial_annotations])

@@ -1,3 +1,4 @@
+from typing import List
 from transformers import AutoTokenizer, AutoModel
 from sentence_transformers import SentenceTransformer
 import torch
@@ -5,6 +6,9 @@ import torch
 from tqdm import tqdm
 import pickle
 import os
+import fasttext
+import numpy as np
+from personalized_nlp.settings import CBOW_EMBEDDINGS_PATH, SKIPGRAM_EMBEDDINGS_PATH
 
 
 def _get_embeddings(texts, tokenizer, model, max_seq_len=256, use_cuda=False):
@@ -45,11 +49,18 @@ def create_embeddings(originals, edited, embeddings_path=None,
                       use_cuda=True):
 
     if model_name == 'random':
-        embeddings = torch.rand(len(originals), 768 * 2)
+        embeddings = torch.rand(len(texts), 768 * 2).numpy()
+        
+        text_idx_to_emb = {}
+        for i in range(embeddings.shape[0]):
+            text_idx_to_emb[i] = embeddings[i]
+    elif model_name in ['skipgram', 'cbow']:
+        original_embeddings = create_fasttext_embeddings(originals, model_name)
+        edited_embeddings = create_fasttext_embeddings(edited, model_name)
 
         text_idx_to_emb = {}
-        for i in range(embeddings.size(0)):
-            text_idx_to_emb[i] = embeddings[i].cpu().numpy()
+        for i in range(original_embeddings.shape[0]):
+            text_idx_to_emb[i] = np.concatenate((original_embeddings[i], edited_embeddings[i]), axis=0)
     else:
         tokenizer = AutoTokenizer.from_pretrained(model_name)
         model = AutoModel.from_pretrained(model_name)
@@ -59,10 +70,12 @@ def create_embeddings(originals, edited, embeddings_path=None,
 
         original_embeddings = _get_embeddings(originals, tokenizer, model, use_cuda=use_cuda)
         edited_embeddings = _get_embeddings(edited, tokenizer, model, use_cuda=use_cuda)
+        original_embeddings = original_embeddings.cpu().numpy()
+        edited_embeddings = edited_embeddings.cpu().numpy()
 
         text_idx_to_emb = {}
-        for i in range(original_embeddings.size(0)):
-            text_idx_to_emb[i] = torch.cat((original_embeddings[i].cpu(), edited_embeddings[i].cpu()), 0).numpy()
+        for i in range(original_embeddings.shape[0]):
+            text_idx_to_emb[i] = np.concatenate((original_embeddings[i], edited_embeddings[i]), axis=0)
 
     if not os.path.exists(os.path.dirname(embeddings_path)):
         os.makedirs(os.path.dirname(embeddings_path))
@@ -71,3 +84,16 @@ def create_embeddings(originals, edited, embeddings_path=None,
         pickle.dump(text_idx_to_emb, open(embeddings_path, 'wb'))
 
     return text_idx_to_emb
+
+
+def create_fasttext_embeddings(texts: List[str], model_name: str):
+    if model_name == 'skipgram':
+        embeddings_path = SKIPGRAM_EMBEDDINGS_PATH
+    else:
+        embeddings_path = CBOW_EMBEDDINGS_PATH
+        
+    ft = fasttext.load_model(str(embeddings_path))
+    
+    embeddings = [ft.get_sentence_vector(t.replace('\n', ' ')) for t in texts]
+    embeddings = np.array(embeddings)
+    return embeddings

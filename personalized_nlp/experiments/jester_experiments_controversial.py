@@ -34,14 +34,13 @@ if __name__ == '__main__':
     min_word_counts = [5]
     words_per_texts = [1]
     dp_embs = [0.25]
+    limit_past_annotations = range(0, 20)
     
-    #for embeddings_type in ['labse', 'mpnet', 'random']:
-    for min_word_count, words_per_text, dp_emb, in product(min_word_counts, words_per_texts, dp_embs):
-        #for embeddings_type in ['mpnet']:
-        #for embeddings_type in ['xlmr', 'labse', 'mpnet', 'random']:
-        for embeddings_type in ['xlmr', 'bert', 'deberta', 'labse', 'mpnet', 'random']:
+    for min_word_count, words_per_text, dp_emb, limit in product(min_word_counts, words_per_texts, dp_embs, limit_past_annotations):
+        for embeddings_type in ['mpnet']:
+            seed_everything()
             data_module = JesterDataModule(embeddings_type=embeddings_type, normalize=regression,
-                                            batch_size=3000)
+                                            batch_size=3000, past_annotations_limit=limit)
             data_module.prepare_data()
             data_module.setup()
             data_module.compute_word_stats(
@@ -50,7 +49,7 @@ if __name__ == '__main__':
                 words_per_text=words_per_text
             )
 
-            for model_type in ['baseline', 'peb', 'bias', 'embedding', 'word_embedding']:
+            for model_type in ['baseline', 'peb', 'bias', 'embedding']:
                 for embedding_dim in [50]:
                     for fold_num in range(10):
 
@@ -63,11 +62,12 @@ if __name__ == '__main__':
                             'regression': regression,
                             'words_per_texts': words_per_text,
                             'min_word_count': min_word_count,
-                            'dp_emb': dp_emb
+                            'dp_emb': dp_emb,
+                            'limit_past_annotations': limit
                         }
 
                         logger = pl_loggers.WandbLogger(
-                            save_dir=LOGS_DIR, config=hparams, project='Jester_fixed_limit_past', 
+                            save_dir=LOGS_DIR, config=hparams, project='Jester_peb_limit', 
                             log_model=False)
 
                         output_dim = len(data_module.class_dims)
@@ -95,6 +95,6 @@ if __name__ == '__main__':
                                                             embedding_dim=embedding_dim, hidden_dim=100)
 
                         train_test(data_module, model, epochs=6, lr=0.008, regression=regression,
-                                use_cuda=True, logger=logger)
+                                use_cuda=True, logger=logger, test_fold=fold_num)
 
                         logger.experiment.finish()
