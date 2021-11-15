@@ -40,12 +40,16 @@ def _get_embeddings(texts, tokenizer, model, max_seq_len=256, use_cuda=False):
     return torch.cat(all_embeddings, axis=0).to('cpu')
 
 
-def create_embeddings(texts, embeddings_path=None,
+def create_embeddings(originals, edited, embeddings_path=None,
                       model_name='xlm-roberta-base',
                       use_cuda=True):
 
     if model_name == 'random':
-        embeddings = torch.rand(len(texts), 768)
+        embeddings = torch.rand(len(originals), 768 * 2)
+
+        text_idx_to_emb = {}
+        for i in range(embeddings.size(0)):
+            text_idx_to_emb[i] = embeddings[i].cpu().numpy()
     else:
         tokenizer = AutoTokenizer.from_pretrained(model_name)
         model = AutoModel.from_pretrained(model_name)
@@ -53,11 +57,12 @@ def create_embeddings(texts, embeddings_path=None,
         if use_cuda:
             model = model.to('cuda')
 
-        embeddings = _get_embeddings(texts, tokenizer, model, use_cuda=use_cuda)
+        original_embeddings = _get_embeddings(originals, tokenizer, model, use_cuda=use_cuda)
+        edited_embeddings = _get_embeddings(edited, tokenizer, model, use_cuda=use_cuda)
 
-    text_idx_to_emb = {}
-    for i in range(embeddings.size(0)):
-        text_idx_to_emb[i] = embeddings[i].cpu().numpy()
+        text_idx_to_emb = {}
+        for i in range(original_embeddings.size(0)):
+            text_idx_to_emb[i] = torch.cat((original_embeddings[i].cpu(), edited_embeddings[i].cpu()), 0).numpy()
 
     if not os.path.exists(os.path.dirname(embeddings_path)):
         os.makedirs(os.path.dirname(embeddings_path))

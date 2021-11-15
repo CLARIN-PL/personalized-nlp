@@ -8,7 +8,7 @@ from scipy.stats import entropy
 def get_tokenized_texts(data):
     """ Tokenize comments"""
     data = data.copy()
-    data['text_clean'] = data['text'].str.replace('NEWLINE_TOKEN', ' ')
+    data['text_clean'] = data['original'].str.replace('NEWLINE_TOKEN', ' ')
 
     tokenizer = Tokenizer(oov_token='<OOV>')
     tokenizer.fit_on_texts(data.text_clean.tolist())

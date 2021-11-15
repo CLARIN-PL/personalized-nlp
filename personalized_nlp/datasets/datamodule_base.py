@@ -32,9 +32,9 @@ class BaseDataModule(LightningDataModule):
     @property
     def text_embedding_dim(self) -> int:
         if self.embeddings_type in ['xlmr', 'bert', 'labse', 'mpnet', 'random']:
-            return 768
+            return 768 * 2
         else:
-            return 1024
+            return 1024 * 2
 
     @property
     def annotations_with_data(self) -> pd.DataFrame:
@@ -61,7 +61,7 @@ class BaseDataModule(LightningDataModule):
         self.folds_num = folds_num
 
     def _create_embeddings(self, use_cuda=None) -> None:
-        texts = self.texts_clean
+        originals, edited = self.texts_clean
         embeddings_path = self.embeddings_path
 
         if self.embeddings_type == 'xlmr':
@@ -80,7 +80,7 @@ class BaseDataModule(LightningDataModule):
         if use_cuda is None:
             use_cuda = torch.cuda.is_available()
 
-        create_embeddings(texts, embeddings_path,
+        create_embeddings(originals, edited, embeddings_path,
                           model_name=model_name, use_cuda=use_cuda)
 
     def compute_word_stats(
@@ -280,7 +280,7 @@ class BaseDataModule(LightningDataModule):
             'embeddings': self.text_embeddings,
             'text_tokenized': self.text_tokenized,
             'tokens_sorted': self.tokens_sorted,
-            'raw_texts': self.data['text'].values
+            'raw_texts': self.data['original'].values
         }
 
     def _get_annotator_features(self):
