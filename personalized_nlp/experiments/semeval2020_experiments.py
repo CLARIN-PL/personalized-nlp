@@ -31,7 +31,8 @@ if __name__ == '__main__':
     results = []
     regression = True
     
-    for embeddings_type in ['xlmr', 'bert', 'deberta', 'labse', 'mpnet', 'random']:
+    # for embeddings_type in ['xlmr', 'bert', 'deberta', 'labse', 'mpnet', 'random']:
+    for embeddings_type in ['skipgram', 'cbow']:
         data_module = SemevalDataModule(embeddings_type=embeddings_type, normalize=regression,
                                         batch_size=3000)
         data_module.prepare_data()

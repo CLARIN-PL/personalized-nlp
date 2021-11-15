@@ -49,7 +49,7 @@ def create_embeddings(originals, edited, embeddings_path=None,
                       use_cuda=True):
 
     if model_name == 'random':
-        embeddings = torch.rand(len(texts), 768 * 2).numpy()
+        embeddings = torch.rand(len(originals), 768 * 2).numpy()
         
         text_idx_to_emb = {}
         for i in range(embeddings.shape[0]):
