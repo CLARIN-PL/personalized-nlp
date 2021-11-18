@@ -1,6 +1,7 @@
 from typing import List
 
 import pandas as pd
+import os
 
 from personalized_nlp.settings import STORAGE_DIR
 from personalized_nlp.utils.data_splitting import split_texts
@@ -10,7 +11,6 @@ from personalized_nlp.datasets.datamodule_base import BaseDataModule
 class HumorDataModule(BaseDataModule):
     def __init__(
             self,
-            data_dir: str = STORAGE_DIR / 'humor/texts/',
             split_sizes: List[float] = [0.55, 0.15, 0.15, 0.15],
             normalize=False,
             min_annotations_per_text=None,
@@ -18,8 +18,7 @@ class HumorDataModule(BaseDataModule):
     ):
         super().__init__(**kwargs)
 
-        self.data_dir = data_dir
-        self.data_path = self.data_dir / 'data.csv'
+        self.data_dir = STORAGE_DIR / 'humor/'
         self.split_sizes = split_sizes
         self.annotation_column = ['is_funny']
         self.text_column = 'text'
@@ -35,6 +34,8 @@ class HumorDataModule(BaseDataModule):
         self.normalize = normalize
         self.min_annotations_per_text = min_annotations_per_text
 
+        os.makedirs(self.data_dir / 'embeddings', exist_ok=True)
+
     @property
     def class_dims(self):
         return [2]
@@ -45,7 +46,7 @@ class HumorDataModule(BaseDataModule):
 
     def prepare_data(self) -> None:
         self.data = pd.read_csv(
-            self.data_dir / 'data.csv')
+            self.data_dir / 'texts' / 'data.csv')
 
         self.annotations = pd.read_csv(
             self.data_dir / 'annotations.csv').dropna()
@@ -59,9 +60,6 @@ class HumorDataModule(BaseDataModule):
             self.normalize_labels()
 
         self._assign_splits()
-
-        if self.past_annotations_limit is not None:
-            self.limit_past_annotations(self.past_annotations_limit)
 
         personal_df = self.annotations_with_data.loc[self.annotations_with_data.split == 'past']
         self.compute_annotator_biases(personal_df)

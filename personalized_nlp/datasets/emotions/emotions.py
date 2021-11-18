@@ -1,6 +1,7 @@
 from typing import List
 
 import pandas as pd
+import os
 
 from personalized_nlp.settings import STORAGE_DIR
 from personalized_nlp.utils.data_splitting import split_texts
@@ -10,7 +11,6 @@ from personalized_nlp.datasets.datamodule_base import BaseDataModule
 class EmotionsDataModule(BaseDataModule):
     def __init__(
             self,
-            data_dir: str = STORAGE_DIR / 'emotions_data/texts/',
             language: str = 'english',
             split_sizes: List[float] = [0.55, 0.15, 0.15, 0.15],
             normalize=False,
@@ -18,8 +18,7 @@ class EmotionsDataModule(BaseDataModule):
     ):
         super().__init__(**kwargs)
 
-        self.data_dir = data_dir
-        self.data_path = self.data_dir / 'cawi2_texts_multilang.csv'
+        self.data_dir = STORAGE_DIR / 'emotions_data'
         self.split_sizes = split_sizes
         self.language = language
         self.annotation_column = ['OCZEKIWANIE',
@@ -45,6 +44,8 @@ class EmotionsDataModule(BaseDataModule):
         self.test_split_names = ['future2']
 
         self.normalize = normalize
+
+        os.makedirs(self.data_dir / 'embeddings', exist_ok=True)
 
     @property
     def class_dims(self):
