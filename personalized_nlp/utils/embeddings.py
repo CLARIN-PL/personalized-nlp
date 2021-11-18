@@ -36,7 +36,7 @@ def _get_embeddings(texts, tokenizer, model, max_seq_len=256, use_cuda=False):
             emb = model(**batch_encoding)
 
         mask = batch_encoding['attention_mask'] > 0
-        # all_embeddings.append(emb.pooler_output) ## podejscie nr 1 z tokenem CLS
+
         for i in range(emb[0].size()[0]):
             all_embeddings.append(emb[0][i, mask[i] > 0, :].mean(
                 axis=0)[None, :])  # podejscie nr 2 z usrednianiem

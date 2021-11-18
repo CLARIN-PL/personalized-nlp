@@ -14,3 +14,22 @@ TOXICITY_URL = 'https://ndownloader.figshare.com/articles/4563973/versions/2'
 
 CBOW_EMBEDDINGS_PATH = STORAGE_DIR / 'word2vec' / 'kgr10.plain.cbow.dim300.neg10.bin'
 SKIPGRAM_EMBEDDINGS_PATH = STORAGE_DIR / 'word2vec' / 'kgr10.plain.skipgram.dim300.neg10.bin'
+
+EMBEDDINGS_SIZES = {
+    'xlmr': 768,
+    'bert': 768,
+    'labse': 768, 
+    'mpnet': 768,
+    'random': 768,
+    'skipgram': 300,
+    'cbow': 300,
+    'deberta': 1024
+}
+
+TRANSFORMER_MODEL_STRINGS = {
+    'xlmr': 'xlm-roberta-base',
+    'bert': 'bert-base-cased',
+    'deberta': 'microsoft/deberta-large',
+    'labse': 'sentence-transformers/LaBSE',
+    'mpnet': 'sentence-transformers/paraphrase-multilingual-mpnet-base-v2'
+}

@@ -16,3 +16,5 @@ venv/
 # MacOS temp dir
 **/.DS_Store
 env/
+personalized_nlp/notebooks/data
+personalized_nlp/notebooks/transformer_experiments
