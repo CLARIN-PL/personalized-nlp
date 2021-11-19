@@ -17,7 +17,7 @@ if __name__ == "__main__":
     embedding_types = ["xlmr", "bert", "deberta", "mpnet", "random"]
     model_types = ["baseline", "peb", "bias", "embedding"]
     wandb_project_name = 'Jester_exp'
-    fold_nums = 2
+    fold_nums = 1
     
     min_word_counts = [5]
     words_per_texts = [1]
@@ -25,7 +25,7 @@ if __name__ == "__main__":
     batch_size = 3000
     dp_embs = [0.25]
     embedding_dims = [50]
-    epochs = 6
+    epochs = 3
     lr_rate = 0.008
     
     use_cuda = True
@@ -81,6 +81,7 @@ if __name__ == "__main__":
                 dp_emb=dp_emb,
                 embedding_dim=embedding_dim,
                 hidden_dim=100,
+                bias_vector_length=len(data_module.class_dims)
             )
 
             train_test(

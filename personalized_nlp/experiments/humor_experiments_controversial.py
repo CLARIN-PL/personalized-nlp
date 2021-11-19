@@ -34,14 +34,15 @@ if __name__ == '__main__':
     min_word_counts = [50]
     words_per_texts = [15]
     dp_embs = [0.0]
-    limit_past_annotations = range(20)
+    #limit_past_annotations = range(100, 200, 10)
+    limit_past_annotations = [20] + list(range(25, 205, 10)) + [200]
+    min_annotations_per_text = 2
     
-    #for embeddings_type in ['labse', 'mpnet', 'random']:
     for min_word_count, words_per_text, dp_emb, limit in product(min_word_counts, words_per_texts, dp_embs, limit_past_annotations):
         for embeddings_type in ['xlmr']:
             seed_everything()
             data_module = HumorDataModule(embeddings_type=embeddings_type, normalize=regression,
-                                            batch_size=3000, past_annotations_limit=limit)
+                                            batch_size=3000, past_annotations_limit=limit, min_annotations_per_text=min_annotations_per_text)
             data_module.prepare_data()
             data_module.setup()
             data_module.compute_word_stats(
@@ -50,8 +51,8 @@ if __name__ == '__main__':
                 words_per_text=words_per_text
             )
 
-            for model_type in ['peb']:
-            #for model_type in ['baseline', 'onehot', 'peb', 'bias', 'embedding', 'word_embedding']:
+            #for model_type in ['peb']:
+            for model_type in ['baseline', 'onehot', 'peb', 'bias', 'embedding']:
                 for embedding_dim in [50]:
                     for fold_num in range(10):
 
@@ -65,7 +66,8 @@ if __name__ == '__main__':
                             'min_word_count': min_word_count,
                             'words_per_text': words_per_text,
                             'dp_emb': dp_emb,
-                            'limit_past_annotations': limit
+                            'limit_past_annotations': limit,
+                            'min_annotations_per_text': min_annotations_per_text
                         }
 
                         logger = pl_loggers.WandbLogger(
@@ -96,7 +98,7 @@ if __name__ == '__main__':
                                                             annotator_num=data_module.annotators_number, dp=0.0, dp_emb=0.25,
                                                             embedding_dim=embedding_dim, hidden_dim=100)
 
-                        train_test(data_module, model, epochs=20, lr=0.008, regression=regression,
+                        train_test(data_module, model, epochs=30, lr=0.008, regression=regression,
                                 use_cuda=True, test_fold=fold_num, logger=logger)
 
                         logger.experiment.finish()

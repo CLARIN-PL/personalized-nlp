@@ -81,6 +81,7 @@ if __name__ == "__main__":
                 dp_emb=dp_emb,
                 embedding_dim=embedding_dim,
                 hidden_dim=100,
+                bias_vector_length=len(data_module.class_dims)
             )
 
             train_test(

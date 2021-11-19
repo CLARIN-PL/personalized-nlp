@@ -20,10 +20,10 @@ os.environ["CUDA_VISIBLE_DEVICES"] = '2'
 os.environ["WANDB_START_METHOD"] = "thread"
 
 
-def seed_everything():
-    torch.manual_seed(0)
-    random.seed(0)
-    np.random.seed(0)
+def seed_everything(seed=0):
+    torch.manual_seed(seed)
+    random.seed(seed)
+    np.random.seed(seed)
 
 
 if __name__ == '__main__':
@@ -34,13 +34,14 @@ if __name__ == '__main__':
     min_word_counts = [50]
     words_per_texts = [15]
     dp_embs = [0.0]
+    min_annotations_per_text = 2
     
     #for embeddings_type in ['labse', 'mpnet', 'random']:
     for min_word_count, words_per_text, dp_emb, in product(min_word_counts, words_per_texts, dp_embs):
         for embeddings_type in ['labse', 'mpnet', 'xlmr', 'random']:
             seed_everything()
             data_module = HumorDataModule(embeddings_type=embeddings_type, normalize=regression,
-                                            batch_size=3000)
+                                            batch_size=3000, min_annotations_per_text=min_annotations_per_text)
             data_module.prepare_data()
             data_module.setup()
             data_module.compute_word_stats(
@@ -52,8 +53,9 @@ if __name__ == '__main__':
             #for model_type in ['bias', 'embedding']:
             for model_type in ['baseline', 'onehot', 'peb', 'bias', 'embedding', 'word_embedding']:
                 for embedding_dim in [50]:
-                    for fold_num in range(1):
-
+                    for fold_num in range(10):
+                        seed_everything(fold_num)
+                        
                         hparams = {
                             'dataset': type(data_module).__name__,
                             'model_type': model_type,
@@ -63,11 +65,12 @@ if __name__ == '__main__':
                             'regression': regression,
                             'min_word_count': min_word_count,
                             'words_per_text': words_per_text,
-                            'dp_emb': dp_emb
+                            'dp_emb': dp_emb,
+                            'min_annotations_per_text': min_annotations_per_text
                         }
 
                         logger = pl_loggers.WandbLogger(
-                            save_dir=LOGS_DIR, config=hparams, project='Humor_final_test', 
+                            save_dir=LOGS_DIR, config=hparams, project='Humor_min_annotations_per_text', 
                             log_model=False)
 
                         output_dim = len(data_module.class_dims)

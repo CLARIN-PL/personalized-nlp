@@ -34,7 +34,7 @@ if __name__ == '__main__':
     min_word_counts = [5]
     words_per_texts = [1]
     dp_embs = [0.25]
-    limit_past_annotations = range(0, 20)
+    limit_past_annotations = [20]
     
     for min_word_count, words_per_text, dp_emb, limit in product(min_word_counts, words_per_texts, dp_embs, limit_past_annotations):
         for embeddings_type in ['mpnet']:
