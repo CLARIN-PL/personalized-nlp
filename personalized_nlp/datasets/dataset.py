@@ -1,6 +1,5 @@
 import torch.utils.data
 
-
 class BatchIndexedDataset(torch.utils.data.Dataset):
     def __init__(self, X, y, text_features=None, annotator_features=None):
         self.X = X

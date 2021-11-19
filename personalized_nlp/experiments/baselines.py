@@ -1,8 +1,5 @@
-from pytorch_lightning import loggers as pl_loggers
-import random
 import numpy as np
 
-from personalized_nlp.settings import STORAGE_DIR
 from personalized_nlp.datasets.wiki.aggression import AggressionDataModule
 
 from sklearn.model_selection import cross_val_score

@@ -12,14 +12,11 @@ from personalized_nlp.datasets.datamodule_base import BaseDataModule
 class WikiDataModule(BaseDataModule):
     def __init__(
             self,
-            data_dir: str = STORAGE_DIR / 'wiki_data',
             **kwargs,
     ):
         super().__init__(**kwargs)
 
-        self.data_dir = data_dir
-        self.data_path = ''
-        self.data_url = None
+        self.data_dir = STORAGE_DIR / 'wiki_data'
 
         self.annotation_column = ''
         self.word_stats_annotation_column = ''
@@ -29,6 +26,8 @@ class WikiDataModule(BaseDataModule):
         self.val_split_names = ['dev']
         self.test_split_names = ['test']
 
+        os.makedirs(self.data_dir / 'embeddings', exist_ok=True)
+        
     @property
     def class_dims(self):
         return [2]
@@ -40,12 +39,6 @@ class WikiDataModule(BaseDataModule):
 
         return texts
 
-    def download_data(self) -> None:
-        file_path = self.data_dir / 'temp.zip'
-        urllib.request.urlretrieve(self.data_url, file_path)
-        with zipfile.ZipFile(file_path, 'r') as zip_ref:
-            zip_ref.extractall(self.data_dir)
-
     def _remap_column_names(self, df):
         mapping = {'rev_id': 'text_id',
                    'worker_id': 'annotator_id', 'comment': 'text'}
@@ -53,9 +46,6 @@ class WikiDataModule(BaseDataModule):
         return df
 
     def prepare_data(self) -> None:
-        if not os.path.exists(self.data_path):
-            self.download_data()
-
         self.data = pd.read_csv(
             self.data_dir / (self.annotation_column + '_annotated_comments.tsv'), sep='\t')
         self.data = self._remap_column_names(self.data)
