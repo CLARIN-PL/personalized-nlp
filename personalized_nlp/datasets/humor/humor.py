@@ -49,7 +49,7 @@ class HumorDataModule(BaseDataModule):
             self.data_dir / 'texts' / 'data.csv')
 
         self.annotations = pd.read_csv(
-            self.data_dir / 'annotations.csv').dropna()
+            self.data_dir / 'texts' / 'annotations.csv').dropna()
 
         if self.min_annotations_per_text is not None:
             text_id_value_counts = self.annotations.text_id.value_counts()
