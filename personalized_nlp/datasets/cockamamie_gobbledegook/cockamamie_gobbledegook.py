@@ -19,7 +19,7 @@ class CockamamieGobbledegookDataModule(BaseDataModule):
             normalize=False,
             **kwargs,
     ):
-        super().__init__()
+        super().__init__(**kwargs)
 
         self.data_dir = STORAGE_DIR / 'cockamamie_gobbledegook'
         self.split_sizes = split_sizes
@@ -28,7 +28,7 @@ class CockamamieGobbledegookDataModule(BaseDataModule):
 
         self.word_stats_annotation_column = 'is_funny'
         self.embeddings_path = STORAGE_DIR / \
-                               f'cockamamie_gobbledegook/embeddings/text_id_to_emb_{embeddings_type}_{language}.p'
+                               f'cockamamie_gobbledegook/embeddings/text_id_to_emb_{self.embeddings_type}.p'
 
         self.train_split_names = ['present', 'past']
         self.val_split_names = ['future1']
@@ -48,10 +48,11 @@ class CockamamieGobbledegookDataModule(BaseDataModule):
 
     def prepare_data(self) -> None:
         self.data = pd.read_csv(
-            self.data_dir / 'cockamamie_gobbledegook_texts_e.csv')
-
+            self.data_dir / 'texts' / 'cockamamie_gobbledegook_texts_e.csv')
+        self.data['text'] = self.data['text_english']
+        
         self.annotations = pd.read_csv(
-            self.data_dir / 'cockamamie_annotations_only_controversial_a_non_empty.csv').dropna()
+            self.data_dir / 'texts' / 'cockamamie_annotations_only_controversial_a_non_empty.csv').dropna()
 
         if self.normalize:
             self.normalize_labels()
