@@ -12,11 +12,13 @@ os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 os.environ["WANDB_START_METHOD"] = "thread"
 
 if __name__ == "__main__":
+    wandb_project_name = 'Jester_exp'
+    
     regression = True
     datamodule_cls = JesterDataModule
     embedding_types = ["xlmr", "bert", "deberta", "mpnet", "random"]
     model_types = ["baseline", "peb", "bias", "embedding"]
-    wandb_project_name = 'Jester_exp'
+    limit_past_annotations_list = [None] # range(20)
     fold_nums = 1
     
     min_word_counts = [5]
@@ -30,13 +32,14 @@ if __name__ == "__main__":
     
     use_cuda = True
 
-    for (min_word_count, words_per_text, embeddings_type) in product(
-        min_word_counts, words_per_texts, embedding_types
+    for (min_word_count, words_per_text, embeddings_type, limit_past_annotations) in product(
+        min_word_counts, words_per_texts, embedding_types, limit_past_annotations_list
     ):
 
         seed_everything()
         data_module = datamodule_cls(
-            embeddings_type=embeddings_type, normalize=regression, batch_size=batch_size
+            embeddings_type=embeddings_type, normalize=regression, batch_size=batch_size,
+            past_annotations_limit=limit_past_annotations
         )
         data_module.prepare_data()
         data_module.setup()

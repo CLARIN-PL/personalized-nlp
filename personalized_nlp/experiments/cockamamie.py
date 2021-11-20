@@ -12,12 +12,14 @@ os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 os.environ["WANDB_START_METHOD"] = "thread"
 
 if __name__ == "__main__":
+    wandb_project_name = 'Cockamamie_exp'
+    
     regression = False
     datamodule_cls = CockamamieGobbledegookDataModule
     embedding_types = ['labse', 'mpnet', 'xlmr', 'random', 'skipgram', 'cbow']
     model_types = ['baseline', 'onehot', 'peb', 'bias', 'embedding', 'word_embedding']
-    wandb_project_name = 'Cockamamie_exp'
     fold_nums = 2
+    limit_past_annotations_list = [None] # range(20)
     
     min_word_counts = [200]
     words_per_texts = [100]
@@ -30,13 +32,14 @@ if __name__ == "__main__":
     
     use_cuda = True
 
-    for (min_word_count, words_per_text, embeddings_type) in product(
-        min_word_counts, words_per_texts, embedding_types
+    for (min_word_count, words_per_text, embeddings_type, limit_past_annotations) in product(
+        min_word_counts, words_per_texts, embedding_types, limit_past_annotations_list
     ):
 
         seed_everything()
         data_module = datamodule_cls(
-            embeddings_type=embeddings_type, normalize=regression, batch_size=batch_size
+            embeddings_type=embeddings_type, normalize=regression, batch_size=batch_size, 
+            past_annotations_limit=limit_past_annotations
         )
         data_module.prepare_data()
         data_module.setup()

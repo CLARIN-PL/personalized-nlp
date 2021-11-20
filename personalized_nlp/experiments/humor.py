@@ -17,6 +17,7 @@ if __name__ == "__main__":
     embedding_types = ['labse', 'mpnet', 'xlmr', 'random']
     model_types = ['baseline', 'onehot', 'peb', 'bias', 'embedding', 'word_embedding']
     wandb_project_name = 'Humor_exp'
+    limit_past_annotations_list = [None] # range(20)
     fold_nums = 2
     min_annotations_per_text = 2
     
@@ -31,14 +32,14 @@ if __name__ == "__main__":
     
     use_cuda = True
 
-    for (min_word_count, words_per_text, embeddings_type) in product(
-        min_word_counts, words_per_texts, embedding_types
+    for (min_word_count, words_per_text, embeddings_type, limit_past_annotations) in product(
+        min_word_counts, words_per_texts, embedding_types, limit_past_annotations_list
     ):
 
         seed_everything()
         data_module = datamodule_cls(
             embeddings_type=embeddings_type, normalize=regression, batch_size=batch_size,
-            min_annotations_per_text=min_annotations_per_text
+            min_annotations_per_text=min_annotations_per_text, past_annotations_limit=limit_past_annotations
         )
         data_module.prepare_data()
         data_module.setup()

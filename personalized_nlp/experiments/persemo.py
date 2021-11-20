@@ -12,11 +12,13 @@ os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 os.environ["WANDB_START_METHOD"] = "thread"
 
 if __name__ == "__main__":
+    wandb_project_name = 'Persemo_exp'
+    
     regression = True
     datamodule_cls = EmotionsDataModule
     embedding_types = ['labse', 'mpnet', 'xlmr', 'random']
     model_types = ['baseline', 'onehot', 'peb', 'bias', 'embedding', 'word_embedding']
-    wandb_project_name = 'Persemo_exp'
+    limit_past_annotations_list = [None] # range(20)
     fold_nums = 2
     
     min_word_counts = [200]
@@ -27,16 +29,18 @@ if __name__ == "__main__":
     embedding_dims = [50]
     epochs = 20
     lr_rate = 0.008
+    user_folding = True
     
     use_cuda = True
 
-    for (min_word_count, words_per_text, embeddings_type) in product(
-        min_word_counts, words_per_texts, embedding_types
+    for (min_word_count, words_per_text, embeddings_type, limit_past_annotations) in product(
+        min_word_counts, words_per_texts, embedding_types, limit_past_annotations_list
     ):
 
         seed_everything()
         data_module = datamodule_cls(
-            embeddings_type=embeddings_type, normalize=regression, batch_size=batch_size
+            embeddings_type=embeddings_type, normalize=regression, batch_size=batch_size,
+            past_annotations_limit=limit_past_annotations
         )
         data_module.prepare_data()
         data_module.setup()
@@ -84,6 +88,7 @@ if __name__ == "__main__":
                 bias_vector_length=len(data_module.class_dims)
             )
 
+            test_fold = fold_num if user_folding else None
             train_test(
                 data_module,
                 model,
@@ -92,7 +97,7 @@ if __name__ == "__main__":
                 regression=regression,
                 use_cuda=use_cuda,
                 logger=logger,
-                test_fold=fold_num,
+                test_fold=test_fold,
             )
 
             logger.experiment.finish()
