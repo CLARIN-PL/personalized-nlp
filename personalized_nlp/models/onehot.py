@@ -13,7 +13,7 @@ class NetOneHot(nn.Module):
 
     def forward(self, features):
         x = features['embeddings']
-        annotator_ids = features['annotator_ids']
+        annotator_ids = features['annotator_ids'].long()
 
         worker_onehots = self.worker_onehots[annotator_ids]
         

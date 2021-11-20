@@ -34,8 +34,8 @@ class AnnotatorEmbeddingNet(nn.Module):
 
     def forward(self, features):
         x = features['embeddings']
-        annotator_ids = features['annotator_ids']
-        tokens = features['tokens_sorted']
+        annotator_ids = features['annotator_ids'].long()
+        tokens = features['tokens_sorted'].long()
 
         x = x.view(-1, self.text_embedding_dim)
         x = self.fc1(x)

@@ -68,7 +68,6 @@ def get_tokens_sorted(tokens, tokens_stats, num_tokens=10):
 
     return tokens_sorted.astype(int)
 
-
 def get_text_data(data, annotations, annotation_column,
                   min_word_count=100, min_std=0.27, words_per_text=10):
     tokenizer, text_tokenized, idx_to_word = get_tokenized_texts(data)
@@ -82,7 +81,7 @@ def get_text_data(data, annotations, annotation_column,
     selected_words_tokenized = text_tokenized.copy()
     selected_words_tokenized[~np.isin(text_tokenized, selected_words_idx)] = 0
 
-    tokens_by_std = get_tokens_sorted(
+    tokens_sorted = get_tokens_sorted(
         selected_words_tokenized, word_stats, words_per_text)
-
-    return tokenizer, text_tokenized, idx_to_word, tokens_by_std, word_stats.loc[selected_words_idx]
+    
+    return tokenizer, text_tokenized, idx_to_word, tokens_sorted, word_stats.loc[selected_words_idx]

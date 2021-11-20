@@ -58,9 +58,6 @@ class Regressor(pl.LightningModule):
 
         return loss
 
-    def validation_epoch_end(self, outs):
-        pass
-
     def test_step(self, batch, batch_idx):
         x, y = batch
         y = y.float()
@@ -73,7 +70,7 @@ class Regressor(pl.LightningModule):
         self.log_all_metrics(output=output, y=y, split='test',
                              on_step=False, on_epoch=True)
 
-        return loss
+        return {"loss": loss, 'output': output, 'y': y}
 
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(self.parameters(), lr=self.lr)

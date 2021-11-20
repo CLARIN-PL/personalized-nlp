@@ -1,8 +1,8 @@
-import numpy as np
 import pytorch_lightning as pl
 import torch
 import torch.nn as nn
-from torchmetrics import Accuracy, Precision, Recall, F1
+from torchmetrics import Accuracy, F1, Precision, Recall
+from personalized_nlp.utils.metrics import F1Class, PrecisionClass, RecallClass
 
 
 class Classifier(pl.LightningModule):
@@ -32,7 +32,7 @@ class Classifier(pl.LightningModule):
                 class_metrics[f'{split}_recall_{class_name}'] = Recall(
                     num_classes=num_classes, average=None)
                 class_metrics[f'{split}_f1_{class_name}'] = F1(
-                    average=None, num_classes=num_classes)
+                    average='none', num_classes=num_classes)
                 class_metrics[f'{split}_macro_f1_{class_name}'] = F1(
                     average='macro', num_classes=num_classes)
 
@@ -55,15 +55,13 @@ class Classifier(pl.LightningModule):
 
         return loss
 
-    def training_step(self, batch, batch_idx):
+    def training_step(self, batch, batch_idx, optimizer_idx=None):
         x, y = batch
 
         output = self.forward(x)
         loss = self.step(output=output, y=y)
 
         self.log('train_loss',  loss, on_epoch=True, prog_bar=True)
-        #self.log_all_metrics(output=output, y=y, split='train')
-        
         preds = torch.argmax(output, dim=1)
 
         return {'loss': loss, 'preds': preds}
@@ -89,7 +87,7 @@ class Classifier(pl.LightningModule):
         self.log_all_metrics(output=output, y=y, split='test',
                              on_step=False, on_epoch=True)
 
-        return {"loss": loss}
+        return {"loss": loss, 'output': output, 'y': y}
 
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(self.parameters(), lr=self.lr)
@@ -116,8 +114,10 @@ class Classifier(pl.LightningModule):
 
                 if metric_value.size():
                     # for non-averaged precision and recall, take positive class score
-                    metric_value = metric_value[-1]
+                    for idx in range(metric_value.size(dim=0)):
+                        log_dict[f'{metric_key}_{idx}'] = metric_value[idx]
+                else:
+                    log_dict[metric_key] = self.metrics[metric_key]
 
-                log_dict[metric_key] = metric_value
-
-            self.log_dict(log_dict, on_step=on_step, on_epoch=on_epoch)
+            self.log_dict(log_dict, on_step=on_step,
+                          on_epoch=on_epoch, prog_bar=True)
