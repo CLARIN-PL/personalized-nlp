@@ -1,6 +1,12 @@
 # humor-personalization
 Personalized sense of humor prediction
 
+## Download data
+
+To download data, enter personalized_nlp folder and type in:
+
+`dvc pull`
+
 ## How to run experiments:
 
 `python -m personalized_nlp.experiments.jester`
