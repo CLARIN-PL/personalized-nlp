@@ -5,12 +5,10 @@ from personalized_nlp.settings import STORAGE_DIR, TOXICITY_URL
 class ToxicityDataModule(WikiDataModule):
     def __init__(
             self,
-            data_dir: str = STORAGE_DIR / 'wiki_data',
             **kwargs,
     ):
-        super().__init__(data_dir, **kwargs)
+        super().__init__(**kwargs)
 
-        self.data_path = self.data_dir / 'toxicity_annotations.tsv'
         self.data_url = TOXICITY_URL
 
         self.annotation_column = 'toxicity'

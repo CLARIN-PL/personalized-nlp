@@ -51,6 +51,7 @@ class BaseDataModule(LightningDataModule):
         major_voting: bool = False,
         folds_num: int = 10,
         past_annotations_limit: int = None,
+        **kwargs
     ):
 
         super().__init__(

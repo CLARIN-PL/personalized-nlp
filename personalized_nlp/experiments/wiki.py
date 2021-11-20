@@ -17,7 +17,7 @@ if __name__ == "__main__":
     regression = False
     datamodule_clses = [ToxicityDataModule, AttackDataModule, AggressionDataModule]
     embedding_types = ['labse', 'mpnet', 'xlmr', 'random']
-    model_types = ['baseline', 'onehot', 'peb', 'bias', 'embedding', 'word_embedding']
+    model_types = ['baseline', 'onehot', 'peb', 'word_bias', 'bias', 'embedding', 'word_embedding']
     wandb_project_name = 'Wiki_exp'
     fold_nums = 2
     

@@ -114,7 +114,7 @@ class Classifier(pl.LightningModule):
 
                 if metric_value.size():
                     # for non-averaged precision and recall, take positive class score
-                    for idx in len(metric_value.size()):
+                    for idx in range(metric_value.size()):
                         log_dict[f'{metric_key}_{idx}'] = metric_value[idx]
                 else:
                     log_dict[metric_key] = self.metrics[metric_key]

@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 
-class AnnotatorBiasNet(nn.Module):
+class WordBiasNet(nn.Module):
     def __init__(
         self,
         output_dim,

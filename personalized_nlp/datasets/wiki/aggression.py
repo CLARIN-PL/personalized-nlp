@@ -7,10 +7,9 @@ from typing import List
 class AggressionDataModule(WikiDataModule):
     def __init__(
             self,
-            data_dir: str = STORAGE_DIR / 'wiki_data',
             **kwargs,
     ):
-        super().__init__(data_dir, **kwargs)
+        super().__init__(**kwargs)
 
         self.data_path = self.data_dir / 'aggression_annotations.tsv'
         self.data_url = AGGRESSION_URL
