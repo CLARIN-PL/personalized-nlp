@@ -8,17 +8,18 @@ from personalized_nlp.datasets.cockamamie_gobbledegook.cockamamie_gobbledegook i
 from personalized_nlp.utils import seed_everything
 from pytorch_lightning import loggers as pl_loggers
 
-os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+os.environ["CUDA_VISIBLE_DEVICES"] = "99" #"1"
 os.environ["WANDB_START_METHOD"] = "thread"
 
 if __name__ == "__main__":
-    wandb_project_name = 'Cockamamie_exp'
+    wandb_project_name = 'cockamamie-evaluation'
+    wandb_entity_name = 'persemo'
     
     regression = False
     datamodule_cls = CockamamieGobbledegookDataModule
-    embedding_types = ['labse', 'mpnet', 'xlmr', 'random', 'skipgram', 'cbow']
+    embedding_types = ['labse', 'mpnet', 'xlmr', 'bert', 'deberta', 'random', 'skipgram', 'cbow']
     model_types = ['baseline', 'onehot', 'peb', 'bias', 'embedding', 'word_embedding']
-    fold_nums = 2
+    fold_nums = 10
     limit_past_annotations_list = [None] # range(20)
     
     min_word_counts = [200]
@@ -28,7 +29,7 @@ if __name__ == "__main__":
     dp_embs = [0.25]
     embedding_dims = [50]
     epochs = 20
-    lr_rate = 0.008
+    lr_rate = 1e-5
     
     use_cuda = True
 
@@ -68,6 +69,7 @@ if __name__ == "__main__":
                 save_dir=LOGS_DIR,
                 config=hparams,
                 project=wandb_project_name,
+		entity=wandb_entity_name,
                 log_model=False,
             )
 
