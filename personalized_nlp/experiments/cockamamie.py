@@ -17,9 +17,9 @@ if __name__ == "__main__":
     
     regression = False
     datamodule_cls = CockamamieGobbledegookDataModule
-    embedding_types = ['labse', 'mpnet', 'xlmr', 'bert', 'deberta', 'random', 'skipgram', 'cbow']
-    model_types = ['baseline', 'onehot', 'peb', 'bias', 'embedding', 'word_embedding']
-    fold_nums = 10
+    embedding_types = ['random', 'cbow', 'xlmr', 'deberta', 'bert'] # ['labse', 'mpnet', 'xlmr', 'bert', 'deberta', 'random', 'skipgram', 'cbow']
+    model_types = ['baseline', 'onehot', 'peb', 'word_bias', 'bias', 'embedding', 'word_embedding']
+    fold_nums = 10 #1
     limit_past_annotations_list = [None] # range(20)
     
     min_word_counts = [200]
@@ -28,7 +28,7 @@ if __name__ == "__main__":
     batch_size = 3000
     dp_embs = [0.25]
     embedding_dims = [50]
-    epochs = 20
+    epochs = 40
     lr_rate = 1e-5
     
     use_cuda = True
