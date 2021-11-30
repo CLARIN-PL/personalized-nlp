@@ -15,7 +15,7 @@ from personalized_nlp.datasets.datamodule_base import BaseDataModule
 class CockamamieGobbledegookDataModule(BaseDataModule):
     def __init__(
             self,
-            split_sizes: List[float] = [0.55, 0.15, 0.15, 0.15], # [0.45, 0.15, 0.20, 0.20],
+            split_sizes: List[float] = [0.45, 0.15, 0.20, 0.20], # [0.55, 0.15, 0.15, 0.15],
             normalize=False,
             **kwargs,
     ):
@@ -73,5 +73,5 @@ class CockamamieGobbledegookDataModule(BaseDataModule):
         df.loc[:, annotation_column] = df.loc[:, annotation_column] / maxes
 
     def _assign_splits(self):
-        sizes =  [0.55, 0.15, 0.15, 0.15] # [0.45, 0.15, 0.20, 0.20]
+        sizes =  [0.45, 0.15, 0.20, 0.20] # [0.55, 0.15, 0.15, 0.15]
         self.data = split_texts(self.data, sizes)

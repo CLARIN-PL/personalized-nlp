@@ -12,14 +12,14 @@ os.environ["CUDA_VISIBLE_DEVICES"] = "99" #"1"
 os.environ["WANDB_START_METHOD"] = "thread"
 
 if __name__ == "__main__":
-    wandb_project_name = 'cockamamie-evaluation'
+    wandb_project_name = 'cockamamie-text-fold'
     wandb_entity_name = 'persemo'
     
     regression = False
     datamodule_cls = CockamamieGobbledegookDataModule
     embedding_types = ['random', 'cbow', 'xlmr', 'deberta', 'bert'] # ['labse', 'mpnet', 'xlmr', 'bert', 'deberta', 'random', 'skipgram', 'cbow']
     model_types = ['baseline', 'onehot', 'peb', 'word_bias', 'bias', 'embedding', 'word_embedding']
-    fold_nums = 8 #1
+    fold_nums = 1 #10
     limit_past_annotations_list = [None] # range(20)
     
     min_word_counts = [200]
