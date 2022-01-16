@@ -79,5 +79,4 @@ class JesterDataModule(BaseDataModule):
         self.annotations = df
         
     def _assign_splits(self):
-        sizes = [0.55, 0.15, 0.15, 0.15]
-        self.data = split_texts(self.data, sizes)
+        self.data = split_texts(self.data, self.split_sizes)
