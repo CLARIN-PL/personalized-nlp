@@ -6,6 +6,7 @@ import pandas as pd
 import urllib
 
 from personalized_nlp.settings import STORAGE_DIR
+from personalized_nlp.utils.data_splitting import split_texts
 from personalized_nlp.datasets.datamodule_base import BaseDataModule
 
 
@@ -22,9 +23,9 @@ class WikiDataModule(BaseDataModule):
         self.word_stats_annotation_column = ''
         self.embeddings_path = ''
 
-        self.train_split_names = ['train']
-        self.val_split_names = ['dev']
-        self.test_split_names = ['test']
+        self.train_split_names = ['present', 'past']
+        self.val_split_names = ['future1']
+        self.test_split_names = ['future2']
 
         os.makedirs(self.data_dir / 'embeddings', exist_ok=True)
         
@@ -60,5 +61,16 @@ class WikiDataModule(BaseDataModule):
             self.data_dir / (self.annotation_column + '_annotations.tsv'), sep='\t')
         self.annotations = self._remap_column_names(self.annotations)
 
-        personal_df = self.annotations_with_data.loc[self.annotations_with_data.split == 'dev']
+        # self.annotations.to_csv('ANOTATIONS.csv')
+        # self.annotators.to_csv('ANNOTATORS.csv')
+        # self.data.to_csv('DATA.csv')
+        self._assign_splits()
+
+        # tu trzeba wrzucić funkcję
+
+        personal_df = self.annotations_with_data.loc[self.annotations_with_data.split == 'past']
         self.compute_annotator_biases(personal_df)
+
+    def _assign_splits(self):
+        sizes = [0.55, 0.15, 0.15, 0.15]
+        self.data = split_texts(self.data, sizes)

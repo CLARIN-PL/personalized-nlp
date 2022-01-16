@@ -10,16 +10,18 @@ from personalized_nlp.datasets.wiki.aggression import AggressionDataModule
 from personalized_nlp.utils import seed_everything
 from pytorch_lightning import loggers as pl_loggers
 
-os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+# os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 os.environ["WANDB_START_METHOD"] = "thread"
 
 if __name__ == "__main__":
     regression = False
-    datamodule_clses = [ToxicityDataModule, AttackDataModule, AggressionDataModule]
-    embedding_types = ['labse', 'mpnet', 'xlmr', 'random']
+    # datamodule_clses = [ToxicityDataModule, AttackDataModule, AggressionDataModule]
+    datamodule_clses = [AggressionDataModule]
+    # embedding_types = ['labse', 'mpnet', 'xlmr', 'random']
+    embedding_types = ['bert', 'deberta', 'xlmr', 'cbow', 'random']
     model_types = ['baseline', 'onehot', 'peb', 'word_bias', 'bias', 'embedding', 'word_embedding']
-    wandb_project_name = 'Wiki_exp'
-    fold_nums = 2
+    wandb_project_name = 'WikiAggressionAfterBugFix'
+    fold_nums = 10
     
     min_word_counts = [200]
     words_per_texts = [100]

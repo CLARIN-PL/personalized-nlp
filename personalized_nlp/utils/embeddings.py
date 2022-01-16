@@ -1,6 +1,6 @@
 from typing import List
 from transformers import AutoTokenizer, AutoModel
-from sentence_transformers import SentenceTransformer
+# from sentence_transformers import SentenceTransformer
 import torch
 
 from tqdm import tqdm
