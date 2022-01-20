@@ -1,3 +1,4 @@
+from __future__ import annotations
 from typing import *
 import pandas as pd
 
@@ -20,7 +21,7 @@ def _get_first_annotations(
     """
     for user in pd.unique(annotations_df['annotator_id']):
         choice = rule(user, annotations_df)
-        annotations_df.iloc[choice] = 0
+        annotations_df['user_annotation_order'].iloc[choice] = 0
     return annotations_df
 
 
@@ -43,10 +44,10 @@ def _get_next_annotations(
         - pd.DataFrame
             altered annotations dataframe
     """
-    for i in range(1, max_annotations_per_user):
-        for user in pd.unique(annotations_df['annotator_id']):
+    for user in pd.unique(annotations_df['annotator_id']):
+        for i in range(1, max_annotations_per_user):
             choice = rule(user, annotations_df)
-            annotations_df.iloc[choice] = i
+            annotations_df['user_annotation_order'].iloc[choice] = i
     return annotations_df
 
 
@@ -79,12 +80,17 @@ def get_annotations(
     Returns:
         - pd.DataFrame
             altered annotations dataframe
-    '''
+
+    Raises:
+        - AssertionError 
+            if max_annotations_per_user <= 0 
+    '''  
+
+    assert max_annotations_per_user > 0, f"Max annotations per user must be greater than 0, but got {max_annotations_per_user}"
     # create ID column
     annotations['user_annotation_order'] = -1
-    
-    train_annotations_idxs = annotations.merge(data[['text_id', 'split']], on='text_id')['split'] == 'train'
-    train_annotations, dev_test_annotations = annotations[train_annotations_idxs], annotations[~train_annotations_idxs]
+    merged_annotations = annotations.merge(data, on='text_id')
+    train_annotations, dev_test_annotations = merged_annotations[merged_annotations['split'] == 'train'], merged_annotations[merged_annotations['split'] != 'train']
     
     # take annotation columns
     annotation_columns = annotations.columns
@@ -99,7 +105,7 @@ def get_annotations(
     
     # cat annotations
     new_annotations = pd.concat([
-        train_annotations[train_annotations['user_annotation_order'] != -1].loc[annotation_columns],
+        train_annotations[train_annotations['user_annotation_order'] != -1],
         dev_test_annotations
-    ])
+    ])[annotation_columns]
     return new_annotations

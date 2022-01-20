@@ -13,7 +13,7 @@ from personalized_nlp.utils.biases import get_annotator_biases
 from personalized_nlp.utils.tokenizer import get_text_data
 from personalized_nlp.settings import EMBEDDINGS_SIZES, TRANSFORMER_MODEL_STRINGS
 
-from typing import Any, Dict, List, Tuple, Optional
+from typing import Any, Callable, Dict, List, Tuple, Optional
 
 
 class BaseDataModule(LightningDataModule):
@@ -51,6 +51,7 @@ class BaseDataModule(LightningDataModule):
         major_voting: bool = False,
         folds_num: int = 10,
         past_annotations_limit: int = None,
+        limit_annotations_function: Callable[[pd.DataFrame, pd.DataFrame, pd.DataFrame or None], pd.DataFrame] = None,
         **kwargs
     ):
 
@@ -66,6 +67,7 @@ class BaseDataModule(LightningDataModule):
         self.embeddings_type = embeddings_type
         self.folds_num = folds_num
         self.past_annotations_limit = past_annotations_limit
+        self.limit_annotations_function = limit_annotations_function
 
     def _create_embeddings(self, use_cuda: Optional[bool] = None) -> None:
         texts = self.texts_clean

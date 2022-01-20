@@ -64,6 +64,13 @@ class WikiDataModule(BaseDataModule):
             self.data_dir / (self.annotation_column + '_annotations.tsv'), sep='\t')
         self.annotations = self._remap_column_names(self.annotations)
 
+        if self.limit_annotations_function is not None:
+            self.annotations = self.limit_annotations_function(
+                self.data,
+                self.annotations,
+                self.annotators
+            )
+
         self._assign_splits()
         
         personal_df = self.annotations_with_data.loc[self.annotations_with_data.split == 'past']
