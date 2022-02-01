@@ -1,6 +1,7 @@
 from __future__ import annotations
 from typing import *
 import pandas as pd
+from controversy import get_text_controversy
 
 
 def _get_first_annotations(
@@ -85,7 +86,6 @@ def get_annotations(
         - AssertionError 
             if max_annotations_per_user <= 0 
     '''  
-
     assert max_annotations_per_user > 0, f"Max annotations per user must be greater than 0, but got {max_annotations_per_user}"
     # create ID column
     annotations['user_annotation_order'] = -1
@@ -109,3 +109,88 @@ def get_annotations(
         dev_test_annotations
     ])[annotation_columns]
     return new_annotations
+
+def get_controversy(
+    data: pd.DataFrame,
+    annotations: pd.DataFrame,
+    rule: Callable[[int, pd.DataFrame], pd.DataFrame],
+    max_annotations_per_user: int
+) -> pd.DataFrame:
+    '''
+    Function that alters a given dataframe by adding a controversy value for every sample using specified rules
+
+    Args:
+        - data: pd.DataFrame 
+            dataframe with texts
+        - annotations: pd.DataFrame 
+            dataframe with annotations, represented by text_id, annotator_id and annotation score
+        - annotators_data: Optional[pd.DataFrame]
+            dataframe with annotators metadata such as age, gender etc.
+            If not None, will be merged with annotations
+        - first_annotation_rule: Callable[[int, pd.DataFrame], pd.DataFrame]
+            function that assignes first annotation to users
+        - next_annotations_rule: Callable[[int, pd.DataFrame], pd.DataFrame]
+            function that assignes every other annotation
+        - max_annotations_per_user: int
+            how many annotations per user we want to keep after process
+
+    Returns:
+        - pd.DataFrame
+            altered annotations dataframe
+
+    Raises:
+        - AssertionError 
+            if max_annotations_per_user <= 0 
+    ''' 
+    annotations_df = data
+    annotations_df['controversy'] = -1
+    for user in pd.unique(annotations_df['annotator_id']):
+        user_annotations = annotations_df[user]
+        for i in range(1, max_annotations_per_user):
+            user_controversy = annotations_df.filter(annotations_df[user]).get_text_controversy(annotations_df[i])
+            # choice = rule(user, annotations_df)
+            annotations_df['user_annotation_order'].iloc[choice] = i
+    return annotations_df
+
+def get_weighted_controversy(
+data: pd.DataFrame,
+    annotations: pd.DataFrame,
+    rule: Callable[[int, pd.DataFrame], pd.DataFrame],
+    max_annotations_per_user: int
+) -> pd.DataFrame:
+    '''
+    Function that alters a given dataframe by adding a weighted controversy value for every sample using specified rules
+
+    Args:
+        - data: pd.DataFrame 
+            dataframe with texts
+        - annotations: pd.DataFrame 
+            dataframe with annotations, represented by text_id, annotator_id and annotation score
+        - annotators_data: Optional[pd.DataFrame]
+            dataframe with annotators metadata such as age, gender etc.
+            If not None, will be merged with annotations
+        - first_annotation_rule: Callable[[int, pd.DataFrame], pd.DataFrame]
+            function that assignes first annotation to users
+        - next_annotations_rule: Callable[[int, pd.DataFrame], pd.DataFrame]
+            function that assignes every other annotation
+        - max_annotations_per_user: int
+            how many annotations per user we want to keep after process
+
+    Returns:
+        - pd.DataFrame
+            altered annotations dataframe
+
+    Raises:
+        - AssertionError 
+            if max_annotations_per_user <= 0 
+    ''' 
+    annotations_df = data
+    for user in pd.unique(annotations_df['annotator_id']):
+        user_annotations = annotations_df[user]
+        for i in range(1, max_annotations_per_user):
+            annotation_controversy = annotations_df.filter(annotations_df[user])
+            annotation_controversy.get_text_controversy(annotations_df[i])
+            # choice = rule(user, annotations_df)
+            annotations_df['user_annotation_order'].iloc[choice] = i
+    return annotations_df
+
