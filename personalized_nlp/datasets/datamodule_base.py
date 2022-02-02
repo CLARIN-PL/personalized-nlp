@@ -125,8 +125,6 @@ class BaseDataModule(LightningDataModule):
 
     def setup(self, stage: Optional[str] = None) -> None:
         data = self.data
-        # TODO WYJEBAC
-        self.annotations = self.annotations.iloc[:500, :]
         annotations = self.annotations
 
         if self.major_voting:
@@ -205,8 +203,7 @@ class BaseDataModule(LightningDataModule):
         self,
         test_fold: int = None, 
         shuffle: bool = True, 
-        max_past_annotations: Optional[int] = None,
-        max_present_annotations: Optional[int] = None
+        max_past_annotations: int = 100
     ) -> DataLoader:
         """Returns dataloader for train part of the dataset.
 
@@ -231,12 +228,9 @@ class BaseDataModule(LightningDataModule):
                 self.annotations.text_id.isin(data[data.split == "past"].text_id.values)
             ]
             personal_df = personal_df[personal_df.fold.isin([test_fold, val_fold])]
+            personal_df = personal_df[personal_df['user_annotation_order'] < max_past_annotations]
 
             annotations = pd.concat([annotations, personal_df])
-        # take only n first past annotations
-        print(annotations)
-        # if max_past_annotations is not None:
-        #     annotations = annotations[annotations]
         
 
         train_X, train_y = self._get_data_by_split(annotations, self.train_split_names)
