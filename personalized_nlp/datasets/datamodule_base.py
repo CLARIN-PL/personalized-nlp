@@ -1,3 +1,5 @@
+from typing import * 
+
 import torch
 import numpy as np
 import pandas as pd
@@ -50,7 +52,8 @@ class BaseDataModule(LightningDataModule):
         embeddings_type: str = "bert",
         major_voting: bool = False,
         folds_num: int = 10,
-        past_annotations_limit: int = None,
+        past_annotations_limit: int = 10,
+        assign_annotations_function: Callable[[pd.DataFrame, pd.DataFrame], pd.DataFrame] or None = None,
         **kwargs
     ):
 
@@ -66,6 +69,10 @@ class BaseDataModule(LightningDataModule):
         self.embeddings_type = embeddings_type
         self.folds_num = folds_num
         self.past_annotations_limit = past_annotations_limit
+
+        # PERS TEXT REC
+        self.assign_annotations_function = assign_annotations_function
+
 
     def _create_embeddings(self, use_cuda: Optional[bool] = None) -> None:
         texts = self.texts_clean
@@ -118,6 +125,8 @@ class BaseDataModule(LightningDataModule):
 
     def setup(self, stage: Optional[str] = None) -> None:
         data = self.data
+        # TODO WYJEBAC
+        self.annotations = self.annotations.iloc[:500, :]
         annotations = self.annotations
 
         if self.major_voting:
@@ -146,6 +155,13 @@ class BaseDataModule(LightningDataModule):
         self.annotator_id_idx_dict = {
             a_id: idx for idx, a_id in enumerate(annotator_id_category.cat.categories)
         }
+
+        # simulate id selection
+        if self.assign_annotations_function is not None: 
+            self.annotations = self.assign_annotations_function(
+                data,
+                annotations
+            )
 
         if self.past_annotations_limit is not None:
             self.limit_past_annotations(self.past_annotations_limit)
@@ -186,7 +202,11 @@ class BaseDataModule(LightningDataModule):
         )
 
     def train_dataloader(
-        self, test_fold: int = None, shuffle: bool = True
+        self,
+        test_fold: int = None, 
+        shuffle: bool = True, 
+        max_past_annotations: Optional[int] = None,
+        max_present_annotations: Optional[int] = None
     ) -> DataLoader:
         """Returns dataloader for train part of the dataset.
 
@@ -197,6 +217,7 @@ class BaseDataModule(LightningDataModule):
         :return: train dataloader for the dataset
         :rtype: DataLoader
         """
+
         annotations = self.annotations
         data = self.data
 
@@ -212,6 +233,11 @@ class BaseDataModule(LightningDataModule):
             personal_df = personal_df[personal_df.fold.isin([test_fold, val_fold])]
 
             annotations = pd.concat([annotations, personal_df])
+        # take only n first past annotations
+        print(annotations)
+        # if max_past_annotations is not None:
+        #     annotations = annotations[annotations]
+        
 
         train_X, train_y = self._get_data_by_split(annotations, self.train_split_names)
         text_features = self._get_text_features()
@@ -240,6 +266,7 @@ class BaseDataModule(LightningDataModule):
         if test_fold is not None:
             val_fold = (test_fold + 1) % self.folds_num
             annotations = annotations[annotations.fold.isin([val_fold])]
+
 
         dev_X, dev_y = self._get_data_by_split(annotations, self.val_split_names)
 
