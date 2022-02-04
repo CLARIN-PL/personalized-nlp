@@ -72,6 +72,15 @@ class BaseDataModule(LightningDataModule):
 
         # PERS TEXT REC
         self.assign_annotations_function = assign_annotations_function
+        self._max_user_annotation_order = None
+
+    @property
+    def max_user_annotation_order(self) -> int:
+        return self._max_user_annotation_order
+
+    @max_user_annotation_order.setter
+    def max_user_annotation_order(self, new_value: int) -> None:
+        self._max_user_annotation_order = new_value
 
 
     def _create_embeddings(self, use_cuda: Optional[bool] = None) -> None:
@@ -202,8 +211,7 @@ class BaseDataModule(LightningDataModule):
     def train_dataloader(
         self,
         test_fold: int = None, 
-        shuffle: bool = True, 
-        max_past_annotations: int = 100
+        shuffle: bool = True
     ) -> DataLoader:
         """Returns dataloader for train part of the dataset.
 
@@ -228,7 +236,9 @@ class BaseDataModule(LightningDataModule):
                 self.annotations.text_id.isin(data[data.split == "past"].text_id.values)
             ]
             personal_df = personal_df[personal_df.fold.isin([test_fold, val_fold])]
-            personal_df = personal_df[personal_df['user_annotation_order'] < max_past_annotations]
+
+            if self.max_user_annotation_order is not None:
+                personal_df = personal_df[personal_df['user_annotation_order'] < self.max_user_annotation_order]
 
             annotations = pd.concat([annotations, personal_df])
         
