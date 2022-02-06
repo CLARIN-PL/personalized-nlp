@@ -10,6 +10,7 @@ from torch.utils.data import DataLoader
 from personalized_nlp.datasets.dataset import BatchIndexedDataset
 from personalized_nlp.utils.embeddings import create_embeddings
 from personalized_nlp.utils.biases import get_annotator_biases
+from personalized_nlp.utils.controversy import get_texts_entropy, get_texts_std
 from personalized_nlp.utils.tokenizer import get_text_data
 from personalized_nlp.settings import EMBEDDINGS_SIZES, TRANSFORMER_MODEL_STRINGS
 
@@ -66,6 +67,7 @@ class BaseDataModule(LightningDataModule):
         self.embeddings_type = embeddings_type
         self.folds_num = folds_num
         self.past_annotations_limit = past_annotations_limit
+        self.annotation_column: list[str] = []
 
     def _create_embeddings(self, use_cuda: Optional[bool] = None) -> None:
         texts = self.texts_clean
@@ -456,3 +458,10 @@ class BaseDataModule(LightningDataModule):
         ]
 
         self.annotations = pd.concat([non_past_annotations, controversial_annotations])
+
+    def compute_texts_controversy(self, mode: str = 'entropy', mean=False):
+        if mode == 'entropy':
+            return get_texts_entropy(self.annotations, self.annotation_column, mean=mean)
+        else:
+            return get_texts_std(self.annotations, self.annotation_column, mean=mean)
+
