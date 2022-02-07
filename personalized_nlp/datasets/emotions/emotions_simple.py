@@ -57,13 +57,13 @@ class EmotionsSimpleDataModule(BaseDataModule):
 
     def prepare_data(self) -> None:
         self.data = pd.read_csv(
-            self.data_dir / 'cawi2_texts_multilang.csv')
+            self.data_dir / 'texts' / 'cawi2_texts_multilang.csv')
         self.data.loc[:, 'text'] = self.data.loc[:, 'text_' + self.language]
 
         self.annotations = pd.read_csv(
-            self.data_dir / 'cawi2_annotations.csv').dropna()
+            self.data_dir / 'texts' / 'cawi2_annotations.csv').dropna()
         self.annotators = pd.read_csv(
-            self.data_dir / 'cawi2_annotators.csv')
+            self.data_dir / 'texts' / 'cawi2_annotators.csv')
 
         if self.normalize:
             self.normalize_labels()
