@@ -113,7 +113,6 @@ def get_annotations(
 def get_controversy(
     data: pd.DataFrame,
     annotations: pd.DataFrame,
-    rule: Callable[[int, pd.DataFrame], pd.DataFrame],
     max_annotations_per_user: int
 ) -> pd.DataFrame:
     '''
