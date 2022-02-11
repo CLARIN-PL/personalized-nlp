@@ -1,3 +1,5 @@
+from typing import * 
+
 import torch
 import numpy as np
 import pandas as pd
@@ -13,7 +15,7 @@ from personalized_nlp.utils.biases import get_annotator_biases
 from personalized_nlp.utils.tokenizer import get_text_data
 from personalized_nlp.settings import EMBEDDINGS_SIZES, TRANSFORMER_MODEL_STRINGS
 
-from typing import Any, Callable, Dict, List, Tuple, Optional
+from typing import Any, Dict, List, Tuple, Optional
 
 
 class BaseDataModule(LightningDataModule):
@@ -50,8 +52,8 @@ class BaseDataModule(LightningDataModule):
         embeddings_type: str = "bert",
         major_voting: bool = False,
         folds_num: int = 10,
-        past_annotations_limit: int = None,
-        limit_annotations_function: Callable[[pd.DataFrame, pd.DataFrame, pd.DataFrame or None], pd.DataFrame] = None,
+        past_annotations_limit: int = 10,
+        assign_annotations_function: Callable[[pd.DataFrame, pd.DataFrame], pd.DataFrame] or None = None,
         **kwargs
     ):
 
@@ -67,7 +69,19 @@ class BaseDataModule(LightningDataModule):
         self.embeddings_type = embeddings_type
         self.folds_num = folds_num
         self.past_annotations_limit = past_annotations_limit
-        self.limit_annotations_function = limit_annotations_function
+
+        # PERS TEXT REC
+        self.assign_annotations_function = assign_annotations_function
+        self._max_user_annotation_order = None
+
+    @property
+    def max_user_annotation_order(self) -> int:
+        return self._max_user_annotation_order
+
+    @max_user_annotation_order.setter
+    def max_user_annotation_order(self, new_value: int) -> None:
+        self._max_user_annotation_order = new_value
+
 
     def _create_embeddings(self, use_cuda: Optional[bool] = None) -> None:
         texts = self.texts_clean
@@ -149,6 +163,13 @@ class BaseDataModule(LightningDataModule):
             a_id: idx for idx, a_id in enumerate(annotator_id_category.cat.categories)
         }
 
+        # simulate id selection
+        if self.assign_annotations_function is not None: 
+            self.annotations = self.assign_annotations_function(
+                data,
+                annotations
+            )
+
         if self.past_annotations_limit is not None:
             self.limit_past_annotations(self.past_annotations_limit)
 
@@ -188,10 +209,11 @@ class BaseDataModule(LightningDataModule):
         )
 
     def train_dataloader(
-        self, test_fold: int = None, shuffle: bool = True
+        self,
+        test_fold: int = None, 
+        shuffle: bool = True
     ) -> DataLoader:
         """Returns dataloader for train part of the dataset.
-
         :param test_fold: Number of test fold used in test, defaults to None
         :type test_fold: int, optional
         :param shuffle: if true, shuffles data during training, defaults to True
@@ -199,6 +221,7 @@ class BaseDataModule(LightningDataModule):
         :return: train dataloader for the dataset
         :rtype: DataLoader
         """
+
         annotations = self.annotations
         data = self.data
 
@@ -213,7 +236,11 @@ class BaseDataModule(LightningDataModule):
             ]
             personal_df = personal_df[personal_df.fold.isin([test_fold, val_fold])]
 
+            if self.max_user_annotation_order is not None:
+                personal_df = personal_df[personal_df['user_annotation_order'] < self.max_user_annotation_order]
+
             annotations = pd.concat([annotations, personal_df])
+        
 
         train_X, train_y = self._get_data_by_split(annotations, self.train_split_names)
         text_features = self._get_text_features()
@@ -230,7 +257,6 @@ class BaseDataModule(LightningDataModule):
 
     def val_dataloader(self, test_fold=None) -> DataLoader:
         """Returns dataloader for validation part of the dataset.
-
         :param test_fold: number of test fold used in test, defaults to None.
         Number of validation fold is calculated as: (test_fold + 1) % folds_num
         :type test_fold: int, optional
@@ -242,6 +268,7 @@ class BaseDataModule(LightningDataModule):
         if test_fold is not None:
             val_fold = (test_fold + 1) % self.folds_num
             annotations = annotations[annotations.fold.isin([val_fold])]
+
 
         dev_X, dev_y = self._get_data_by_split(annotations, self.val_split_names)
 
@@ -259,7 +286,6 @@ class BaseDataModule(LightningDataModule):
 
     def test_dataloader(self, test_fold=None) -> DataLoader:
         """Returns dataloader for test part of the dataset.
-
         :param test_fold: Number of test fold used in test, defaults to None
         :type test_fold: int, optional
         :return: validation dataloader for the dataset
@@ -306,8 +332,6 @@ class BaseDataModule(LightningDataModule):
         Each feature should be a numpy array of whatever dtype, with length
         equal to number of texts in the dataset. Features can be used by
         models during training.
-
-
         :return: dictionary of text features
         :rtype: Dict[str, Any]
         """
@@ -323,8 +347,6 @@ class BaseDataModule(LightningDataModule):
         Each feature should be a numpy array of whatever dtype, with length
         equal to number of annotators in the dataset. Features can be used by
         models during training.
-
-
         :return: dictionary of annotator features
         :rtype: Dict[str, Any]
         """
@@ -349,7 +371,6 @@ class BaseDataModule(LightningDataModule):
     ) -> Tuple[np.ndarray, np.ndarray]:
         """Returns annotations (coded indices of annotators and texts), and
         their labels in the dataset for given splits. Used during training.
-
         :param annotations: DataFrame of annotations from which the data will
         be extracted.
         :type annotations: pd.DataFrame
@@ -383,7 +404,6 @@ class BaseDataModule(LightningDataModule):
         """Returns full dataset as X, y, where X is numpy array of embeddings,
         and y is numpy array of the labels. Can be easily used in some baseline
         models like sklearn logistic regression.
-
         :return: Tuple (X, y), where X is numpy array of embeddings,
         and y is numpy array of the labels
         :rtype: Tuple[np.ndarray, np.ndarray]

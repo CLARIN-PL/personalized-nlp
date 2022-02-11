@@ -12,6 +12,8 @@ class SaveOutputsCallback(Callback):
         self.save_dir = save_dir
 
     def on_test_batch_end(self, trainer, pl_module, outputs, *args, **kwargs):
+        print(outputs)
+        raise None
         self.test_outputs.append(outputs['output'])
         self.test_ys.append(outputs['y'])
 

@@ -18,3 +18,4 @@ venv/
 env/
 personalized_nlp/notebooks/data
 personalized_nlp/notebooks/transformer_experiments
+personalized_nlp/storage/word2vec/*
