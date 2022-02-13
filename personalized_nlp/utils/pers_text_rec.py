@@ -11,7 +11,7 @@ def _get_first_annotations(
 ) -> pd.DataFrame: 
     """
     Helper functions that handle assignment of first annotations for all users
->>>>>>> cbc286756ae5716cce70dafbfbec44e5c9a189d8
+>>>>>>> cbc286756ae5716cce70dafbfbec44e5c9a189d8git
 
 import pandas as pd
 import numpy as np
