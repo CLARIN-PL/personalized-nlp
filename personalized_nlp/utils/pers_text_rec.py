@@ -319,3 +319,106 @@ def get_weighted_conformity(self, annotations: pd.DataFrame = None) -> pd.DataFr
         )
 
         return conformity_df
+
+
+def get_max_conformity(self, annotations: pd.DataFrame = None) -> pd.DataFrame:
+        """Computes conformity for each annotator. Works only for binary classification problems."""
+        if annotations is None:
+            annotations = self.annotations
+
+        df = annotations.copy()
+        column = self.annotation_column
+
+        mean_score = df.groupby("text_id").agg(score_mean=(column, "mean"))
+        df = df.merge(mean_score.reset_index())
+
+        df["text_major_vote"] = (df["score_mean"] > 0.5).astype(int)
+
+        df["is_major_vote"] = df["text_major_vote"] == df[column]
+        df["is_major_vote"] = df["is_major_vote"].astype(int)
+
+        positive_df = df[df.text_major_vote == 1]
+        negative_df = df[df.text_major_vote == 0]
+
+        conformity_df = df.groupby("annotator_id").agg(
+            conformity=("is_major_vote", "mean")
+        )
+        conformity_df["pos_conformity"] = positive_df.groupby("annotator_id").agg(
+            pos_conformity=("is_major_vote", "mean")
+        )
+        conformity_df["neg_conformity"] = negative_df.groupby("annotator_id").agg(
+            neg_conformity=("is_major_vote", "mean")
+        )
+
+        return conformity_df
+
+def get_min_conformity(self, annotations: pd.DataFrame = None) -> pd.DataFrame:
+        """Computes conformity for each annotator. Works only for binary classification problems."""
+        if annotations is None:
+            annotations = self.annotations
+
+        df = annotations.copy()
+        column = self.annotation_column
+
+        mean_score = df.groupby("text_id").agg(score_mean=(column, "mean"))
+        df = df.merge(mean_score.reset_index())
+
+        df["text_major_vote"] = (df["score_mean"].max()).astype(int)
+
+        df["is_major_vote"] = df["text_major_vote"] == df[column]
+        df["is_major_vote"] = df["is_major_vote"].astype(int)
+
+        positive_df = df[df.text_major_vote == 1]
+        negative_df = df[df.text_major_vote == 0]
+
+        conformity_df = df.groupby("annotator_id").agg(
+            conformity=("is_major_vote", "mean")
+        )
+        conformity_df["pos_conformity"] = positive_df.groupby("annotator_id").agg(
+            pos_conformity=("is_major_vote", "mean")
+        )
+        conformity_df["neg_conformity"] = negative_df.groupby("annotator_id").agg(
+            neg_conformity=("is_major_vote", "mean")
+        )
+
+        return conformity_df
+
+def get_mean_conformity(self, annotations: pd.DataFrame = None) -> pd.DataFrame:
+        """Computes conformity for each annotator. Works only for binary classification problems."""
+        if annotations is None:
+            annotations = self.annotations
+
+        df = annotations.copy()
+        column = self.annotation_column
+
+        mean_score = df.groupby("text_id").agg(score_mean=(column, "mean"))
+        df = df.merge(mean_score.reset_index())
+
+        df["text_major_vote"] = (df["score_mean"] > 0.5).astype(int)
+
+        df["is_major_vote"] = df["text_major_vote"] == df[column]
+        df["is_major_vote"] = df["is_major_vote"].astype(int)
+
+        positive_df = df[df.text_major_vote == 1]
+        negative_df = df[df.text_major_vote == 0]
+
+        count_score = df.groupby("text_id").agg()
+
+        conformity_df = df.groupby("annotator_id").agg(
+            conformity=("is_major_vote", "mean")
+        )
+        conformity_df["pos_conformity"] = positive_df.groupby("annotator_id").agg(
+            pos_conformity=("is_major_vote", "mean")
+        )
+        conformity_df["neg_conformity"] = negative_df.groupby("annotator_id").agg(
+            neg_conformity=("is_major_vote", "mean")
+        )
+
+        return conformity_df
+
+def get_new_annotators_count(self, annotations: pd.DataFrame) -> pd.DataFrame:
+    if annotations is None:
+        annotations = self.annotations
+
+    df = annotations.copy()
+    column = self.annotation_column
