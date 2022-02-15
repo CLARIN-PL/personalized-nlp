@@ -1,10 +1,16 @@
 from cgitb import text
 from pstats import Stats
+from scipy.stats import rankdata
 from typing import *
 import pandas as pd
 import numpy as np
 from sklearn.preprocessing import MinMaxScaler
 
+
+def rank(rows):
+    rows["user_annotation_order"] = rankdata(rows["text_id"].values, method="ordinal")
+    rows["user_annotation_order"] = rows["user_annotation_order"] - 1
+    return rows
 
 
 def assign_annotations(
@@ -48,12 +54,14 @@ def var_ratio(self, data: pd.DataFrame):
     mode = Stats.mode(preds, axis=1)
     return 1 - (mode[1].squeeze() / self.T)
 
+
 def get_entropy(annotations: pd.pd.DataFrame, annotation_columns: List[str], mean=False):
     def _entropy(labels, base=None):
         _, counts = np.unique(labels, return_counts=True)
         return entropy(counts, base=base)
 
     return _get_text_controversy(annotations, annotation_columns, _entropy, mean)
+
 
 def _get_text_controversy(annotations: pd.DataFrame, annotation_columns: List[str], method: Callable, mean: bool):
     texts_controversy_df = annotations.loc[:, ['text_id']].drop_duplicates().reset_index(drop=True)
@@ -68,7 +76,9 @@ def _get_text_controversy(annotations: pd.DataFrame, annotation_columns: List[st
         texts_controversy_df['mean_controversy'] = texts_controversy_df.loc[:, controversy_columns].mean(axis=1)
         texts_controversy_df = texts_controversy_df.loc[:, ['text_id', 'mean_controversy']]
 
+    texts_controversy_df = texts_controversy_df.groupby(["annotator_id"]).apply(rank)
     return texts_controversy_df
+
 
 def get_weighted_text_controversy(annotations: pd.DataFrame, annotation_columns: List[str], method: Callable, mean: bool):
     texts_controversy_df = annotations.loc[:, ['text_id']].drop_duplicates().reset_index(drop=True)
@@ -78,7 +88,6 @@ def get_weighted_text_controversy(annotations: pd.DataFrame, annotation_columns:
     for annotation_col, controversy_col in zip(annotation_columns, controversy_columns):
         text_controversy_dict = annotations.groupby('text_id')[annotation_col].apply(method).to_dict()
         texts_controversy_df[controversy_col] = texts_controversy_df.text_id.apply(text_controversy_dict.get)
-
     
         texts_controversy_df[f"{annotation_col}_annotations_count"] = num_of_annotations(texts_controversy_df)['annotations_count']
         texts_controversy_df[f"{annotation_col}_annotations_count_norm"] = MinMaxScaler().fit_transform(np.array(texts_controversy_df[f"{annotation_col}_annotations_count"]).reshape(-1,1))
@@ -89,9 +98,8 @@ def get_weighted_text_controversy(annotations: pd.DataFrame, annotation_columns:
         weighted_controversy_columns = [col + '_weighted_controversy' for col in annotation_columns]
         texts_controversy_df['weighted_controversy'] = texts_controversy_df.loc[:, weighted_controversy_columns].mean(axis=1)
         texts_controversy_df = texts_controversy_df.loc[:, ['text_id', 'weighted_controversy']]
-
+    texts_controversy_df = texts_controversy_df.groupby(["annotator_id"]).apply(rank)
     return texts_controversy_df
-
 
 
 def get_conformity(self, annotations: pd.DataFrame = None) -> pd.DataFrame:
@@ -122,8 +130,9 @@ def get_conformity(self, annotations: pd.DataFrame = None) -> pd.DataFrame:
         conformity_df["neg_conformity"] = negative_df.groupby("annotator_id").agg(
             neg_conformity=("is_major_vote", "mean")
         )
-
+        conformity_df = conformity_df.groupby(["annotator_id"]).apply(rank)
         return conformity_df
+
 
 def get_weighted_conformity(self, annotations: pd.DataFrame = None) -> pd.DataFrame:
         """Computes conformity for each annotator. Works only for binary classification problems."""
@@ -148,6 +157,7 @@ def get_weighted_conformity(self, annotations: pd.DataFrame = None) -> pd.DataFr
         conformity_df["neg_conformity"] = negative_df.groupby("annotator_id").agg(
             neg_conformity=("annotation_group_ratio", "mean")
         )
+        conformity_df = conformity_df.groupby(["annotator_id"]).apply(rank)
         return conformity_df
 
 
@@ -184,8 +194,9 @@ def get_max_conformity(self, annotations: pd.DataFrame = None) -> pd.DataFrame:
         )
         conformity_df = conformity_df.join(max_user_conformity, on="text_id")
        
-
+        conformity_df = conformity_df.groupby(["annotator_id"]).apply(rank)
         return conformity_df
+
 
 def get_min_conformity(self, annotations: pd.DataFrame = None) -> pd.DataFrame:
         """Computes conformity for each annotator. Works only for binary classification problems."""
@@ -220,7 +231,9 @@ def get_min_conformity(self, annotations: pd.DataFrame = None) -> pd.DataFrame:
         )
         conformity_df = conformity_df.join(min_user_conformity, on="text_id")
 
+        conformity_df = conformity_df.groupby(["annotator_id"]).apply(rank)
         return conformity_df
+
 
 def get_mean_conformity(self, annotations: pd.DataFrame = None) -> pd.DataFrame:
         """Computes conformity for each annotator. Works only for binary classification problems."""
@@ -257,5 +270,10 @@ def get_mean_conformity(self, annotations: pd.DataFrame = None) -> pd.DataFrame:
         )
         conformity_df = conformity_df.join(mean_user_conformity, on="text_id")
 
+        conformity_df = conformity_df.groupby(["annotator_id"]).apply(rank)
         return conformity_df
+
+
+# def neighbour_annotators_count(self, annotations: pd.DataFrame = None) -> pd.DataFrame:
+
 
