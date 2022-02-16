@@ -46,7 +46,9 @@ def assign_annotations(
 # the metrics
 
 def num_of_annotations(column_name: string, data: pd.DataFrame):
-    data["annotations_count"] = data.groupby(['text_id'])['annotator_id'].count()
+    text_df = data.groupby(['text_id'])['annotator_id'].count().reset_index(name="annotations_count")
+    data = data.merge(text_df, on='text_id')
+    
     return data
 
 def _entropy(labels, base=None):
@@ -60,12 +62,13 @@ def _entropy(labels, base=None):
 def var_ratio(column_name: string, data: pd.DataFrame):
 # def variation_ratio(self, pred_matrix):
     #  """Computes and returns the variation ratios of the predictions in the given prediction matrix"""
-    annotations_count_df = data.groupby(['text_id'])['annotator_id'].count()
+    annotations_count_df = data.groupby(['text_id'])['annotator_id'].count().reset_index(name='annotations_count')
     majority_votes_df = data.groupby(["text_id"]).agg(
-            majority_votes_df=(column_name, mode))
+            majority_votes_df=(column_name, pd.Series.mode))
     var_ratio_df = pd.merge(annotations_count_df, majority_votes_df, on='text_id')
     var_ratio_df["var_ratio"] = 1 - (var_ratio_df.iloc[:,2] / var_ratio_df.iloc[:,1])
-    data = data.merge(var_ratio_df[["test_id", "var_ratio"]], on="text_id")
+    data = data.merge(var_ratio_df[["text_id", "var_ratio"]], on="text_id")
+    data['var_ratio'] = [np.array(x).mean() for x in data['var_ratio'].values]
     # preds = [preds.argmax(1) for preds in data]
     # mode = Stats.mode(preds, axis=1)
     # var_value = 1 - (mode[1].squeeze() / column_name.T)
@@ -81,7 +84,8 @@ def get_entropy(column_name: str, annotations: pd.DataFrame, annotation_columns:
 
 
 def _get_text_controversy(column_name: string, annotations: pd.DataFrame, annotation_columns: List[str], method: Callable, mean: bool):
-    texts_controversy_df = annotations.loc[:, ['text_id']].drop_duplicates().reset_index(drop=True)
+    temp_df = annotations.copy()
+    texts_controversy_df = temp_df.loc[:, ['text_id']].drop_duplicates().reset_index(drop=True)
     # if isinstance(annotation_columns, str):
     #     annotation_columns = [annotation_columns]
     annotation_columns = [column_name]
@@ -94,15 +98,21 @@ def _get_text_controversy(column_name: string, annotations: pd.DataFrame, annota
         texts_controversy_df['mean_controversy'] = texts_controversy_df.loc[:, controversy_columns].mean(axis=1)
         texts_controversy_df = texts_controversy_df.loc[:, ['annotator_id', 'text_id', 'mean_controversy']]
 
-    texts_controversy_df = texts_controversy_df.groupby(["annotator_id"]).apply(rank)
-    annotations = annotations.join(texts_controversy_df, on="text_id")
+    # print(f'text_df id count: {len(texts_controversy_df["text_id"])}', 
+    #       f'annotation df id count: {len(annotations["text_id"])}',
+    #       f'text df annotation df diff ids: {len(set(annotations["text_id"]).intersection(set(texts_controversy_df["text_id"])))}',
+    #       sep='\n')
+    # texts_controversy_df = texts_controversy_df.groupby(["annotator_id"]).apply(rank)
+    annotations = annotations.merge(texts_controversy_df, on="text_id")
+
     return annotations
 
 # TODO 
 # correct this
 
-def get_weighted_text_controversy(column_name: string, annotations: pd.DataFrame, annotation_columns: List[str], method: Callable = _entropy, mean: bool = False):
-    texts_controversy_df = annotations.loc[:, ['text_id']].drop_duplicates().reset_index(drop=True)
+def get_weighted_text_controversy(column_name: string, annotations: pd.DataFrame, method: Callable = _entropy, mean: bool = False):
+    temp_df = annotations.copy()
+    texts_controversy_df = temp_df.loc[:, ['text_id']].drop_duplicates().reset_index(drop=True)
     # if isinstance(annotation_columns, str):
     #     annotation_columns = [annotation_columns]
     annotation_columns = [column_name]
@@ -110,8 +120,10 @@ def get_weighted_text_controversy(column_name: string, annotations: pd.DataFrame
     for annotation_col, controversy_col in zip(annotation_columns, controversy_columns):
         text_controversy_dict = annotations.groupby('text_id')[annotation_col].apply(method).to_dict()
         texts_controversy_df[controversy_col] = texts_controversy_df.text_id.apply(text_controversy_dict.get)
-    
-        texts_controversy_df[f"{annotation_col}_annotations_count"] = num_of_annotations(column_name, texts_controversy_df)['annotations_count']
+
+        
+        texts_controversy_df[f"{annotation_col}_annotations_count"] = num_of_annotations(column_name, temp_df)['annotations_count']
+        print(list(texts_controversy_df.columns))
         texts_controversy_df[f"{annotation_col}_annotations_count_norm"] = MinMaxScaler().fit_transform(np.array(texts_controversy_df[f"{annotation_col}_annotations_count"]).reshape(-1,1))
         texts_controversy_df[f"{annotation_col}_weighted_controversy"] = texts_controversy_df[f"{annotation_col}_annotations_count_norm"] * texts_controversy_df[controversy_col]
     #Liczba anotacji per text, znormalizować te wartości i mnożyć każde controversy przez znormalizowaną liczbę anotacji
@@ -120,9 +132,9 @@ def get_weighted_text_controversy(column_name: string, annotations: pd.DataFrame
         weighted_controversy_columns = [col + '_weighted_controversy' for col in annotation_columns]
         texts_controversy_df['weighted_controversy'] = texts_controversy_df.loc[:, weighted_controversy_columns].mean(axis=1)
         texts_controversy_df = texts_controversy_df.loc[:, ['annotator_id', 'text_id', 'weighted_controversy']]
-    texts_controversy_df = texts_controversy_df.groupby("annotator_id").apply(rank)
-    annotations.join(texts_controversy_df, on="text_id")
-    return texts_controversy_df
+    # texts_controversy_df = texts_controversy_df.groupby("annotator_id").apply(rank)
+    annotations = annotations.merge(texts_controversy_df, on="text_id")
+    return annotations
 
 
 def get_conformity(column_name: string, annotations: pd.DataFrame = None) -> pd.DataFrame:
@@ -153,8 +165,8 @@ def get_conformity(column_name: string, annotations: pd.DataFrame = None) -> pd.
         conformity_df["neg_conformity"] = negative_df.groupby("annotator_id").agg(
             neg_conformity=("is_major_vote", "mean")
         )
-        conformity_df = conformity_df.groupby(["annotator_id"]).apply(rank())
-        annotations.join(conformity_df, on="annotator_id")
+        # conformity_df = conformity_df.groupby(["annotator_id"]).apply(rank(conformity_df[conformity_df['text_id']], 'annotator_id'))
+        # annotations.join(conformity_df, on="annotator_id")
         return conformity_df
 
 
@@ -181,9 +193,9 @@ def get_weighted_conformity(column_name: string, annotations: pd.DataFrame = Non
         conformity_df["neg_conformity"] = negative_df.groupby("annotator_id").agg(
             neg_conformity=("annotation_group_ratio", "mean")
         )
-        conformity_df = conformity_df.groupby(["annotator_id"]).apply(lambda x: rank(x, column='conformity'))
-        raise Exception(f'{pd.unique(conformity_df["user_annotation_order"])}')
-        annotations.merge(conformity_df, on="annotator_id")
+        # conformity_df = conformity_df.groupby(["annotator_id"]).apply(lambda x: rank(x, column='conformity'))
+        # raise Exception(f'{pd.unique(conformity_df["user_annotation_order"])}')
+        # annotations.merge(conformity_df, on="annotator_id")
         return conformity_df
 
 
@@ -215,13 +227,13 @@ def get_max_conformity(column_name: string, annotations: pd.DataFrame = None) ->
         conformity_df["neg_conformity"] = negative_df.groupby("annotator_id").agg(
             neg_conformity=("is_major_vote", "mean")
         )
-        max_user_conformity = conformity_df.groupby("text_id").agg(
+        max_user_conformity = conformity_df.groupby("annotator_id").agg(
             max_text_conformity=("conformity", "max")
         )
-        conformity_df = conformity_df.join(max_user_conformity, on="text_id")
+        conformity_df = conformity_df.join(max_user_conformity, on="annotator_id")
        
-        conformity_df = conformity_df.groupby(["annotator_id"]).apply(rank)
-        annotations.join(conformity_df, on="annotator_id")
+        # conformity_df = conformity_df.groupby(["annotator_id"]).apply(rank)
+        # annotations.join(conformity_df, on="annotator_id")
         return conformity_df
 
 
@@ -253,13 +265,13 @@ def get_min_conformity(column_name: string, annotations: pd.DataFrame = None) ->
         conformity_df["neg_conformity"] = negative_df.groupby("annotator_id").agg(
             neg_conformity=("is_major_vote", "mean")
         )
-        min_user_conformity = conformity_df.groupby("text_id").agg(
+        min_user_conformity = conformity_df.groupby("annotator_id").agg(
             min_text_conformity=("conformity", "min")
         )
-        conformity_df = conformity_df.join(min_user_conformity, on="text_id")
+        conformity_df = conformity_df.join(min_user_conformity, on="annotator_id")
 
-        conformity_df = conformity_df.groupby(["annotator_id"]).apply(rank)
-        annotations.join(conformity_df, on="annotator_id")
+        # conformity_df = conformity_df.groupby(["annotator_id"]).apply(rank)
+        # annotations.join(conformity_df, on="annotator_id")
         return conformity_df
 
 
@@ -282,7 +294,7 @@ def get_mean_conformity(column_name: string, annotations: pd.DataFrame = None) -
         positive_df = df[df.text_major_vote == 1]
         negative_df = df[df.text_major_vote == 0]
 
-        count_score = df.groupby("text_id").agg()
+        # count_score = df.groupby("text_id").agg()
 
         conformity_df = df.groupby("annotator_id").agg(
             conformity=("is_major_vote", "mean")
@@ -293,13 +305,13 @@ def get_mean_conformity(column_name: string, annotations: pd.DataFrame = None) -
         conformity_df["neg_conformity"] = negative_df.groupby("annotator_id").agg(
             neg_conformity=("is_major_vote", "mean")
         )
-        mean_user_conformity = conformity_df.groupby("text_id").agg(
+        mean_user_conformity = conformity_df.groupby("annotator_id").agg(
             mean_text_conformity=("conformity", "mean")
         )
-        conformity_df = conformity_df.join(mean_user_conformity, on="text_id")
+        conformity_df = conformity_df.join(mean_user_conformity, on="annotator_id")
 
-        conformity_df = conformity_df.groupby(["annotator_id"]).apply(rank(conformity_df[conformity_df['text_id']], 'annotator_id'))
-        annotations.join(conformity_df, on="annotator_id")
+        # conformity_df = conformity_df.groupby(["annotator_id"]).apply(rank(conformity_df[conformity_df['text_id']], 'annotator_id'))
+        # annotations.join(conformity_df, on="annotator_id")
         return conformity_df
 
 
