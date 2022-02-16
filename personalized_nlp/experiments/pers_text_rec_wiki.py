@@ -1,6 +1,7 @@
 import os
 from itertools import product
 from functools import partial
+import numpy as np
 
 from personalized_nlp.learning.train import train_test
 from personalized_nlp.models import models as models_dict
@@ -10,7 +11,7 @@ from personalized_nlp.datasets.wiki.attack import AttackDataModule
 from personalized_nlp.datasets.wiki.aggression import AggressionDataModule
 from personalized_nlp.utils import seed_everything
 from personalized_nlp.utils.callbacks.outputs import SaveOutputsCallback
-from personalized_nlp.utils.pers_text_rec import assign_annotations, random_assignment, identity
+from personalized_nlp.utils.pers_text_rec import *
 from pytorch_lightning import loggers as pl_loggers
 
 # os.environ["CUDA_VISIBLE_DEVICES"] = "99"  # "1"
@@ -18,26 +19,35 @@ os.environ["WANDB_START_METHOD"] = "thread"
 
 # HYPERPARAMETERS FOR PERS TEXT REC MECHANISM
 MAX_ANNOTATIONS_PER_USER = 100
-MAX_USER_ANNOTATIONS_ORDER = [15, 20, 25, 50, 100]
+MAX_USER_ANNOTATIONS_ORDER = np.arange(0, 41, 5)
+COLUMN_NAME = 'aggression'
 
 if __name__ == "__main__":
     regression = False
     datamodule_clses = [
-        ToxicityDataModule, AttackDataModule, AggressionDataModule
-    ][1:2]
+        AggressionDataModule
+    ]
     embedding_types = [
-        'bert'
+        'xlmr'
     ]  # ['random', 'cbow', 'skipgram', 'labse', 'mpnet', 'xlmr', 'deberta', 'bert']
     model_types = [
-        'baseline', 'onehot', 
-        # 'peb', 'word_bias', 'bias', 'embedding', 'word_embedding'
+        'baseline', 'peb', 'bias', 'embedding'
     ]
-    first_annotation_rules = [random_assignment]
+    first_annotation_rules = [
+        # var_ratio, 
+        # get_entropy, 
+        # partial(get_weighted_text_controversy, annotation_columns=[COLUMN_NAME], method=, mean=), 
+        # get_conformity, 
+        get_weighted_conformity, 
+        get_max_conformity, 
+        get_min_conformity, 
+        get_mean_conformity
+    ]
     second_annotation_rules = [identity]
 
     wandb_entity_name = 'persemo'
-    wandb_project_name = 'TestPersTextRecWiki'
-    fold_nums = 1  # 10  # 2
+    wandb_project_name = 'PersTextRecWikiAggression'
+    fold_nums = 10
 
     min_word_counts = [200]
     words_per_texts = [100]
@@ -58,6 +68,7 @@ if __name__ == "__main__":
         # IMPORTANT create assign annotations function
         assign_func = partial(
             assign_annotations,
+            column_name=COLUMN_NAME,
             first_annotation_rule=first_annotation_rule,
             next_annotations_rule=second_annotation_rule,
             max_annotations_per_user=MAX_ANNOTATIONS_PER_USER
@@ -95,7 +106,9 @@ if __name__ == "__main__":
                             "min_word_count": min_word_count,
                             "dp_emb": dp_emb,
                             # pers text rec
-                            "max_user_annotation_order": max_user_annotation_order
+                            "max_user_annotation_order": max_user_annotation_order,
+                            "first_annotation_rule": first_annotation_rule.__name__,
+                            "next_annotation_rules": second_annotation_rule.__name__ 
                         }
                 # IMPORTANT!!!!!!!!!!!!
                 # REMEMBER TO SET max_user_annotation_order PROPERTY IN DATAMODULE!!! 
