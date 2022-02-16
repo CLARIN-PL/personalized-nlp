@@ -1,27 +1,27 @@
 from cgitb import text
 from pstats import Stats
 import string
-from scipy.stats import rankdata
-from scipy.stats import entropy
+from scipy.stats import rankdata, mode, entropy
 from typing import *
 import pandas as pd
 import numpy as np
 from sklearn.preprocessing import MinMaxScaler
 
 
-def rank(rows):
-    rows["user_annotation_order"] = rankdata(rows["text_id"].values, method="ordinal")
+def rank(rows, column: str):
+    rows["user_annotation_order"] = rankdata(rows[column].values, method="ordinal")
     rows["user_annotation_order"] = rows["user_annotation_order"] - 1
+
     return rows
 
 
 def assign_annotations(
-    column_name: string,
     data: pd.DataFrame,
     annotations: pd.DataFrame,
     first_annotation_rule: Callable,
     next_annotations_rule: Callable,
-    max_annotations_per_user: Optional[int] = None
+    max_annotations_per_user: Optional[int] = None,
+    column_name: str = ''
 ) -> pd.DataFrame:
     if max_annotations_per_user is None:
         max_annotations_per_user = len(annotations())
@@ -46,32 +46,38 @@ def assign_annotations(
 # the metrics
 
 def num_of_annotations(column_name: string, data: pd.DataFrame):
-    data["annotations_count"] = data.groupby(['text_id'])['user_id'].count()
+    data["annotations_count"] = data.groupby(['text_id'])['annotator_id'].count()
     return data
 
+def _entropy(labels, base=None):
+    _, counts = np.unique(labels, return_counts=True)
+    return entropy(counts, base=base)
+
+
+# TODO 
+# correct this
 
 def var_ratio(column_name: string, data: pd.DataFrame):
 # def variation_ratio(self, pred_matrix):
     #  """Computes and returns the variation ratios of the predictions in the given prediction matrix"""
-    annotations_count_df = data.groupby(['text_id'])['user_id'].count()
+    annotations_count_df = data.groupby(['text_id'])['annotator_id'].count()
     majority_votes_df = data.groupby(["text_id"]).agg(
-            majority_votes_df=(column_name, "mode"))
-    var_ratio_df = annotations_count_df.join(majority_votes_df, on='text_id')
+            majority_votes_df=(column_name, mode))
+    var_ratio_df = pd.merge(annotations_count_df, majority_votes_df, on='text_id')
     var_ratio_df["var_ratio"] = 1 - (var_ratio_df.iloc[:,2] / var_ratio_df.iloc[:,1])
-    data = data.join(var_ratio_df[["test_id", "var_ratio"]], on="text_id")
+    data = data.merge(var_ratio_df[["test_id", "var_ratio"]], on="text_id")
     # preds = [preds.argmax(1) for preds in data]
     # mode = Stats.mode(preds, axis=1)
     # var_value = 1 - (mode[1].squeeze() / column_name.T)
-    data = data.groupby(["annotator_id"]).apply(rank)
+    #data = data.groupby(["annotator_id"]).apply(lambda x: rank(x, column=))
     return data
 
+# TODO 
+# correct this
 
-def get_entropy(column_name: string, annotations: pd.pd.DataFrame, annotation_columns: List[str]=List(), mean=False):
-    def _entropy(labels, base=None):
-        _, counts = np.unique(labels, return_counts=True)
-        return entropy(counts, base=base)
+def get_entropy(column_name: str, annotations: pd.DataFrame, annotation_columns: List[str]=[], mean=False):
 
-    return _get_text_controversy(annotations, annotation_columns, _entropy, mean)
+    return _get_text_controversy(column_name, annotations, annotation_columns, _entropy, mean)
 
 
 def _get_text_controversy(column_name: string, annotations: pd.DataFrame, annotation_columns: List[str], method: Callable, mean: bool):
@@ -86,14 +92,16 @@ def _get_text_controversy(column_name: string, annotations: pd.DataFrame, annota
 
     if mean:
         texts_controversy_df['mean_controversy'] = texts_controversy_df.loc[:, controversy_columns].mean(axis=1)
-        texts_controversy_df = texts_controversy_df.loc[:, ['text_id', 'mean_controversy']]
+        texts_controversy_df = texts_controversy_df.loc[:, ['annotator_id', 'text_id', 'mean_controversy']]
 
     texts_controversy_df = texts_controversy_df.groupby(["annotator_id"]).apply(rank)
-    annotations.join(texts_controversy_df, on="text_id")
-    return texts_controversy_df
+    annotations = annotations.join(texts_controversy_df, on="text_id")
+    return annotations
 
+# TODO 
+# correct this
 
-def get_weighted_text_controversy(column_name: string, annotations: pd.DataFrame, annotation_columns: List[str], method: Callable, mean: bool):
+def get_weighted_text_controversy(column_name: string, annotations: pd.DataFrame, annotation_columns: List[str], method: Callable = _entropy, mean: bool = False):
     texts_controversy_df = annotations.loc[:, ['text_id']].drop_duplicates().reset_index(drop=True)
     # if isinstance(annotation_columns, str):
     #     annotation_columns = [annotation_columns]
@@ -111,8 +119,8 @@ def get_weighted_text_controversy(column_name: string, annotations: pd.DataFrame
     if mean:
         weighted_controversy_columns = [col + '_weighted_controversy' for col in annotation_columns]
         texts_controversy_df['weighted_controversy'] = texts_controversy_df.loc[:, weighted_controversy_columns].mean(axis=1)
-        texts_controversy_df = texts_controversy_df.loc[:, ['text_id', 'weighted_controversy']]
-    texts_controversy_df = texts_controversy_df.groupby(["annotator_id"]).apply(rank)
+        texts_controversy_df = texts_controversy_df.loc[:, ['annotator_id', 'text_id', 'weighted_controversy']]
+    texts_controversy_df = texts_controversy_df.groupby("annotator_id").apply(rank)
     annotations.join(texts_controversy_df, on="text_id")
     return texts_controversy_df
 
@@ -145,7 +153,7 @@ def get_conformity(column_name: string, annotations: pd.DataFrame = None) -> pd.
         conformity_df["neg_conformity"] = negative_df.groupby("annotator_id").agg(
             neg_conformity=("is_major_vote", "mean")
         )
-        conformity_df = conformity_df.groupby(["annotator_id"]).apply(rank)
+        conformity_df = conformity_df.groupby(["annotator_id"]).apply(rank())
         annotations.join(conformity_df, on="annotator_id")
         return conformity_df
 
@@ -160,8 +168,8 @@ def get_weighted_conformity(column_name: string, annotations: pd.DataFrame = Non
         df = df.merge(mean_score.reset_index())
         df["text_major_vote"] = (df["score_mean"] > 0.5).astype(int)
         df['annotation_group_ratio'] = 0.0
-        df.loc[df['column'] == 1, 'annotation_group_ratio'] = df["score_mean"] 
-        df.loc[df['column'] == 0, 'annotation_group_ratio'] = 1 - df["score_mean"] 
+        df.loc[df[column_name] == 1, 'annotation_group_ratio'] = df["score_mean"] 
+        df.loc[df[column_name] == 0, 'annotation_group_ratio'] = 1 - df["score_mean"] 
         positive_df = df[df.text_major_vote == 1]
         negative_df = df[df.text_major_vote == 0]
         conformity_df = df.groupby("annotator_id").agg(
@@ -173,8 +181,9 @@ def get_weighted_conformity(column_name: string, annotations: pd.DataFrame = Non
         conformity_df["neg_conformity"] = negative_df.groupby("annotator_id").agg(
             neg_conformity=("annotation_group_ratio", "mean")
         )
-        conformity_df = conformity_df.groupby(["annotator_id"]).apply(rank)
-        annotations.join(conformity_df, on="annotator_id")
+        conformity_df = conformity_df.groupby(["annotator_id"]).apply(lambda x: rank(x, column='conformity'))
+        raise Exception(f'{pd.unique(conformity_df["user_annotation_order"])}')
+        annotations.merge(conformity_df, on="annotator_id")
         return conformity_df
 
 
@@ -289,7 +298,7 @@ def get_mean_conformity(column_name: string, annotations: pd.DataFrame = None) -
         )
         conformity_df = conformity_df.join(mean_user_conformity, on="text_id")
 
-        conformity_df = conformity_df.groupby(["annotator_id"]).apply(rank)
+        conformity_df = conformity_df.groupby(["annotator_id"]).apply(rank(conformity_df[conformity_df['text_id']], 'annotator_id'))
         annotations.join(conformity_df, on="annotator_id")
         return conformity_df
 
@@ -297,3 +306,6 @@ def get_mean_conformity(column_name: string, annotations: pd.DataFrame = None) -
 # def neighbour_annotators_count(self, annotations: pd.DataFrame = None) -> pd.DataFrame:
 
 
+# identity measure
+def identity(x, *args, **kwargs):
+    return x
