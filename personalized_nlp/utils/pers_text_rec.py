@@ -57,7 +57,7 @@ def _entropy(labels, base=None):
     return entropy(counts, base=base)
 
 
-def var_ratio(column_name: string, data: pd.DataFrame):
+def get_var_ratio(column_name: string, data: pd.DataFrame):
 # def variation_ratio(self, pred_matrix):
     #  """Computes and returns the variation ratios of the predictions in the given prediction matrix"""
     annotations_count_df = data.groupby(['text_id'])['annotator_id'].count().reset_index(name='annotations_count')
@@ -75,8 +75,33 @@ def var_ratio(column_name: string, data: pd.DataFrame):
     #data = data.groupby(["annotator_id"]).apply(lambda x: rank(x, column=))
     return data
 
-# TODO 
-# correct this
+
+def get_var_ratio_annotation_count_weighted(column_name: string, data: pd.DataFrame):
+# def variation_ratio(self, pred_matrix):
+    #  """Computes and returns the variation ratios of the predictions in the given prediction matrix"""
+    annotations_count_df = data.groupby(['text_id'])['annotator_id'].count().reset_index(name='annotations_count')
+    majority_votes_df = data.groupby(["text_id"]).agg(
+            majority_votes_df=(column_name, pd.Series.mode))
+    var_ratio_df = pd.merge(annotations_count_df, majority_votes_df, on='text_id')
+    var_ratio_df["var_ratio"] = 1 - (var_ratio_df.iloc[:,2] / var_ratio_df.iloc[:,1])
+    data = data.merge(var_ratio_df[["text_id", "var_ratio"]], on="text_id")
+    data['var_ratio'] = [np.array(x).mean() for x in data['var_ratio'].values]
+    
+    # Tu nowe
+
+    annotations_df = num_of_annotations(column_name, data.copy())
+    annotations_df = annotations_df.drop_duplicates(subset=['text_id'])
+    data = data.merge(annotations_df[['text_id', 'annotations_count']], on='text_id')
+    # print(list(text_conformity_df.columns))
+    data[f"{column_name}_annotations_count_norm"] = MinMaxScaler().fit_transform(np.array(data["annotations_count"]).reshape(-1,1))
+    data[f"{column_name}_annotation_count_weighted_var_ratio"] = data[f"{column_name}_annotations_count_norm"] * data['var_ratio']
+
+    # annotations = annotations.merge(text_conformity_df, on="text_id")
+    data['measure_value'] = data[f"{column_name}_annotation_count_weighted_var_ratio"]
+    data = data.groupby("annotator_id").apply(rank)
+    
+    return data
+
 
 def get_entropy(column_name: str, annotations: pd.DataFrame, annotation_columns: List[str]=[], mean=False):
 
@@ -112,7 +137,7 @@ def _get_text_controversy(column_name: string, annotations: pd.DataFrame, annota
 # TODO 
 # correct this
 
-def get_weighted_text_controversy(column_name: string, annotations: pd.DataFrame, method: Callable = _entropy, mean: bool = False):
+def get_text_controversy_annotation_count_weighted(column_name: string, annotations: pd.DataFrame, method: Callable = _entropy, mean: bool = False):
     temp_df = annotations.copy()
     texts_controversy_df = temp_df.loc[:, ['text_id']].drop_duplicates().reset_index(drop=True)
     # if isinstance(annotation_columns, str):
@@ -218,7 +243,7 @@ def get_weighted_conformity(column_name: string, annotations: pd.DataFrame = Non
 
 
 
-def get_annotation_count_weighted_weighted_conformity(column_name: string, annotations: pd.DataFrame = None) -> pd.DataFrame:
+def get_weighted_conformity_annotation_count_weighted(column_name: string, annotations: pd.DataFrame = None) -> pd.DataFrame:
         """Computes conformity for each annotator. Works only for binary classification problems."""
         # if annotations is None:
         #     annotations = self.annotations
@@ -246,17 +271,330 @@ def get_annotation_count_weighted_weighted_conformity(column_name: string, annot
         # raise Exception(f'{pd.unique(conformity_df["user_annotation_order"])}')
         # annotations.merge(conformity_df, on="annotator_id")
         annotations = annotations.merge(conformity_df, on="annotator_id")
-        text_conformity_df = annotations.groupby('text_id').agg(text_mean_weighted_conformity=('text_weighted_conformity', "mean"))
+        text_conformity_df = annotations.groupby('text_id').agg(text_mean_weighted_conformity=('weighted_conformity', "mean"))
 
         annotations_df = num_of_annotations(column_name, annotations.copy())
-        text_conformity_df.merge(annotations_df, on='text_id')
-        # print(list(texts_controversy_df.columns))
-        text_conformity_df[f"{column_name}_annotations_count_norm"] = MinMaxScaler().fit_transform(np.array(text_conformity_df[f"{column_name}_annotations_count"]).reshape(-1,1))
-        text_conformity_df[f"{column_name}_weighted_controversy"] = text_conformity_df[f"{column_name}_annotations_count_norm"] * text_conformity_df[column_name]
+        annotations_df = annotations_df.drop_duplicates(subset=['text_id'])
+        text_conformity_df = text_conformity_df.merge(annotations_df[['text_id', 'annotations_count']], on='text_id')
+        print(list(text_conformity_df.columns))
+        text_conformity_df[f"{column_name}_annotations_count_norm"] = MinMaxScaler().fit_transform(np.array(text_conformity_df["annotations_count"]).reshape(-1,1))
+        text_conformity_df[f"{column_name}_annotation_count_weighted_weighted_controversy"] = text_conformity_df[f"{column_name}_annotations_count_norm"] * text_conformity_df['text_mean_weighted_conformity']
 
         annotations = annotations.merge(text_conformity_df, on="text_id")
-        annotations['measure_value'] = annotations['text_mean_weighted_conformity']
+        annotations['measure_value'] = annotations[f"{column_name}_annotation_count_weighted_weighted_controversy"]
         annotations = annotations.groupby("annotator_id").apply(rank)
+        # conformity_df['measure_value'] = conformity_df['weighted_conformity']
+        # conformity_df = conformity_df.groupby("annotator_id").apply(rank)
+        return annotations
+
+
+def get_avg_max_conformity(column_name: string, annotations: pd.DataFrame = None) -> pd.DataFrame:
+        """Computes conformity for each annotator. Works only for binary classification problems."""
+        # if annotations is None:
+        #     annotations = self.annotations
+        df = annotations.copy()
+        # column = self.annotation_column
+        mean_score = df.groupby("text_id").agg(score_mean=(column_name, "mean"))
+        df = df.merge(mean_score.reset_index())
+        df["text_major_vote"] = (df["score_mean"] > 0.5).astype(int)
+        df['annotation_group_ratio'] = 0.0
+        df.loc[df[column_name] == 1, 'annotation_group_ratio'] = df["score_mean"] 
+        df.loc[df[column_name] == 0, 'annotation_group_ratio'] = 1 - df["score_mean"] 
+        positive_df = df[df.text_major_vote == 1]
+        negative_df = df[df.text_major_vote == 0]
+        conformity_df = df.groupby("annotator_id").agg(
+            max_weighted_conformity=("annotation_group_ratio", "max")
+        )
+        conformity_df["pos_conformity"] = positive_df.groupby("annotator_id").agg(
+            pos_max_weighted_conformity=("annotation_group_ratio", "max")
+        )
+        conformity_df["neg_conformity"] = negative_df.groupby("annotator_id").agg(
+            neg_max_weighted_conformity=("annotation_group_ratio", "max")
+        )
+        # conformity_df = conformity_df.groupby(["annotator_id"]).apply(lambda x: rank(x, column='conformity'))
+        # raise Exception(f'{pd.unique(conformity_df["user_annotation_order"])}')
+        # annotations.merge(conformity_df, on="annotator_id")
+        annotations = annotations.merge(conformity_df, on="annotator_id")
+        text_conformity_df = annotations.groupby('text_id').agg(text_mean_max_weighted_conformity=('max_weighted_conformity', "mean"))
+        annotations = annotations.merge(text_conformity_df, on="text_id")
+        annotations['measure_value'] = annotations['text_mean_max_weighted_conformity']
+        annotations = annotations.groupby("annotator_id").apply(rank)
+
+
+
+        # conformity_df['measure_value'] = conformity_df['weighted_conformity']
+        # conformity_df = conformity_df.groupby("annotator_id").apply(rank)
+        return annotations
+
+
+def get_avg_min_conformity(column_name: string, annotations: pd.DataFrame = None) -> pd.DataFrame:
+        """Computes conformity for each annotator. Works only for binary classification problems."""
+        # if annotations is None:
+        #     annotations = self.annotations
+        df = annotations.copy()
+        # column = self.annotation_column
+        mean_score = df.groupby("text_id").agg(score_mean=(column_name, "mean"))
+        df = df.merge(mean_score.reset_index())
+        df["text_major_vote"] = (df["score_mean"] > 0.5).astype(int)
+        df['annotation_group_ratio'] = 0.0
+        df.loc[df[column_name] == 1, 'annotation_group_ratio'] = df["score_mean"] 
+        df.loc[df[column_name] == 0, 'annotation_group_ratio'] = 1 - df["score_mean"] 
+        positive_df = df[df.text_major_vote == 1]
+        negative_df = df[df.text_major_vote == 0]
+        conformity_df = df.groupby("annotator_id").agg(
+            min_weighted_conformity=("annotation_group_ratio", "min")
+        )
+        conformity_df["pos_conformity"] = positive_df.groupby("annotator_id").agg(
+            pos_min_weighted_conformity=("annotation_group_ratio", "min")
+        )
+        conformity_df["neg_conformity"] = negative_df.groupby("annotator_id").agg(
+            neg_min_weighted_conformity=("annotation_group_ratio", "min")
+        )
+        # conformity_df = conformity_df.groupby(["annotator_id"]).apply(lambda x: rank(x, column='conformity'))
+        # raise Exception(f'{pd.unique(conformity_df["user_annotation_order"])}')
+        # annotations.merge(conformity_df, on="annotator_id")
+        annotations = annotations.merge(conformity_df, on="annotator_id")
+        text_conformity_df = annotations.groupby('text_id').agg(text_mean_min_weighted_conformity=('min_weighted_conformity', "mean"))
+        annotations = annotations.merge(text_conformity_df, on="text_id")
+        annotations['measure_value'] = annotations['text_mean_min_weighted_conformity']
+        annotations = annotations.groupby("annotator_id").apply(rank)
+
+
+
+        # conformity_df['measure_value'] = conformity_df['weighted_conformity']
+        # conformity_df = conformity_df.groupby("annotator_id").apply(rank)
+        return annotations
+
+
+def get_max_weighted_conformity(column_name: string, annotations: pd.DataFrame = None) -> pd.DataFrame:
+        """Computes conformity for each annotator. Works only for binary classification problems."""
+        # if annotations is None:
+        #     annotations = self.annotations
+        df = annotations.copy()
+        # column = self.annotation_column
+        mean_score = df.groupby("text_id").agg(score_mean=(column_name, "mean"))
+        df = df.merge(mean_score.reset_index())
+        df["text_major_vote"] = (df["score_mean"] > 0.5).astype(int)
+        df['annotation_group_ratio'] = 0.0
+        df.loc[df[column_name] == 1, 'annotation_group_ratio'] = df["score_mean"] 
+        df.loc[df[column_name] == 0, 'annotation_group_ratio'] = 1 - df["score_mean"] 
+        positive_df = df[df.text_major_vote == 1]
+        negative_df = df[df.text_major_vote == 0]
+        conformity_df = df.groupby("annotator_id").agg(
+            weighted_conformity=("annotation_group_ratio", "mean")
+        )
+        conformity_df["pos_conformity"] = positive_df.groupby("annotator_id").agg(
+            pos_weighted_conformity=("annotation_group_ratio", "mean")
+        )
+        conformity_df["neg_conformity"] = negative_df.groupby("annotator_id").agg(
+            neg_weighted_conformity=("annotation_group_ratio", "mean")
+        )
+        # conformity_df = conformity_df.groupby(["annotator_id"]).apply(lambda x: rank(x, column='conformity'))
+        # raise Exception(f'{pd.unique(conformity_df["user_annotation_order"])}')
+        # annotations.merge(conformity_df, on="annotator_id")
+        annotations = annotations.merge(conformity_df, on="annotator_id")
+        text_conformity_df = annotations.groupby('text_id').agg(text_max_weighted_conformity=('weighted_conformity', "max"))
+        annotations = annotations.merge(text_conformity_df, on="text_id")
+        annotations['measure_value'] = annotations['text_max_weighted_conformity']
+        annotations = annotations.groupby("annotator_id").apply(rank)
+
+
+
+        # conformity_df['measure_value'] = conformity_df['weighted_conformity']
+        # conformity_df = conformity_df.groupby("annotator_id").apply(rank)
+        return annotations
+
+
+def get_max_min_conformity(column_name: string, annotations: pd.DataFrame = None) -> pd.DataFrame:
+        """Computes conformity for each annotator. Works only for binary classification problems."""
+        # if annotations is None:
+        #     annotations = self.annotations
+        df = annotations.copy()
+        # column = self.annotation_column
+        mean_score = df.groupby("text_id").agg(score_mean=(column_name, "mean"))
+        df = df.merge(mean_score.reset_index())
+        df["text_major_vote"] = (df["score_mean"] > 0.5).astype(int)
+        df['annotation_group_ratio'] = 0.0
+        df.loc[df[column_name] == 1, 'annotation_group_ratio'] = df["score_mean"] 
+        df.loc[df[column_name] == 0, 'annotation_group_ratio'] = 1 - df["score_mean"] 
+        positive_df = df[df.text_major_vote == 1]
+        negative_df = df[df.text_major_vote == 0]
+        conformity_df = df.groupby("annotator_id").agg(
+            min_weighted_conformity=("annotation_group_ratio", "min")
+        )
+        conformity_df["pos_conformity"] = positive_df.groupby("annotator_id").agg(
+            pos_min_weighted_conformity=("annotation_group_ratio", "min")
+        )
+        conformity_df["neg_conformity"] = negative_df.groupby("annotator_id").agg(
+            neg_min_weighted_conformity=("annotation_group_ratio", "min")
+        )
+        # conformity_df = conformity_df.groupby(["annotator_id"]).apply(lambda x: rank(x, column='conformity'))
+        # raise Exception(f'{pd.unique(conformity_df["user_annotation_order"])}')
+        # annotations.merge(conformity_df, on="annotator_id")
+        annotations = annotations.merge(conformity_df, on="annotator_id")
+        text_conformity_df = annotations.groupby('text_id').agg(text_max_min_weighted_conformity=('min_weighted_conformity', "max"))
+        annotations = annotations.merge(text_conformity_df, on="text_id")
+        annotations['measure_value'] = annotations['text_max_min_weighted_conformity']
+        annotations = annotations.groupby("annotator_id").apply(rank)
+
+
+
+        # conformity_df['measure_value'] = conformity_df['weighted_conformity']
+        # conformity_df = conformity_df.groupby("annotator_id").apply(rank)
+        return annotations
+
+
+def get_max_max_conformity(column_name: string, annotations: pd.DataFrame = None) -> pd.DataFrame:
+        """Computes conformity for each annotator. Works only for binary classification problems."""
+        # if annotations is None:
+        #     annotations = self.annotations
+        df = annotations.copy()
+        # column = self.annotation_column
+        mean_score = df.groupby("text_id").agg(score_mean=(column_name, "mean"))
+        df = df.merge(mean_score.reset_index())
+        df["text_major_vote"] = (df["score_mean"] > 0.5).astype(int)
+        df['annotation_group_ratio'] = 0.0
+        df.loc[df[column_name] == 1, 'annotation_group_ratio'] = df["score_mean"] 
+        df.loc[df[column_name] == 0, 'annotation_group_ratio'] = 1 - df["score_mean"] 
+        positive_df = df[df.text_major_vote == 1]
+        negative_df = df[df.text_major_vote == 0]
+        conformity_df = df.groupby("annotator_id").agg(
+            max_weighted_conformity=("annotation_group_ratio", "max")
+        )
+        conformity_df["pos_conformity"] = positive_df.groupby("annotator_id").agg(
+            pos_max_weighted_conformity=("annotation_group_ratio", "max")
+        )
+        conformity_df["neg_conformity"] = negative_df.groupby("annotator_id").agg(
+            neg_max_weighted_conformity=("annotation_group_ratio", "max")
+        )
+        # conformity_df = conformity_df.groupby(["annotator_id"]).apply(lambda x: rank(x, column='conformity'))
+        # raise Exception(f'{pd.unique(conformity_df["user_annotation_order"])}')
+        # annotations.merge(conformity_df, on="annotator_id")
+        annotations = annotations.merge(conformity_df, on="annotator_id")
+        text_conformity_df = annotations.groupby('text_id').agg(text_max_max_weighted_conformity=('max_weighted_conformity', "max"))
+        annotations = annotations.merge(text_conformity_df, on="text_id")
+        annotations['measure_value'] = annotations['text_max_max_weighted_conformity']
+        annotations = annotations.groupby("annotator_id").apply(rank)
+
+
+
+        # conformity_df['measure_value'] = conformity_df['weighted_conformity']
+        # conformity_df = conformity_df.groupby("annotator_id").apply(rank)
+        return annotations
+
+
+def get_min_weighted_conformity(column_name: string, annotations: pd.DataFrame = None) -> pd.DataFrame:
+        """Computes conformity for each annotator. Works only for binary classification problems."""
+        # if annotations is None:
+        #     annotations = self.annotations
+        df = annotations.copy()
+        # column = self.annotation_column
+        mean_score = df.groupby("text_id").agg(score_mean=(column_name, "mean"))
+        df = df.merge(mean_score.reset_index())
+        df["text_major_vote"] = (df["score_mean"] > 0.5).astype(int)
+        df['annotation_group_ratio'] = 0.0
+        df.loc[df[column_name] == 1, 'annotation_group_ratio'] = df["score_mean"] 
+        df.loc[df[column_name] == 0, 'annotation_group_ratio'] = 1 - df["score_mean"] 
+        positive_df = df[df.text_major_vote == 1]
+        negative_df = df[df.text_major_vote == 0]
+        conformity_df = df.groupby("annotator_id").agg(
+            weighted_conformity=("annotation_group_ratio", "mean")
+        )
+        conformity_df["pos_conformity"] = positive_df.groupby("annotator_id").agg(
+            pos_weighted_conformity=("annotation_group_ratio", "mean")
+        )
+        conformity_df["neg_conformity"] = negative_df.groupby("annotator_id").agg(
+            neg_weighted_conformity=("annotation_group_ratio", "mean")
+        )
+        # conformity_df = conformity_df.groupby(["annotator_id"]).apply(lambda x: rank(x, column='conformity'))
+        # raise Exception(f'{pd.unique(conformity_df["user_annotation_order"])}')
+        # annotations.merge(conformity_df, on="annotator_id")
+        annotations = annotations.merge(conformity_df, on="annotator_id")
+        text_conformity_df = annotations.groupby('text_id').agg(text_min_weighted_conformity=('weighted_conformity', "min"))
+        annotations = annotations.merge(text_conformity_df, on="text_id")
+        annotations['measure_value'] = annotations['text_min_weighted_conformity']
+        annotations = annotations.groupby("annotator_id").apply(rank)
+
+
+
+        # conformity_df['measure_value'] = conformity_df['weighted_conformity']
+        # conformity_df = conformity_df.groupby("annotator_id").apply(rank)
+        return annotations
+
+
+def get_min_max_conformity(column_name: string, annotations: pd.DataFrame = None) -> pd.DataFrame:
+        """Computes conformity for each annotator. Works only for binary classification problems."""
+        # if annotations is None:
+        #     annotations = self.annotations
+        df = annotations.copy()
+        # column = self.annotation_column
+        mean_score = df.groupby("text_id").agg(score_mean=(column_name, "mean"))
+        df = df.merge(mean_score.reset_index())
+        df["text_major_vote"] = (df["score_mean"] > 0.5).astype(int)
+        df['annotation_group_ratio'] = 0.0
+        df.loc[df[column_name] == 1, 'annotation_group_ratio'] = df["score_mean"] 
+        df.loc[df[column_name] == 0, 'annotation_group_ratio'] = 1 - df["score_mean"] 
+        positive_df = df[df.text_major_vote == 1]
+        negative_df = df[df.text_major_vote == 0]
+        conformity_df = df.groupby("annotator_id").agg(
+            max_weighted_conformity=("annotation_group_ratio", "max")
+        )
+        conformity_df["pos_conformity"] = positive_df.groupby("annotator_id").agg(
+            pos_max_weighted_conformity=("annotation_group_ratio", "max")
+        )
+        conformity_df["neg_conformity"] = negative_df.groupby("annotator_id").agg(
+            neg_max_weighted_conformity=("annotation_group_ratio", "max")
+        )
+        # conformity_df = conformity_df.groupby(["annotator_id"]).apply(lambda x: rank(x, column='conformity'))
+        # raise Exception(f'{pd.unique(conformity_df["user_annotation_order"])}')
+        # annotations.merge(conformity_df, on="annotator_id")
+        annotations = annotations.merge(conformity_df, on="annotator_id")
+        text_conformity_df = annotations.groupby('text_id').agg(text_min_max_weighted_conformity=('max_weighted_conformity', "min"))
+        annotations = annotations.merge(text_conformity_df, on="text_id")
+        annotations['measure_value'] = annotations['text_min_max_weighted_conformity']
+        annotations = annotations.groupby("annotator_id").apply(rank)
+
+
+
+        # conformity_df['measure_value'] = conformity_df['weighted_conformity']
+        # conformity_df = conformity_df.groupby("annotator_id").apply(rank)
+        return annotations
+
+
+def get_min_min_conformity(column_name: string, annotations: pd.DataFrame = None) -> pd.DataFrame:
+        """Computes conformity for each annotator. Works only for binary classification problems."""
+        # if annotations is None:
+        #     annotations = self.annotations
+        df = annotations.copy()
+        # column = self.annotation_column
+        mean_score = df.groupby("text_id").agg(score_mean=(column_name, "mean"))
+        df = df.merge(mean_score.reset_index())
+        df["text_major_vote"] = (df["score_mean"] > 0.5).astype(int)
+        df['annotation_group_ratio'] = 0.0
+        df.loc[df[column_name] == 1, 'annotation_group_ratio'] = df["score_mean"] 
+        df.loc[df[column_name] == 0, 'annotation_group_ratio'] = 1 - df["score_mean"] 
+        positive_df = df[df.text_major_vote == 1]
+        negative_df = df[df.text_major_vote == 0]
+        conformity_df = df.groupby("annotator_id").agg(
+            min_weighted_conformity=("annotation_group_ratio", "min")
+        )
+        conformity_df["pos_conformity"] = positive_df.groupby("annotator_id").agg(
+            pos_min_weighted_conformity=("annotation_group_ratio", "min")
+        )
+        conformity_df["neg_conformity"] = negative_df.groupby("annotator_id").agg(
+            neg_min_weighted_conformity=("annotation_group_ratio", "min")
+        )
+        # conformity_df = conformity_df.groupby(["annotator_id"]).apply(lambda x: rank(x, column='conformity'))
+        # raise Exception(f'{pd.unique(conformity_df["user_annotation_order"])}')
+        # annotations.merge(conformity_df, on="annotator_id")
+        annotations = annotations.merge(conformity_df, on="annotator_id")
+        text_conformity_df = annotations.groupby('text_id').agg(text_min_min_weighted_conformity=('min_weighted_conformity', "min"))
+        annotations = annotations.merge(text_conformity_df, on="text_id")
+        annotations['measure_value'] = annotations['text_min_min_weighted_conformity']
+        annotations = annotations.groupby("annotator_id").apply(rank)
+
+
+
         # conformity_df['measure_value'] = conformity_df['weighted_conformity']
         # conformity_df = conformity_df.groupby("annotator_id").apply(rank)
         return annotations
@@ -348,8 +686,63 @@ def get_mean_conformity(column_name: string, annotations: pd.DataFrame = None) -
         return annotations
 
 
-def neighbour_annotators_count(column_name: str, annotations: pd.DataFrame = None) -> pd.DataFrame:
+def get_mean_conformity_annotation_count_weighted(column_name: string, annotations: pd.DataFrame = None) -> pd.DataFrame:
+        """Computes conformity for each annotator. Works only for binary classification problems."""
+        # if annotations is None:
+        #     annotations = self.annotations
 
+        df = annotations.copy()
+        # column = self.annotation_column
+
+        mean_score = df.groupby("text_id").agg(score_mean=(column_name, "mean"))
+        df = df.merge(mean_score.reset_index())
+
+        df["text_major_vote"] = (df["score_mean"] > 0.5).astype(int)
+
+        df["is_major_vote"] = df["text_major_vote"] == df[column_name]
+        df["is_major_vote"] = df["is_major_vote"].astype(int)
+
+        positive_df = df[df.text_major_vote == 1]
+        negative_df = df[df.text_major_vote == 0]
+
+        # count_score = df.groupby("text_id").agg()
+
+        conformity_df = df.groupby("annotator_id").agg(
+            conformity=("is_major_vote", "mean")
+        )
+        conformity_df["pos_conformity"] = positive_df.groupby("annotator_id").agg(
+            pos_conformity=("is_major_vote", "mean")
+        )
+        conformity_df["neg_conformity"] = negative_df.groupby("annotator_id").agg(
+            neg_conformity=("is_major_vote", "mean")
+        )
+        # mean_user_conformity = conformity_df.groupby("annotator_id").agg(
+        #     mean_text_conformity=("conformity", "mean")
+        # )
+        annotations = annotations.merge(conformity_df, on="annotator_id")
+        text_conformity_df = annotations.groupby('text_id').agg(text_mean_conformity=('conformity', "mean"))
+        # annotations = annotations.merge(text_conformity_df, on="text_id")
+        # conformity_df = conformity_df.groupby(["annotator_id"]).apply(rank)
+        # annotations.join(conformity_df, on="annotator_id")
+        # annotations = annotations.merge(conformity_df, on="annotator_id")
+        # text_conformity_df = annotations.groupby('text_id').agg(text_mean_weighted_conformity=('weighted_conformity', "mean"))
+
+        annotations_df = num_of_annotations(column_name, annotations.copy())
+        annotations_df = annotations_df.drop_duplicates(subset=['text_id'])
+        text_conformity_df = text_conformity_df.merge(annotations_df[['text_id', 'annotations_count']], on='text_id')
+        # print(list(text_conformity_df.columns))
+        text_conformity_df[f"{column_name}_annotations_count_norm"] = MinMaxScaler().fit_transform(np.array(text_conformity_df["annotations_count"]).reshape(-1,1))
+        text_conformity_df[f"{column_name}_annotation_count_weighted_mean_conformity"] = text_conformity_df[f"{column_name}_annotations_count_norm"] * text_conformity_df['text_mean_conformity']
+
+        annotations = annotations.merge(text_conformity_df, on="text_id")
+
+        annotations['measure_value'] = annotations[f"{column_name}_annotation_count_weighted_mean_conformity"]
+        annotations = annotations.groupby("annotator_id").apply(rank)
+        return annotations
+
+
+def neighbour_annotators_count(column_name: str, annotations: pd.DataFrame = None) -> pd.DataFrame:
+    
     #Zliczamy teksty po użytkowniku
     #bierzemy teksty, które jeszcze nie zostały przez niego ocenione
     #wartośc miary = lista anotatorów, z któymi użytkownik niezaanotował, robimy unikatowość, mamy czarną listę
