@@ -316,12 +316,19 @@ def get_avg_max_conformity(column_name: string, annotations: pd.DataFrame = None
         # annotations.merge(conformity_df, on="annotator_id")
         annotations = annotations.merge(conformity_df, on="annotator_id")
         text_conformity_df = annotations.groupby('text_id').agg(text_mean_max_weighted_conformity=('max_weighted_conformity', "mean"))
+        # annotations = annotations.merge(text_conformity_df, on="text_id")
+        
+
+        annotations_df = num_of_annotations(column_name, annotations.copy())
+        annotations_df = annotations_df.drop_duplicates(subset=['text_id'])
+        text_conformity_df = text_conformity_df.merge(annotations_df[['text_id', 'annotations_count']], on='text_id')
+        print(list(text_conformity_df.columns))
+        text_conformity_df[f"{column_name}_annotations_count_norm"] = MinMaxScaler().fit_transform(np.array(text_conformity_df["annotations_count"]).reshape(-1,1))
+        text_conformity_df[f"{column_name}_annotation_count_weighted_weighted_controversy"] = text_conformity_df[f"{column_name}_annotations_count_norm"] * text_conformity_df['text_mean_max_weighted_conformity']
         annotations = annotations.merge(text_conformity_df, on="text_id")
-        annotations['measure_value'] = annotations['text_mean_max_weighted_conformity']
+
+        annotations['measure_value'] = annotations[f"{column_name}_annotation_count_weighted_weighted_controversy"]
         annotations = annotations.groupby("annotator_id").apply(rank)
-
-
-
         # conformity_df['measure_value'] = conformity_df['weighted_conformity']
         # conformity_df = conformity_df.groupby("annotator_id").apply(rank)
         return annotations
@@ -355,14 +362,20 @@ def get_avg_min_conformity(column_name: string, annotations: pd.DataFrame = None
         # annotations.merge(conformity_df, on="annotator_id")
         annotations = annotations.merge(conformity_df, on="annotator_id")
         text_conformity_df = annotations.groupby('text_id').agg(text_mean_min_weighted_conformity=('min_weighted_conformity', "mean"))
+        # annotations = annotations.merge(text_conformity_df, on="text_id")
+
+        annotations_df = num_of_annotations(column_name, annotations.copy())
+        annotations_df = annotations_df.drop_duplicates(subset=['text_id'])
+        text_conformity_df = text_conformity_df.merge(annotations_df[['text_id', 'annotations_count']], on='text_id')
+        # print(list(text_conformity_df.columns))
+        text_conformity_df[f"{column_name}_annotations_count_norm"] = MinMaxScaler().fit_transform(np.array(text_conformity_df["annotations_count"]).reshape(-1,1))
+        text_conformity_df[f"{column_name}_annotation_count_weighted_weighted_controversy"] = text_conformity_df[f"{column_name}_annotations_count_norm"] * text_conformity_df['text_mean_min_weighted_conformity']
         annotations = annotations.merge(text_conformity_df, on="text_id")
-        annotations['measure_value'] = annotations['text_mean_min_weighted_conformity']
+
+        annotations['measure_value'] = annotations[f"{column_name}_annotation_count_weighted_weighted_controversy"]
         annotations = annotations.groupby("annotator_id").apply(rank)
 
 
-
-        # conformity_df['measure_value'] = conformity_df['weighted_conformity']
-        # conformity_df = conformity_df.groupby("annotator_id").apply(rank)
         return annotations
 
 
@@ -399,9 +412,6 @@ def get_max_weighted_conformity(column_name: string, annotations: pd.DataFrame =
         annotations = annotations.groupby("annotator_id").apply(rank)
 
 
-
-        # conformity_df['measure_value'] = conformity_df['weighted_conformity']
-        # conformity_df = conformity_df.groupby("annotator_id").apply(rank)
         return annotations
 
 
@@ -433,8 +443,17 @@ def get_max_min_conformity(column_name: string, annotations: pd.DataFrame = None
         # annotations.merge(conformity_df, on="annotator_id")
         annotations = annotations.merge(conformity_df, on="annotator_id")
         text_conformity_df = annotations.groupby('text_id').agg(text_max_min_weighted_conformity=('min_weighted_conformity', "max"))
+        # annotations = annotations.merge(text_conformity_df, on="text_id")
+
+        annotations_df = num_of_annotations(column_name, annotations.copy())
+        annotations_df = annotations_df.drop_duplicates(subset=['text_id'])
+        text_conformity_df = text_conformity_df.merge(annotations_df[['text_id', 'annotations_count']], on='text_id')
+        # print(list(text_conformity_df.columns))
+        text_conformity_df[f"{column_name}_annotations_count_norm"] = MinMaxScaler().fit_transform(np.array(text_conformity_df["annotations_count"]).reshape(-1,1))
+        text_conformity_df[f"{column_name}_annotation_count_weighted_weighted_controversy"] = text_conformity_df[f"{column_name}_annotations_count_norm"] * text_conformity_df['text_max_min_weighted_conformity']
         annotations = annotations.merge(text_conformity_df, on="text_id")
-        annotations['measure_value'] = annotations['text_max_min_weighted_conformity']
+
+        annotations['measure_value'] = annotations[f"{column_name}_annotation_count_weighted_weighted_controversy"]
         annotations = annotations.groupby("annotator_id").apply(rank)
 
 
@@ -472,8 +491,17 @@ def get_max_max_conformity(column_name: string, annotations: pd.DataFrame = None
         # annotations.merge(conformity_df, on="annotator_id")
         annotations = annotations.merge(conformity_df, on="annotator_id")
         text_conformity_df = annotations.groupby('text_id').agg(text_max_max_weighted_conformity=('max_weighted_conformity', "max"))
+        # annotations = annotations.merge(text_conformity_df, on="text_id")
+
+        annotations_df = num_of_annotations(column_name, annotations.copy())
+        annotations_df = annotations_df.drop_duplicates(subset=['text_id'])
+        text_conformity_df = text_conformity_df.merge(annotations_df[['text_id', 'annotations_count']], on='text_id')
+        # print(list(text_conformity_df.columns))
+        text_conformity_df[f"{column_name}_annotations_count_norm"] = MinMaxScaler().fit_transform(np.array(text_conformity_df["annotations_count"]).reshape(-1,1))
+        text_conformity_df[f"{column_name}_annotation_count_weighted_weighted_controversy"] = text_conformity_df[f"{column_name}_annotations_count_norm"] * text_conformity_df['text_max_max_weighted_conformity']
         annotations = annotations.merge(text_conformity_df, on="text_id")
-        annotations['measure_value'] = annotations['text_max_max_weighted_conformity']
+
+        annotations['measure_value'] = annotations[f"{column_name}_annotation_count_weighted_weighted_controversy"]
         annotations = annotations.groupby("annotator_id").apply(rank)
 
 
@@ -511,8 +539,17 @@ def get_min_weighted_conformity(column_name: string, annotations: pd.DataFrame =
         # annotations.merge(conformity_df, on="annotator_id")
         annotations = annotations.merge(conformity_df, on="annotator_id")
         text_conformity_df = annotations.groupby('text_id').agg(text_min_weighted_conformity=('weighted_conformity', "min"))
+        # annotations = annotations.merge(text_conformity_df, on="text_id")
+
+        annotations_df = num_of_annotations(column_name, annotations.copy())
+        annotations_df = annotations_df.drop_duplicates(subset=['text_id'])
+        text_conformity_df = text_conformity_df.merge(annotations_df[['text_id', 'annotations_count']], on='text_id')
+        # print(list(text_conformity_df.columns))
+        text_conformity_df[f"{column_name}_annotations_count_norm"] = MinMaxScaler().fit_transform(np.array(text_conformity_df["annotations_count"]).reshape(-1,1))
+        text_conformity_df[f"{column_name}_annotation_count_weighted_weighted_controversy"] = text_conformity_df[f"{column_name}_annotations_count_norm"] * text_conformity_df['text_min_weighted_conformity']
         annotations = annotations.merge(text_conformity_df, on="text_id")
-        annotations['measure_value'] = annotations['text_min_weighted_conformity']
+
+        annotations['measure_value'] = annotations[f"{column_name}_annotation_count_weighted_weighted_controversy"]
         annotations = annotations.groupby("annotator_id").apply(rank)
 
 
@@ -550,8 +587,17 @@ def get_min_max_conformity(column_name: string, annotations: pd.DataFrame = None
         # annotations.merge(conformity_df, on="annotator_id")
         annotations = annotations.merge(conformity_df, on="annotator_id")
         text_conformity_df = annotations.groupby('text_id').agg(text_min_max_weighted_conformity=('max_weighted_conformity', "min"))
+        # annotations = annotations.merge(text_conformity_df, on="text_id")
+
+        annotations_df = num_of_annotations(column_name, annotations.copy())
+        annotations_df = annotations_df.drop_duplicates(subset=['text_id'])
+        text_conformity_df = text_conformity_df.merge(annotations_df[['text_id', 'annotations_count']], on='text_id')
+        # print(list(text_conformity_df.columns))
+        text_conformity_df[f"{column_name}_annotations_count_norm"] = MinMaxScaler().fit_transform(np.array(text_conformity_df["annotations_count"]).reshape(-1,1))
+        text_conformity_df[f"{column_name}_annotation_count_weighted_weighted_controversy"] = text_conformity_df[f"{column_name}_annotations_count_norm"] * text_conformity_df['text_min_max_weighted_conformity']
         annotations = annotations.merge(text_conformity_df, on="text_id")
-        annotations['measure_value'] = annotations['text_min_max_weighted_conformity']
+
+        annotations['measure_value'] = annotations[f"{column_name}_annotation_count_weighted_weighted_controversy"]
         annotations = annotations.groupby("annotator_id").apply(rank)
 
 
@@ -589,8 +635,17 @@ def get_min_min_conformity(column_name: string, annotations: pd.DataFrame = None
         # annotations.merge(conformity_df, on="annotator_id")
         annotations = annotations.merge(conformity_df, on="annotator_id")
         text_conformity_df = annotations.groupby('text_id').agg(text_min_min_weighted_conformity=('min_weighted_conformity', "min"))
+        # annotations = annotations.merge(text_conformity_df, on="text_id")
+
+        annotations_df = num_of_annotations(column_name, annotations.copy())
+        annotations_df = annotations_df.drop_duplicates(subset=['text_id'])
+        text_conformity_df = text_conformity_df.merge(annotations_df[['text_id', 'annotations_count']], on='text_id')
+        # print(list(text_conformity_df.columns))
+        text_conformity_df[f"{column_name}_annotations_count_norm"] = MinMaxScaler().fit_transform(np.array(text_conformity_df["annotations_count"]).reshape(-1,1)) + 0.01
+        text_conformity_df[f"{column_name}_annotation_count_weighted_weighted_controversy"] = text_conformity_df[f"{column_name}_annotations_count_norm"] * text_conformity_df['text_min_min_weighted_conformity']
         annotations = annotations.merge(text_conformity_df, on="text_id")
-        annotations['measure_value'] = annotations['text_min_min_weighted_conformity']
+
+        annotations['measure_value'] = annotations[f"{column_name}_annotation_count_weighted_weighted_controversy"]
         annotations = annotations.groupby("annotator_id").apply(rank)
 
 
