@@ -1,3 +1,4 @@
+from cgi import test
 from typing import * 
 
 import torch
@@ -72,15 +73,33 @@ class BaseDataModule(LightningDataModule):
 
         # PERS TEXT REC
         self.assign_annotations_function = assign_annotations_function
-        self._max_user_annotation_order = None
+        self._max_user_annotation_order_dev_test: Optional[int] = None
+        self._max_user_annotation_order_train: Optional[int] = None
+        self._past_present_split: bool = True
+    
+    @property
+    def past_present_split(self) -> bool:
+        return self._past_present_split
+
+    @past_present_split.setter
+    def past_present_split(self, new_value: bool) -> None:
+        self._past_present_split = new_value
 
     @property
-    def max_user_annotation_order(self) -> int:
-        return self._max_user_annotation_order
+    def max_user_annotation_order_dev_test(self) -> int:
+        return self._max_user_annotation_order_dev_test
 
-    @max_user_annotation_order.setter
-    def max_user_annotation_order(self, new_value: int) -> None:
-        self._max_user_annotation_order = new_value
+    @max_user_annotation_order_dev_test.setter
+    def max_user_annotation_order_dev_test(self, new_value: int) -> None:
+        self._max_user_annotation_order_dev_test = new_value
+
+    @property
+    def max_user_annotation_order_train(self) -> int:
+        return self._max_user_annotation_order_train
+
+    @max_user_annotation_order_train.setter
+    def max_user_annotation_order_train(self, new_value: int) -> None:
+        self._max_user_annotation_order_train = new_value
 
 
     def _create_embeddings(self, use_cuda: Optional[bool] = None) -> None:
@@ -208,10 +227,45 @@ class BaseDataModule(LightningDataModule):
             annotator_biases.set_index("annotator_id").sort_index().fillna(0)
         )
 
+    def _prune_no_past_present(self, annotations: pd.DataFrame, data: pd.DataFrame, test_fold: int, val_fold: int) -> pd.DataFrame:
+        """
+        Prunes dataset in scenario, with no past-present split.
+        """
+        assert self.max_user_annotation_order_dev_test is not None, 'You have to set max_user_annotation_order_dev_test and  to perform this scenario'
+        # train annotations
+        train_annotations = annotations.loc[~annotations.fold.isin([test_fold, val_fold])]
+        if self._max_user_annotation_order_train is not None:
+            train_annotations = self._get_annotations_by_rule(train_annotations, limit=self._max_user_annotation_order_train)
+
+        # dev, test annotations
+        personal_df = pd.concat([
+            annotations[
+                self.annotations.text_id.isin(data[data.split == "past"].text_id.values)
+            ],
+            annotations[
+                self.annotations.text_id.isin(data[data.split == "present"].text_id.values)
+            ],
+        ])
+        personal_df = personal_df[personal_df.fold.isin([test_fold, val_fold])]
+        personal_df = self._get_annotations_by_rule(personal_df, limit=self._max_user_annotation_order_dev_test)
+
+        annotations = pd.concat([train_annotations, personal_df])
+        return annotations
+
+
+    def _get_annotations_by_rule(self, df: pd.DataFrame, limit: int) -> pd.DataFrame:
+        new_dfs = []
+        for user in pd.unique(df['annotator_id']):
+            new_df = df[df['annotator_id'] == user].sort_values(by='user_annotation_order').iloc[:limit]
+            new_dfs.append(new_df)
+        final_df = pd.concat(new_dfs, ignore_index=True)
+        return final_df
+
     def train_dataloader(
         self,
         test_fold: int = None, 
-        shuffle: bool = True
+        shuffle: bool = True,
+        past_present_split: bool = False
     ) -> DataLoader:
         """Returns dataloader for train part of the dataset.
         :param test_fold: Number of test fold used in test, defaults to None
@@ -227,19 +281,28 @@ class BaseDataModule(LightningDataModule):
 
         if test_fold is not None:
             val_fold = (test_fold + 1) % self.folds_num
-            # all annotations from train folds
-            annotations = annotations.loc[~annotations.fold.isin([test_fold, val_fold])]
+            if past_present_split:
+                # all annotations from train folds
+                annotations = annotations.loc[~annotations.fold.isin([test_fold, val_fold])]
 
-            # past annotations for test and validation folds
-            personal_df = self.annotations[
-                self.annotations.text_id.isin(data[data.split == "past"].text_id.values)
-            ]
-            personal_df = personal_df[personal_df.fold.isin([test_fold, val_fold])]
+                # past annotations for test and validation folds
+                personal_df = self.annotations[
+                    self.annotations.text_id.isin(data[data.split == "past"].text_id.values)
+                ]
 
-            if self.max_user_annotation_order is not None:
-                personal_df = personal_df[personal_df['user_annotation_order'] < self.max_user_annotation_order]
+                personal_df = personal_df[personal_df.fold.isin([test_fold, val_fold])]
 
-            annotations = pd.concat([annotations, personal_df])
+                if self.max_user_annotation_order is not None:
+                    personal_df = self._get_annotations_by_rule(personal_df, self.max_user_annotation_order_dev_test)
+
+                annotations = pd.concat([annotations, personal_df])
+            else:
+                annotations = self._prune_no_past_present(
+                    annotations=annotations,
+                    data=data,
+                    test_fold=test_fold,
+                    val_fold=val_fold
+                )
         
 
         train_X, train_y = self._get_data_by_split(annotations, self.train_split_names)

@@ -2,6 +2,7 @@ import torch
 import numpy as np
 import time
 
+
 import pytorch_lightning as pl
 from pytorch_lightning.callbacks import ModelCheckpoint
 from pytorch_lightning import loggers as pl_loggers
@@ -20,6 +21,13 @@ def train_test(datamodule, model, epochs=6, lr=1e-2, regression=False,
     train_loader = datamodule.train_dataloader(test_fold=test_fold)
     val_loader = datamodule.val_dataloader(test_fold=test_fold)
     test_loader = datamodule.test_dataloader(test_fold=test_fold)
+
+    # sanity check
+    logger.log_hyperparams({
+        'train_size': len(train_loader.dataset),
+        'val_size': len(val_loader.dataset),
+        'test_size': len(test_loader.dataset)
+    })
 
     if regression:
         class_names = datamodule.annotation_column

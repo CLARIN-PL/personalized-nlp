@@ -11,7 +11,9 @@ from personalized_nlp.datasets.wiki.attack import AttackDataModule
 from personalized_nlp.datasets.wiki.aggression import AggressionDataModule
 from personalized_nlp.utils import seed_everything
 from personalized_nlp.utils.callbacks.outputs import SaveOutputsCallback
-from personalized_nlp.utils.pers_text_rec import *
+from personalized_nlp.utils.pers_text_rec import (assign_annotations, identity, get_var_ratio_annotation_count_weighted, 
+    get_weighted_conformity_annotation_count_weighted, get_text_controversy_annotation_count_weighted, get_entropy) 
+from personalized_nlp.utils.measures import set_first_assignemnt, measure_annotation_distance, random_assignment
 from pytorch_lightning import loggers as pl_loggers
 
 # os.environ["CUDA_VISIBLE_DEVICES"] = "99"  # "1"
@@ -19,8 +21,10 @@ os.environ["WANDB_START_METHOD"] = "thread"
 
 # HYPERPARAMETERS FOR PERS TEXT REC MECHANISM
 MAX_ANNOTATIONS_PER_USER = 100
-MAX_USER_ANNOTATIONS_ORDER = np.arange(0, 41, 5)
+MAX_USER_ANNOTATIONS_ORDER_DEV_TEST = np.arange(1, 15, 1)
+# MAX_USER_ANNOTATIONS_ORDER_TRAIN = np.arange(0, 15, 1)
 COLUMN_NAME = 'aggression'
+PAST_PRESENT_SPLIT = False
 
 if __name__ == "__main__":
     regression = False
@@ -31,22 +35,65 @@ if __name__ == "__main__":
         'xlmr'
     ]  # ['random', 'cbow', 'skipgram', 'labse', 'mpnet', 'xlmr', 'deberta', 'bert']
     model_types = [
-        'baseline', 'peb', 'bias', 'embedding'
+        # 'baseline', 'peb', 'bias', 
+        'embedding'
     ]
-    first_annotation_rules = [
-        # var_ratio, 
-        # get_entropy, 
-        # partial(get_weighted_text_controversy, annotation_columns=[COLUMN_NAME], method=, mean=), 
-        # get_conformity, 
-        get_weighted_conformity, 
-        get_max_conformity, 
-        get_min_conformity, 
-        get_mean_conformity
+
+    all_annotation_rules = [
+        # {
+        #     'first_rule': {
+        #         'name': 'get_var_ratio_annotation_count_weighted',
+        #         'rule': get_var_ratio_annotation_count_weighted
+        #     },
+        #     'next_rule': {
+        #         'name': 'identity',
+        #         'rule': identity
+        #     }
+        # },
+        # {
+        #     'first_rule': {
+        #         'name': 'get_weighted_conformity_annotation_count_weighted',
+        #         'rule': get_weighted_conformity_annotation_count_weighted
+        #     },
+        #     'next_rule': {
+        #         'name': 'identity',
+        #         'rule': identity
+        #     }
+        # },
+        # {
+        #     'first_rule': {
+        #         'name': 'get_text_controversy_annotation_count_weighted',
+        #         'rule': get_text_controversy_annotation_count_weighted
+        #     },
+        #     'next_rule': {
+        #         'name': 'identity',
+        #         'rule': identity
+        #     }
+        # },
+        # {
+        #     'first_rule': {
+        #         'name': 'random_assignment',
+        #         'rule': random_assignment
+        #     },
+        #     'next_rule': {
+        #         'name': 'identity',
+        #         'rule': identity
+        #     }
+        # },
+        {
+            'first_rule': {
+                'name': 'random_first_assignment',
+                'rule': set_first_assignemnt
+            },
+            'next_rule': {
+                'name': 'measure_annotation_distance',
+                'rule': partial(measure_annotation_distance, center_of_weight_method=np.mean)
+            }
+        }
     ]
-    second_annotation_rules = [identity]
 
     wandb_entity_name = 'persemo'
-    wandb_project_name = 'PersTextRecWikiAggression'
+    wandb_project_name = 'PersTextRecWikiAggressionNoPastPresent'
     fold_nums = 10
 
     min_word_counts = [200]
@@ -61,16 +108,16 @@ if __name__ == "__main__":
     use_cuda = True
 
     for (datamodule_cls, min_word_count, words_per_text, embeddings_type,
-         first_annotation_rule, second_annotation_rule) in product(
+         annotation_rules) in product(
              datamodule_clses, min_word_counts, words_per_texts,
-             embedding_types, first_annotation_rules, second_annotation_rules):
+             embedding_types, all_annotation_rules):
              
         # IMPORTANT create assign annotations function
         assign_func = partial(
             assign_annotations,
             column_name=COLUMN_NAME,
-            first_annotation_rule=first_annotation_rule,
-            next_annotations_rule=second_annotation_rule,
+            first_annotation_rule=annotation_rules['first_rule']['rule'],
+            next_annotations_rule=annotation_rules['next_rule']['rule'],
             max_annotations_per_user=MAX_ANNOTATIONS_PER_USER
         )
         # create datamodule
@@ -83,6 +130,9 @@ if __name__ == "__main__":
             assign_annotations_function=assign_func)
         data_module.prepare_data()
 
+        # DECIDE SPLIT TACTIC!
+        data_module.past_present_split = PAST_PRESENT_SPLIT
+
         data_module.setup()
         data_module.compute_word_stats(
             min_word_count=min_word_count,
@@ -94,7 +144,11 @@ if __name__ == "__main__":
         for model_type, embedding_dim, dp_emb, fold_num in product(
                 model_types, embedding_dims, dp_embs, range(fold_nums)):
             # ITERATE OVER NUMBER OF USERS IN ONE MODEL
-            for max_user_annotation_order in MAX_USER_ANNOTATIONS_ORDER:
+            for max_user_annotation_order_dev_test in MAX_USER_ANNOTATIONS_ORDER_DEV_TEST:
+                # IMPORTANT!!!!!!!!!!!!
+                # REMEMBER TO SET max_user_annotation_order PROPERTY IN DATAMODULE!!! 
+                data_module.max_user_annotation_order_dev_test = max_user_annotation_order_dev_test
+                data_module.max_user_annotation_order_train = max_user_annotation_order_dev_test
                 hparams = {
                             "dataset": type(data_module).__name__,
                             "model_type": model_type,
@@ -106,13 +160,13 @@ if __name__ == "__main__":
                             "min_word_count": min_word_count,
                             "dp_emb": dp_emb,
                             # pers text rec
-                            "max_user_annotation_order": max_user_annotation_order,
-                            "first_annotation_rule": first_annotation_rule.__name__,
-                            "next_annotation_rules": second_annotation_rule.__name__ 
+                            "max_user_annotation_order_dev_test": data_module.max_user_annotation_order_dev_test,
+                            "max_user_annotation_order_train": data_module.max_user_annotation_order_train,
+                            "first_annotation_rule": annotation_rules['first_rule']['name'],
+                            "next_annotation_rules": annotation_rules['next_rule']['name'],
+                            "past_present_split": data_module.past_present_split 
                         }
-                # IMPORTANT!!!!!!!!!!!!
-                # REMEMBER TO SET max_user_annotation_order PROPERTY IN DATAMODULE!!! 
-                data_module.max_user_annotation_order = max_user_annotation_order
+
                 logger = pl_loggers.WandbLogger(
                     save_dir=LOGS_DIR,
                     config=hparams,
