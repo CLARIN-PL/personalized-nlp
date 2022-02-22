@@ -11,8 +11,28 @@ from personalized_nlp.datasets.wiki.attack import AttackDataModule
 from personalized_nlp.datasets.wiki.aggression import AggressionDataModule
 from personalized_nlp.utils import seed_everything
 from personalized_nlp.utils.callbacks.outputs import SaveOutputsCallback
-from personalized_nlp.utils.pers_text_rec import (assign_annotations, identity, get_var_ratio_annotation_count_weighted, 
-    get_weighted_conformity_annotation_count_weighted, get_text_controversy_annotation_count_weighted, get_entropy) 
+from personalized_nlp.utils.pers_text_rec import (
+    assign_annotations, 
+    identity,
+    get_var_ratio_annotation_count_weighted, 
+    get_weighted_conformity_annotation_count_weighted, 
+    get_text_controversy_annotation_count_weighted, 
+    get_entropy,
+    # nowe
+    get_var_ratio,
+    get_conformity,
+    get_weighted_conformity,
+    get_avg_max_conformity,
+    get_avg_min_conformity,
+    get_max_weighted_conformity,
+    get_max_min_conformity,
+    get_max_max_conformity,
+    get_min_weighted_conformity,
+    get_min_max_conformity,
+    get_min_min_conformity,
+    get_mean_conformity_annotation_count_weighted,
+
+    ) 
 from personalized_nlp.utils.measures import set_first_assignemnt, measure_annotation_distance, random_assignment
 from pytorch_lightning import loggers as pl_loggers
 
@@ -24,7 +44,7 @@ MAX_ANNOTATIONS_PER_USER = 100
 MAX_USER_ANNOTATIONS_ORDER_DEV_TEST = np.arange(1, 15, 1)
 # MAX_USER_ANNOTATIONS_ORDER_TRAIN = np.arange(0, 15, 1)
 COLUMN_NAME = 'aggression'
-PAST_PRESENT_SPLIT = False
+PAST_PRESENT_SPLIT = True
 
 if __name__ == "__main__":
     regression = False
@@ -35,51 +55,53 @@ if __name__ == "__main__":
         'xlmr'
     ]  # ['random', 'cbow', 'skipgram', 'labse', 'mpnet', 'xlmr', 'deberta', 'bert']
     model_types = [
-        # 'baseline', 'peb', 'bias', 
-        'embedding'
+        #'embedding',
+        'baseline', 
+        'peb', 
+        #'bias', 
     ]
 
     all_annotation_rules = [
-        # {
-        #     'first_rule': {
-        #         'name': 'get_var_ratio_annotation_count_weighted',
-        #         'rule': get_var_ratio_annotation_count_weighted
-        #     },
-        #     'next_rule': {
-        #         'name': 'identity',
-        #         'rule': identity
-        #     }
-        # },
-        # {
-        #     'first_rule': {
-        #         'name': 'get_weighted_conformity_annotation_count_weighted',
-        #         'rule': get_weighted_conformity_annotation_count_weighted
-        #     },
-        #     'next_rule': {
-        #         'name': 'identity',
-        #         'rule': identity
-        #     }
-        # },
-        # {
-        #     'first_rule': {
-        #         'name': 'get_text_controversy_annotation_count_weighted',
-        #         'rule': get_text_controversy_annotation_count_weighted
-        #     },
-        #     'next_rule': {
-        #         'name': 'identity',
-        #         'rule': identity
-        #     }
-        # },
-        # {
-        #     'first_rule': {
-        #         'name': 'random_assignment',
-        #         'rule': random_assignment
-        #     },
-        #     'next_rule': {
-        #         'name': 'identity',
-        #         'rule': identity
-        #     }
-        # },
+        {
+            'first_rule': {
+                'name': 'random_assignment',
+                'rule': random_assignment
+            },
+            'next_rule': {
+                'name': 'identity',
+                'rule': identity
+            }
+        },
+        {
+            'first_rule': {
+                'name': 'get_var_ratio_annotation_count_weighted',
+                'rule': get_var_ratio_annotation_count_weighted
+            },
+            'next_rule': {
+                'name': 'identity',
+                'rule': identity
+            }
+        },
+        {
+            'first_rule': {
+                'name': 'get_weighted_conformity_annotation_count_weighted',
+                'rule': get_weighted_conformity_annotation_count_weighted
+            },
+            'next_rule': {
+                'name': 'identity',
+                'rule': identity
+            }
+        },
+        {
+            'first_rule': {
+                'name': 'get_text_controversy_annotation_count_weighted',
+                'rule': get_text_controversy_annotation_count_weighted
+            },
+            'next_rule': {
+                'name': 'identity',
+                'rule': identity
+            }
+        },
         {
             'first_rule': {
                 'name': 'random_first_assignment',
@@ -89,11 +111,132 @@ if __name__ == "__main__":
                 'name': 'measure_annotation_distance',
                 'rule': partial(measure_annotation_distance, center_of_weight_method=np.mean)
             }
-        }
+        },
+        # {
+        #     'first_rule': {
+        #         'name': 'get_var_ratio',
+        #         'rule': get_var_ratio
+        #     },
+        #     'next_rule': {
+        #         'name': 'identity',
+        #         'rule': identity
+        #     }
+        # },
+        # {
+        #     'first_rule': {
+        #         'name': 'get_conformity',
+        #         'rule': get_conformity
+        #     },
+        #     'next_rule': {
+        #         'name': 'identity',
+        #         'rule': identity
+        #     }
+        # },
+        # {
+        #     'first_rule': {
+        #         'name': 'get_weighted_conformity',
+        #         'rule': get_weighted_conformity
+        #     },
+        #     'next_rule': {
+        #         'name': 'identity',
+        #         'rule': identity
+        #     }
+        # },
+        # {
+        #     'first_rule': {
+        #         'name': 'get_avg_max_conformity',
+        #         'rule': get_avg_max_conformity
+        #     },
+        #     'next_rule': {
+        #         'name': 'identity',
+        #         'rule': identity
+        #     }
+        # },
+        # {
+        #     'first_rule': {
+        #         'name': 'get_avg_min_conformity',
+        #         'rule': get_avg_min_conformity
+        #     },
+        #     'next_rule': {
+        #         'name': 'identity',
+        #         'rule': identity
+        #     }
+        # },
+        # {
+        #     'first_rule': {
+        #         'name': 'get_max_weighted_conformity',
+        #         'rule': get_max_weighted_conformity
+        #     },
+        #     'next_rule': {
+        #         'name': 'identity',
+        #         'rule': identity
+        #     }
+        # },
+        # {
+        #     'first_rule': {
+        #         'name': 'get_max_min_conformity',
+        #         'rule': get_max_min_conformity
+        #     },
+        #     'next_rule': {
+        #         'name': 'identity',
+        #         'rule': identity
+        #     }
+        # },
+        # {
+        #     'first_rule': {
+        #         'name': 'get_max_max_conformity',
+        #         'rule': get_max_max_conformity
+        #     },
+        #     'next_rule': {
+        #         'name': 'identity',
+        #         'rule': identity
+        #     }
+        # },
+        # {
+        #     'first_rule': {
+        #         'name': 'get_min_weighted_conformity',
+        #         'rule': get_min_weighted_conformity
+        #     },
+        #     'next_rule': {
+        #         'name': 'identity',
+        #         'rule': identity
+        #     }
+        # },
+        # {
+        #     'first_rule': {
+        #         'name': 'get_min_max_conformity',
+        #         'rule': get_min_max_conformity
+        #     },
+        #     'next_rule': {
+        #         'name': 'identity',
+        #         'rule': identity
+        #     }
+        # },
+        # {
+        #     'first_rule': {
+        #         'name': 'get_min_min_conformity',
+        #         'rule': get_min_min_conformity
+        #     },
+        #     'next_rule': {
+        #         'name': 'identity',
+        #         'rule': identity
+        #     }
+        # },
+        # {
+        #     'first_rule': {
+        #         'name': 'get_mean_conformity_annotation_count_weighted',
+        #         'rule': get_mean_conformity_annotation_count_weighted
+        #     },
+        #     'next_rule': {
+        #         'name': 'identity',
+        #         'rule': identity
+        #     }
+        # }
     ]
 
     wandb_entity_name = 'persemo'
-    wandb_project_name = 'PersTextRecWikiAggressionNoPastPresent'
+    # wandb_project_name = 'PersTextRecWikiAggressionNoPastPresentFixed'
+    wandb_project_name = 'PersTextRecWikiAggressionPastPresent'
     fold_nums = 10
 
     min_word_counts = [200]

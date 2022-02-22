@@ -20,6 +20,9 @@ from typing import Any, Dict, List, Tuple, Optional
 
 
 class BaseDataModule(LightningDataModule):
+
+    i = 0
+
     @property
     def class_dims(self):
         raise NotImplementedError()
@@ -249,7 +252,7 @@ class BaseDataModule(LightningDataModule):
         personal_df = personal_df[personal_df.fold.isin([test_fold, val_fold])]
         personal_df = self._get_annotations_by_rule(personal_df, limit=self._max_user_annotation_order_dev_test)
 
-        annotations = pd.concat([train_annotations, personal_df])
+        annotations = pd.concat([train_annotations, personal_df], ignore_index=True)
         return annotations
 
 
@@ -305,7 +308,11 @@ class BaseDataModule(LightningDataModule):
                 )
         
 
-        train_X, train_y = self._get_data_by_split(annotations, self.train_split_names)
+        if self.past_present_split:
+            #train_X, train_y = self._get_data_by_split(annotations, self.train_split_names)
+            train_X, train_y = self._get_train_data_no_split(annotations)
+        else:
+            train_X, train_y = self._get_train_data_no_split(annotations)
         text_features = self._get_text_features()
         annotator_features = self._get_annotator_features()
 
@@ -429,6 +436,35 @@ class BaseDataModule(LightningDataModule):
                 annotations.annotator_id.isin(folded_workers[i]), "fold"
             ] = i
 
+    def _get_train_data_no_split(self, annotations: pd.DataFrame):
+        """Returns annotations (coded indices of annotators and texts), and
+        their labels in the dataset for given splits. Used during training.
+        :param annotations: DataFrame of annotations from which the data will
+        be extracted.
+        :type annotations: pd.DataFrame
+        :param splits: List of names of splits to be extracted
+        :type splits: List[str]
+        :return: tuple (X, y), where X is numpy array of (annotator_idx, text_idx)
+        tuples and y is numpy array of labels for the annotations.
+        :rtype: [type]
+        """
+        data = self.data
+        df = annotations
+        X = df.loc[:, ["text_id", "annotator_id"]]
+        y = df[self.annotation_column]
+
+        X["text_id"] = X["text_id"].apply(lambda r_id: self.text_id_idx_dict[r_id])
+        X["annotator_id"] = X["annotator_id"].apply(
+            lambda w_id: self.annotator_id_idx_dict[w_id]
+        )
+
+        X, y = X.values, y.values
+
+        if y.ndim < 2:
+            y = y[:, None]
+
+        return X, y        
+
     def _get_data_by_split(
         self, annotations: pd.DataFrame, splits: List[str]
     ) -> Tuple[np.ndarray, np.ndarray]:
@@ -444,7 +480,6 @@ class BaseDataModule(LightningDataModule):
         :rtype: [type]
         """
         data = self.data
-
         df = annotations.loc[
             annotations.text_id.isin(data[data.split.isin(splits)].text_id.values)
         ]
