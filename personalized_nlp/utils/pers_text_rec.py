@@ -5,6 +5,7 @@ from scipy.stats import rankdata, mode, entropy
 from typing import *
 import pandas as pd
 import numpy as np
+import tqdm
 from sklearn.preprocessing import MinMaxScaler
 
 
@@ -57,7 +58,7 @@ def _entropy(labels, base=None):
     return entropy(counts, base=base)
 
 
-def get_var_ratio(column_name: string, data: pd.DataFrame):
+def get_inversed_var_ratio(column_name: string, data: pd.DataFrame):
 # def variation_ratio(self, pred_matrix):
     #  """Computes and returns the variation ratios of the predictions in the given prediction matrix"""
     annotations_count_df = data.groupby(['text_id'])['annotator_id'].count().reset_index(name='annotations_count')
@@ -68,6 +69,7 @@ def get_var_ratio(column_name: string, data: pd.DataFrame):
     data = data.merge(var_ratio_df[["text_id", "var_ratio"]], on="text_id")
     data['var_ratio'] = [np.array(x).mean() for x in data['var_ratio'].values]
     data['measure_value'] = data['var_ratio']
+    data['measure_value'] = (1 / data['measure_value'])
     data = data.groupby("annotator_id").apply(rank)
     # preds = [preds.argmax(1) for preds in data]
     # mode = Stats.mode(preds, axis=1)
@@ -796,17 +798,65 @@ def get_mean_conformity_annotation_count_weighted(column_name: string, annotatio
         return annotations
 
 
-def neighbour_annotators_count(column_name: str, annotations: pd.DataFrame = None) -> pd.DataFrame:
-    
+def neighbour_annotators_count(column_name: string, annotations: pd.DataFrame = None) -> pd.DataFrame:
+    df = annotations.copy()
+    text_annotators_df = df.groupby('text_id')['annotator_id'].apply(list).reset_index(name='annotators_list')
+
+    # df = df.groupby('annotator_id').agg(df['annotation_id'] )
     #Zliczamy teksty po użytkowniku
     #bierzemy teksty, które jeszcze nie zostały przez niego ocenione
-    #wartośc miary = lista anotatorów, z któymi użytkownik niezaanotował, robimy unikatowość, mamy czarną listę
+    #wartośc miary = lista anotatorów, z którymi użytkownik nie zaanotował, robimy unikatowość, mamy czarną listę
     #lecimy po każdej anotacji, patrzymy kto anotował ten takst, którego dotyczy poszczególna anotacja(user_annotation_order) dodajemy ich do czarnej liscie
     #Lista autorów, z któymi pisał coś(to ta czarna lista)
     #Liczba niepowtarzających się użytkowników dla każdej anotacji
     #z poprzedniego zliczenia zbieramy użytkowników
+    for user in tqdm.tqdm(pd.unique(df['annotator_id'])):
+        user_annotations = df[df['annotator_id'] == user]
 
-    return 
+        user_neighbours = []
+        user_assigned_annotations_ids = []
+        assigned_annotation = user_annotations[user_annotations['user_annotation_order'] == 0]
+        assigned_annotation_text_id = assigned_annotation['text_id'].tolist()[0]
+        assigned_annotation_annotator_id = assigned_annotation['annotator_id'].tolist()[0]
+        user_neighbours += text_annotators_df[text_annotators_df['text_id'] == assigned_annotation_text_id]['annotators_list'].tolist()[0]
+        user_assigned_annotations_ids += [df.index[(df['text_id'] == assigned_annotation_text_id) & (df['annotator_id'] == assigned_annotation_annotator_id)].tolist()[0]]
+        # temp_user_annotations = user_annotations.filter(items = [row_id for row_id in user_ann])
+
+        while len(user_assigned_annotations_ids) != len(user_annotations):
+            filtered_df = user_annotations[~user_annotations.index.isin(user_assigned_annotations_ids)]
+            filtered_annotation_ids = [elem_tuple for elem_tuple in zip(filtered_df['text_id'].tolist(), filtered_df['annotator_id'].tolist())]
+            measure_values = {}
+            annotations_text_annotators = {}
+            # for i, row in filtered_df[['text_id', 'annotator_id']].iterrows():
+            for annotation_tuple in filtered_annotation_ids:
+                annotation_ind = df.index[(df['text_id'] == annotation_tuple[0]) & (df['annotator_id'] == annotation_tuple[1])].tolist()[0]
+                annotators_list = text_annotators_df[text_annotators_df['text_id'] == annotation_tuple[0]]['annotators_list'].tolist()[0]
+                non_neighbours_list = list(set(annotators_list) - set(user_neighbours)) #[annotator_id for annotator_id in annotators_list if annotator_id not in user_neighbours]
+                annotations_text_annotators[annotation_ind] = non_neighbours_list
+                measure_value = len(non_neighbours_list)
+                measure_values[annotation_ind] = measure_value
+            best_annotation_id = max(measure_values, key=measure_values.get)
+            user_assigned_annotations_ids += [best_annotation_id]
+            user_neighbours += annotations_text_annotators[best_annotation_id]
+        
+        for elem_ind, annotation_id in enumerate(user_assigned_annotations_ids):
+            df.at[annotation_id, 'user_annotation_order'] = elem_ind
+        
+    return df
+
+        # user_text_ratios = ratios[ratios.index.isin(user_annotations['text_id'])]
+        
+        # annotations_with_order = simulate_annotation_order(
+        #     user_annotations=user_annotations,
+        #     user_text_ratios=user_text_ratios,
+        #     center_of_weight_method=center_of_weight_method
+        # )
+        # annotations.append(annotations_with_order)
+
+    # annotations['measure_value'] = annotations[f"{column_name}_neighbour_annotators_count"]
+    # # annotations = annotations.groupby("annotator_id").apply(rank)
+
+    # return annotations
 
 # identity measure
 def identity(x, *args, **kwargs):
