@@ -267,8 +267,7 @@ class BaseDataModule(LightningDataModule):
     def train_dataloader(
         self,
         test_fold: int = None, 
-        shuffle: bool = True,
-        past_present_split: bool = False
+        shuffle: bool = True
     ) -> DataLoader:
         """Returns dataloader for train part of the dataset.
         :param test_fold: Number of test fold used in test, defaults to None
@@ -284,9 +283,20 @@ class BaseDataModule(LightningDataModule):
 
         if test_fold is not None:
             val_fold = (test_fold + 1) % self.folds_num
-            if past_present_split:
+            if self.past_present_split:
                 # all annotations from train folds
                 annotations = annotations.loc[~annotations.fold.isin([test_fold, val_fold])]
+                train_past = annotations[
+                    annotations.text_id.isin(data[data.split == "past"].text_id.values)
+                ]
+                train_present = annotations[
+                    annotations.text_id.isin(data[data.split == "present"].text_id.values)
+                ]
+                if self.max_user_annotation_order_train is not None:
+                    train_past = self._get_annotations_by_rule(train_past, self.max_user_annotation_order_train)
+
+                annotations = pd.concat([train_past, train_present])
+                
 
                 # past annotations for test and validation folds
                 personal_df = self.annotations[
@@ -295,7 +305,7 @@ class BaseDataModule(LightningDataModule):
 
                 personal_df = personal_df[personal_df.fold.isin([test_fold, val_fold])]
 
-                if self.max_user_annotation_order is not None:
+                if self.max_user_annotation_order_dev_test is not None:
                     personal_df = self._get_annotations_by_rule(personal_df, self.max_user_annotation_order_dev_test)
 
                 annotations = pd.concat([annotations, personal_df])
@@ -306,7 +316,6 @@ class BaseDataModule(LightningDataModule):
                     test_fold=test_fold,
                     val_fold=val_fold
                 )
-        
 
         if self.past_present_split:
             #train_X, train_y = self._get_data_by_split(annotations, self.train_split_names)
