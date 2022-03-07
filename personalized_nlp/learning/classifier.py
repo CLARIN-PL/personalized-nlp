@@ -1,8 +1,11 @@
 import pytorch_lightning as pl
 import torch
+import wandb
 import torch.nn as nn
 from torchmetrics import Accuracy, F1, Precision, Recall
 from personalized_nlp.utils.metrics import F1Class, PrecisionClass, RecallClass
+
+from personalized_nlp.learning import _log_predictions
 
 
 class Classifier(pl.LightningModule):
@@ -86,6 +89,13 @@ class Classifier(pl.LightningModule):
         self.log('test_loss', loss, prog_bar=True)
         self.log_all_metrics(output=output, y=y, split='test',
                              on_step=False, on_epoch=True)
+
+        # save prediction
+        _log_predictions(
+            x=x,
+            y_true=y,
+            y_pred=output
+        )
 
         return {"loss": loss, 'output': output, 'y': y}
 

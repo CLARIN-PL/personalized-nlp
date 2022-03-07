@@ -3,6 +3,8 @@ import torch.nn as nn
 from torchmetrics import MeanAbsoluteError, MeanSquaredError, R2Score
 import pytorch_lightning as pl
 
+from personalized_nlp.learning import _log_predictions
+
 
 class Regressor(pl.LightningModule):
     def __init__(self, model, lr, class_names):
@@ -69,6 +71,14 @@ class Regressor(pl.LightningModule):
         self.log('test_loss', loss, on_step=False, on_epoch=True)
         self.log_all_metrics(output=output, y=y, split='test',
                              on_step=False, on_epoch=True)
+
+
+        # save prediction
+        _log_predictions(
+            x=x,
+            y_true=y,
+            y_pred=output
+        )
 
         return {"loss": loss, 'output': output, 'y': y}
 
