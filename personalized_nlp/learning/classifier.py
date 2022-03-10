@@ -2,7 +2,6 @@ import pytorch_lightning as pl
 import torch
 import torch.nn as nn
 from torchmetrics import Accuracy, F1, Precision, Recall
-from personalized_nlp.utils.metrics import F1Class, PrecisionClass, RecallClass
 
 
 class Classifier(pl.LightningModule):
@@ -50,8 +49,8 @@ class Classifier(pl.LightningModule):
             end_idx = start_idx + class_dims[cls_idx]
 
             loss = loss + \
-                nn.CrossEntropyLoss()(
-                    output[:, start_idx:end_idx], y[:, cls_idx].long())
+                   nn.CrossEntropyLoss()(
+                       output[:, start_idx:end_idx], y[:, cls_idx].long())
 
         return loss
 
@@ -61,7 +60,7 @@ class Classifier(pl.LightningModule):
         output = self.forward(x)
         loss = self.step(output=output, y=y)
 
-        self.log('train_loss',  loss, on_epoch=True, prog_bar=True)
+        self.log('train_loss', loss, on_epoch=True, prog_bar=True)
         preds = torch.argmax(output, dim=1)
 
         return {'loss': loss, 'preds': preds}
@@ -77,6 +76,9 @@ class Classifier(pl.LightningModule):
 
         return loss
 
+    def validation_epoch_end(self, outputs):
+        self.log_class_metrics_at_epoch_end('valid')
+
     def test_step(self, batch, batch_idx):
         x, y = batch
 
@@ -88,6 +90,9 @@ class Classifier(pl.LightningModule):
                              on_step=False, on_epoch=True)
 
         return {"loss": loss, 'output': output, 'y': y}
+
+    def test_epoch_end(self, outputs) -> None:
+        self.log_class_metrics_at_epoch_end('test')
 
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(self.parameters(), lr=self.lr)
@@ -112,12 +117,30 @@ class Classifier(pl.LightningModule):
                 metric_value = self.metrics[metric_key](
                     output[:, start_idx:end_idx].float(), y[:, cls_idx].int())
 
-                if metric_value.size():
-                    # for non-averaged precision and recall, take positive class score
-                    for idx in range(metric_value.size(dim=0)):
-                        log_dict[f'{metric_key}_{idx}'] = metric_value[idx]
-                else:
+                if not metric_value.size():
+                    # Log only metrics with single value (e.g. accuracy or metrics averaged over classes)
                     log_dict[metric_key] = self.metrics[metric_key]
 
             self.log_dict(log_dict, on_step=on_step,
                           on_epoch=on_epoch, prog_bar=True)
+
+    def log_class_metrics_at_epoch_end(self, split):
+        class_dims = self.class_dims
+        class_names = self.class_names
+
+        for cls_idx in range(len(class_dims)):
+            class_name = class_names[cls_idx] if class_names else str(cls_idx)
+
+            log_dict = {}
+            for metric_type in self.metric_types:
+                metric_key = f'{split}_{metric_type}_{class_name}'
+                metric = self.metrics[metric_key]
+
+                if metric.average in [None, 'none']:
+                    metric_value = self.metrics[metric_key].compute()
+                    for idx in range(metric_value.size(dim=0)):
+                        log_dict[f'{metric_key}_{idx}'] = metric_value[idx]
+
+                    self.metrics[metric_key].reset()
+
+            self.log_dict(log_dict)
