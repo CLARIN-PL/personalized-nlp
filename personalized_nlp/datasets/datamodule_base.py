@@ -80,7 +80,7 @@ class BaseDataModule(LightningDataModule):
             use_cuda = torch.cuda.is_available()
 
         create_embeddings(
-            texts, embeddings_path, model_name=model_name, use_cuda=use_cuda
+            texts, embeddings_path, model_name=model_name, use_cuda=use_cuda, batch_size=self.batch_size
         )
 
     def compute_word_stats(
@@ -133,7 +133,7 @@ class BaseDataModule(LightningDataModule):
 
         assert len(self.data.index) == len(embeddings)
 
-        self.text_embeddings = torch.tensor(embeddings)
+        self.text_embeddings = torch.tensor(np.array(embeddings))
 
         self.text_id_idx_dict = (
             data.loc[:, ["text_id"]]

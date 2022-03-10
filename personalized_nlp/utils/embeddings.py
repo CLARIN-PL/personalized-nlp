@@ -11,7 +11,7 @@ import numpy as np
 from personalized_nlp.settings import CBOW_EMBEDDINGS_PATH, SKIPGRAM_EMBEDDINGS_PATH
 
 
-def _get_embeddings(texts, tokenizer, model, max_seq_len=256, use_cuda=False):
+def _get_embeddings(texts, tokenizer, model, max_seq_len=256, use_cuda=False, batch_size=200):
     def batch(iterable, n=1):
         l = len(iterable)
         for ndx in range(0, l, n):
@@ -23,7 +23,8 @@ def _get_embeddings(texts, tokenizer, model, max_seq_len=256, use_cuda=False):
         device = 'cpu'
 
     all_embeddings = []
-    for batched_texts in tqdm(batch(texts, 200), total=len(texts)/200):
+
+    for batched_texts in tqdm(batch(texts, batch_size), total=len(texts)/batch_size):
         with torch.no_grad():
             batch_encoding = tokenizer.batch_encode_plus(
                 batched_texts,
@@ -46,7 +47,7 @@ def _get_embeddings(texts, tokenizer, model, max_seq_len=256, use_cuda=False):
 
 def create_embeddings(texts, embeddings_path=None,
                       model_name='xlm-roberta-base',
-                      use_cuda=True):
+                      use_cuda=True, batch_size=200):
 
     if model_name == 'random':
         embeddings = torch.rand(len(texts), 768).numpy()
@@ -59,7 +60,7 @@ def create_embeddings(texts, embeddings_path=None,
         if use_cuda:
             model = model.to('cuda')
 
-        embeddings = _get_embeddings(texts, tokenizer, model, use_cuda=use_cuda)
+        embeddings = _get_embeddings(texts, tokenizer, model, use_cuda=use_cuda, batch_size=batch_size)
         embeddings = embeddings.cpu().numpy()
 
     text_idx_to_emb = {}
