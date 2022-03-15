@@ -1,4 +1,5 @@
 from lib2to3.pytree import Base
+from tkinter import N
 from typing import List
 
 import pandas as pd
@@ -11,16 +12,15 @@ from personalized_nlp.datasets.datamodule_base import BaseDataModule
 class EmotionsPerspectiveDataModule(BaseDataModule):
     def __init__(
             self, 
-            language: str = 'english',
             split_sizes: List[float] = [0.55, 0.15, 0.15, 0.15],
             normalize=False,
+            min_annotations_per_text=None,
             **kwargs,
     ):
         super().__init__(**kwargs)
 
         self.data_dir = STORAGE_DIR / 'emotion_nlp_perspectives'
         self.split_sizes = split_sizes
-        self.language = language
         self.annotation_column = ['joy',
                                   'trust',
                                   'anticipation',
@@ -41,6 +41,7 @@ class EmotionsPerspectiveDataModule(BaseDataModule):
         self.test_split_names = ['future2']
 
         self.normalize = normalize
+        self.min_annotations_per_text = min_annotations_per_text
 
         os.makedirs(self.data_dir / 'embeddings', exist_ok=True)
 
@@ -57,6 +58,11 @@ class EmotionsPerspectiveDataModule(BaseDataModule):
             self.data_dir / 'texts' /'text_data.csv').dropna()
         self.annotations = pd.read_csv(
             self.data_dir / 'texts' /'annotation_data.csv')
+
+        if self.min_annotations_per_text is not None:
+            text_id_value_counts = self.annotations.text_id.value_counts()
+            text_id_value_counts = text_id_value_counts[text_id_value_counts >= self.min_annotations_per_text]
+            self.annotations = self.annotations.loc[self.annotations.text_id.isin(text_id_value_counts.index.tolist())]
 
         if self.normalize:
             self.normalize_labels()
@@ -77,4 +83,4 @@ class EmotionsPerspectiveDataModule(BaseDataModule):
 
     def _assign_splits(self):
         self.data = split_texts(self.data, self.split_sizes)
-        
+                
