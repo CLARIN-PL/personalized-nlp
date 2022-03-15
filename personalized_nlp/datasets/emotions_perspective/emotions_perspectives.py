@@ -34,7 +34,7 @@ class EmotionsPerspectiveDataModule(BaseDataModule):
         self.text_column = 'text'
         self.word_stats_annotation_column = 'arousal'
         self.embeddings_path = STORAGE_DIR / \
-            f'emotion_nlp_perspectives/embeddings/text_id_to_emb_{self.embeddings_type}_{language}.p'
+            f'emotion_nlp_perspectives/embeddings/text_id_to_emb_{self.embeddings_type}.p'
 
         self.train_split_names = ['present', 'past']
         self.val_split_names = ['future1']
