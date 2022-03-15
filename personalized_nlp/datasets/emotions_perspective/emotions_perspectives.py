@@ -32,7 +32,7 @@ class EmotionsPerspectiveDataModule(BaseDataModule):
                                   'valence',
                                   'arousal']
         self.text_column = 'text'
-        # self.word_stats_annotation_column = 'POBUDZENIE EMOCJONALNE'
+        self.word_stats_annotation_column = 'arousal'
         self.embeddings_path = STORAGE_DIR / \
             f'emotion_nlp_perspectives/embeddings/text_id_to_emb_{self.embeddings_type}_{language}.p'
 
@@ -54,13 +54,13 @@ class EmotionsPerspectiveDataModule(BaseDataModule):
 
     def prepare_data(self) -> None:
         self.data = pd.read_csv(
-            self.data_dir / 'texts' /'text_data.csv')
+            self.data_dir / 'texts' /'text_data.csv').dropna()
         self.annotations = pd.read_csv(
             self.data_dir / 'texts' /'annotation_data.csv')
 
         if self.normalize:
             self.normalize_labels()
-        self.assign_splits()
+        self._assign_splits()
 
         personal_df = self.annotations_with_data.loc[self.annotations_with_data.split == 'past']
         self.compute_annotator_biases(personal_df)
@@ -68,3 +68,13 @@ class EmotionsPerspectiveDataModule(BaseDataModule):
     def normalize_labels(self):
         annotation_column = self.annotation_column
         df = self.annotations
+
+        mins = df.loc[:, annotation_column].values.min(axis=0)
+        df.loc[:, annotation_column] = (df.loc[:, annotation_column] - mins)
+
+        maxes = df.loc[:, annotation_column].values.max(axis=0)
+        df.loc[:, annotation_column] = df.loc[:, annotation_column] / maxes
+
+    def _assign_splits(self):
+        self.data = split_texts(self.data, self.split_sizes)
+        
