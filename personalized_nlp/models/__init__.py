@@ -14,5 +14,6 @@ models = {
     'word_bias': WordBiasNet,
     'bias': AnnotatorBiasNet, 
     'embedding': AnnotatorEmbeddingNet, 
-    'word_embedding': AnnotatorWordEmbeddingNet
+    'word_embedding': AnnotatorWordEmbeddingNet,
+    'userid': NetUserID
 }

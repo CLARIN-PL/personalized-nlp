@@ -23,7 +23,8 @@ EMBEDDINGS_SIZES = {
     'random': 768,
     'skipgram': 300,
     'cbow': 300,
-    'deberta': 1024
+    'deberta': 1024,
+    'roberta': 768
 }
 
 TRANSFORMER_MODEL_STRINGS = {
@@ -31,5 +32,6 @@ TRANSFORMER_MODEL_STRINGS = {
     'bert': 'bert-base-cased',
     'deberta': 'microsoft/deberta-large',
     'labse': 'sentence-transformers/LaBSE',
-    'mpnet': 'sentence-transformers/paraphrase-multilingual-mpnet-base-v2'
+    'mpnet': 'sentence-transformers/paraphrase-multilingual-mpnet-base-v2',
+    'roberta': 'roberta-base'
 }
