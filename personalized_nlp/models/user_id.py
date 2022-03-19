@@ -6,8 +6,7 @@ from transformers import AutoTokenizer, AutoModel
 from typing import Dict, Any
 
 class NetUserID(nn.Module):
-    def __init__(self, model_name='roberta-base', max_length=128, output_dim,
-                 annotator_num, text_embedding_dim=768, **kwargs):
+    def __init__(self, output_dim, annotator_num, model_name='roberta-base', max_length=128, text_embedding_dim=768, **kwargs):
         super().__init__()
         self.text_embedding_dim = text_embedding_dim
         self.fc1 = nn.Linear(text_embedding_dim, output_dim)
