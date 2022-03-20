@@ -456,3 +456,12 @@ class BaseDataModule(LightningDataModule):
         ]
 
         self.annotations = pd.concat([non_past_annotations, controversial_annotations])
+
+    def compute_average_annotation(self) -> None:
+        """Computes average annotations for each annotator"""
+        annotations = self.annotations
+        
+        emotions=["joy","trust","anticipation","surprise","fear","sadness","disgust","anger","valence","arousal"]
+        annotator_group = annotations.groupby("annotator_id")[self.annotation_column].mean().round()
+
+    
