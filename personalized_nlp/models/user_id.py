@@ -7,28 +7,21 @@ from typing import Dict, Any
 
 class NetUserID(nn.Module):
     def __init__(self, output_dim, annotator_num, text_embedding_dim=768, model_name='roberta-base', max_length=128,
-                 base_model=None, append_annotator_ids=True, **kwargs):
+                 base_model=None, **kwargs):
         super().__init__()
         self.text_embedding_dim = text_embedding_dim
         self.fc1 = nn.Linear(text_embedding_dim, output_dim) 
 
         self.worker_onehots = nn.parameter.Parameter(torch.eye(annotator_num), requires_grad=False)
         
-        self.append_annotator_ids = append_annotator_ids
-        if append_annotator_ids:
-            additional_special_tokens = [
-                f'_#{a_id}#_' for a_id in range(annotator_num)]
-            special_tokens_dict = {
-                'additional_special_tokens': additional_special_tokens}
+        additional_special_tokens = [f'_#{a_id}#_' for a_id in range(annotator_num)]
+        special_tokens_dict = {'additional_special_tokens': additional_special_tokens}
 
-            self._tokenizer = AutoTokenizer.from_pretrained(model_name)
-            self._tokenizer.add_special_tokens(special_tokens_dict)
+        self._tokenizer = AutoTokenizer.from_pretrained(model_name)
+        self._tokenizer.add_special_tokens(special_tokens_dict)
 
-            self._model = AutoModel.from_pretrained(model_name)
-            self._model.resize_token_embeddings(len(self._tokenizer))
-        else:
-            self._tokenizer = AutoTokenizer.from_pretrained(model_name)
-            self._model = AutoModel.from_pretrained(model_name)
+        self._model = AutoModel.from_pretrained(model_name)
+        self._model.resize_token_embeddings(len(self._tokenizer))
 
         self.max_length = max_length
         self.base_model = base_model
@@ -57,9 +50,6 @@ class NetUserID(nn.Module):
             emb = self.base_model(features)
 
         x = emb
-        annotator_ids = features['annotator_ids'].long()
-
-        worker_onehots = self.worker_onehots[annotator_ids]
         
         x = x.view(-1, self.text_embedding_dim)
         x = self.fc1(torch.cat([x], dim=1))
