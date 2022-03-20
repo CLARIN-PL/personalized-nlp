@@ -35,10 +35,6 @@ class NetUserID(nn.Module):
         texts_raw = features['raw_texts'].tolist()
         annotator_ids = features['annotator_ids'].tolist()
 
-        if self.append_annotator_ids:
-            texts_raw = [f'_#{a_id}#_ ' + t for t,
-                         a_id in zip(texts_raw, annotator_ids)]
-
         tokenizer = self._tokenizer
         model = self._model
 
@@ -46,7 +42,8 @@ class NetUserID(nn.Module):
             texts_raw,
             padding='longest',
             add_special_tokens=True,
-            truncation=True, max_length=self.max_length,
+            truncation=True,
+            max_length=self.max_length,
             return_tensors='pt',
         )
         batch_encoding = batch_encoding.to('cuda')
