@@ -10,7 +10,6 @@ from personalized_nlp.models import models as models_dict
 from personalized_nlp.settings import LOGS_DIR
 from pytorch_lightning import loggers as pl_loggers
 from personalized_nlp.datasets.emotions_perspective.emotions_perspectives import EmotionsPerspectiveDataModule
-from transformers import TrainingArguments, Trainer
 
 def seed_everything():
     torch.manual_seed(0)
@@ -37,7 +36,7 @@ if __name__ == "__main__":
     
     batch_size = 16
     dp_embs = [0.25]
-    embedding_dims = [50]
+    embedding_dims = [10]
     epochs = 2
     lr_rate = 0.1
     

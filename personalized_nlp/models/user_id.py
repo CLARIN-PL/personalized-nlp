@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from transformers import AutoTokenizer, AutoModel, AutoModelForSequenceClassification
+from transformers import AutoTokenizer, AutoModel
 
 from typing import Dict, Any
 
@@ -11,8 +11,6 @@ class NetUserID(nn.Module):
         super().__init__()
         self.text_embedding_dim = text_embedding_dim
         self.fc1 = nn.Linear(text_embedding_dim, output_dim) 
-
-        self.worker_onehots = nn.parameter.Parameter(torch.eye(annotator_num), requires_grad=False)
         
         additional_special_tokens = [f'_#{a_id}#_' for a_id in range(annotator_num)]
         special_tokens_dict = {'additional_special_tokens': additional_special_tokens}
@@ -28,7 +26,6 @@ class NetUserID(nn.Module):
 
     def forward(self, features):
         texts_raw = features['raw_texts'].tolist()
-        annotator_ids = features['annotator_ids'].tolist()
 
         tokenizer = self._tokenizer
         model = self._model
