@@ -1,21 +1,19 @@
-Branch: nlperspectives-ted
-
 Project: nlperspectives
 
-Method: USER_ID - add the annotator_id as a special token on the embeddings without modifying the raw_texts or annotations
+Method: USER_ID
 
 
-My code is available in branch "nlperspectives-ted". Important files in this branch:
+Important files in this branch:
 
-personalized_nlp/models/user_id.py	: Code for the 'userid' method
+- personalized_nlp/models/user_id.py	: Code for the 'userid' method (add the annotator_id as a special token on the embeddings without modifying the raw_texts or annotations)
 
-personalized_nlp/models/__init__.py	: Added mapping for the 'userid' method
+- personalized_nlp/models/__init__.py	: Added mapping for the 'userid' method
 
-personalized_nlp/settings.py		: Added EMBEDDINGS_SIZES and TRANSFORMER_MODEL_STRINGS for 'roberta' (specifically, roberta-base)
+- personalized_nlp/settings.py		: Added EMBEDDINGS_SIZES and TRANSFORMER_MODEL_STRINGS for 'roberta' (specifically, roberta-base)
 
-personalized_nlp/experiments/emopers_userid_notune.py	: A test-drive experiment without adding extra params to the train_test function
+- personalized_nlp/experiments/emopers_userid_notune.py	: A test-drive experiment without adding extra params to the train_test function
 
-personalized_nlp/experiments/emopers_userid_tune.py		: The experiment involving some extra params to the train_test function for fine-tuning
+- personalized_nlp/experiments/emopers_userid_tune.py		: The experiment involving some extra params to the train_test function for fine-tuning
 
 
 To Do:
