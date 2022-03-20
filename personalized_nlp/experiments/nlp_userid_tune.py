@@ -1,3 +1,5 @@
+# code for USER_ID exp without fine-tuning
+
 import os
 import torch
 import random
@@ -8,9 +10,7 @@ from personalized_nlp.models import models as models_dict
 from personalized_nlp.settings import LOGS_DIR
 from pytorch_lightning import loggers as pl_loggers
 from personalized_nlp.datasets.emotions_perspective.emotions_perspectives import EmotionsPerspectiveDataModule
-from transformers import get_scheduler
-from torch.optim import AdamW
-from datasets import load_metric
+from transformers import TrainingArguments, Trainer
 
 def seed_everything():
     torch.manual_seed(0)
@@ -41,6 +41,8 @@ if __name__ == "__main__":
     epochs = 2
     lr_rate = 0.1
     w_decay = 0.01
+    eval_strat = "epoch";
+    #compute_metrics = ?
     
     use_cuda = True
 
@@ -58,12 +60,6 @@ if __name__ == "__main__":
             min_std=0.0,
             words_per_text=words_per_text,
         )
-
-        train_dataloader = data_module.train_dataloader()
-
-        val_dataloader = data_module.val_dataloader()
-
-        test_dataloader = data_module.test_dataloader()
 
         for model_type, embedding_dim, dp_emb, fold_num in product(
             model_types, embedding_dims, dp_embs, range(fold_nums)
@@ -103,36 +99,21 @@ if __name__ == "__main__":
                 bias_vector_length=len(data_module.class_dims)
             )
 
-            optimizer = AdamW(model.parameters(), lr=lr_rate)
-            num_training_steps = epochs * len(train_dataloader)
-            lr_scheduler = get_scheduler(name="linear", optimizer=optimizer,
-                                         num_warmup_steps=0,
-                                         num_training_steps=num_training_steps)
-            
-            device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
-            model.to(device)
-
-            model.train()
-            for epoch in range(epochs):
-                for batch in train_dataloader:
-                    outputs = model(**batch)
-                    loss = outputs.loss
-                    loss.backward()
-
-                    optimizer.step()
-                    lr_scheduler.step()
-                    optimizer.zero_grad()
-            
-            metric = load_metric("f1")
-            model.eval()
-            for batch in val_dataloader:
-                with torch.no_grad():
-                    outputs = model(**batch)
-
-                logits = outputs.logits
-                predictions = torch.argmax(logits, dim=-1)
-                metric.add_batch(predictions=predictions, references=batch["labels"])
-
-            metric.compute()
+            train_test(
+                data_module,
+                model,
+                epochs=epochs,
+                lr=lr_rate,
+                regression=regression,
+                use_cuda=use_cuda,
+                logger=logger,
+                test_fold=fold_num,
+                output_dir="./results",
+                per_device_train_batch_size=batch_size,
+                per_device_eval_batch_size=batch_size,
+                weight_decay=w_decay,
+                evaluation_strategy=eval_strat,
+                #compute_metrics=compute_metrics,
+            )
 
             logger.experiment.finish()
