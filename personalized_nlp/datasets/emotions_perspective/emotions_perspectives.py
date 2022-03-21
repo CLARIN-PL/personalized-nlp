@@ -14,6 +14,7 @@ class EmotionsPerspectiveDataModule(BaseDataModule):
             self, 
             split_sizes: List[float] = [0.55, 0.15, 0.15, 0.15],
             normalize=False,
+            is_averaged=False,
             min_annotations_per_text=None,
             **kwargs,
     ):
@@ -66,6 +67,7 @@ class EmotionsPerspectiveDataModule(BaseDataModule):
 
         if self.normalize:
             self.normalize_labels()
+
         self._assign_splits()
 
         personal_df = self.annotations_with_data.loc[self.annotations_with_data.split == 'past']
