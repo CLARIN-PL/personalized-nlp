@@ -6,7 +6,7 @@ from personalized_nlp.settings import TRANSFORMER_MODEL_STRINGS
 
 
 class PastEmbeddingsNet(nn.Module):
-    def __init__(self, output_dim, texts_num_in_annotator_past_emb: int = 4, finetune: bool = True,
+    def __init__(self, output_dim, class_nums, texts_num_in_annotator_past_emb: int = 4, finetune: bool = True,
                  model_name='roberta-base', max_length=128, text_embedding_dim=768, **kwargs):
         super().__init__()
 
@@ -20,7 +20,7 @@ class PastEmbeddingsNet(nn.Module):
             self._model = AutoModel.from_pretrained(model_name)
             self.max_length = max_length
 
-        past_emb_size = texts_num_in_annotator_past_emb * (text_embedding_dim + output_dim)
+        past_emb_size = texts_num_in_annotator_past_emb * (text_embedding_dim + class_nums)
         self.text_embedding_dim = text_embedding_dim
         self.fc1 = nn.Linear(self.text_embedding_dim + past_emb_size, output_dim)
 

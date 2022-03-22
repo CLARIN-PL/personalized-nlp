@@ -18,8 +18,8 @@ models = {
     'bias': AnnotatorBiasNet,
     'embedding': AnnotatorEmbeddingNet,
     'word_embedding': AnnotatorWordEmbeddingNet,
-    'past_embeddings': PastEmbeddingsNet,
-    'transformer_baseline': TransformerBaseline,
     'userid': NetUserID,
-    'hubi_med': HuBiMedium
+    'hubi_med': HuBiMedium,
+    'past_embeddings': PastEmbeddingsNet,
+    'transformer_baseline': TransformerBaseline
 }

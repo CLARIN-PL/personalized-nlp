@@ -9,7 +9,7 @@ from personalized_nlp.settings import LOGS_DIR
 from personalized_nlp.utils import seed_everything
 from pytorch_lightning import loggers as pl_loggers
 
-from personalized_nlp.datasets.emotions_perspective.emotions_perspectives import EmotionsPerspectiveDataModule
+from personalized_nlp.datasets.goemotions.go_emotions import GoEmotionsDataModule
 from personalized_nlp.utils.callbacks.optimizer import SetWeightDecay
 from personalized_nlp.utils.callbacks.transformer_lr_scheduler import TransformerLrScheduler
 
@@ -19,12 +19,12 @@ os.environ["CUDA_VISIBLE_DEVICES"] = '0'
 os.environ["WANDB_START_METHOD"] = "thread"
 
 if __name__ == "__main__":
-    regression = True
-    datamodule_cls = EmotionsPerspectiveDataModule
+    regression = False
+    datamodule_cls = GoEmotionsDataModule
     embedding_types = ['roberta']
 
-    model_types = ['transformer_baseline', 'past_embeddings']
-    wandb_project_name = 'studemo_regr_2'
+    model_types = ['past_embeddings']
+    wandb_project_name = 'goemo_exp'
     limit_past_annotations_list = [None]  # range(20)
     fold_nums = 10
     max_length = 256
@@ -36,8 +36,7 @@ if __name__ == "__main__":
     batch_size = 16
     dp_embs = [0.25]
     embedding_dims = [50]
-    # finetune_epochs_lr_setting = {False: (20, [1e-3, 1e-4]), True: (4, [1e-4, 1e-5])}
-    finetune_epochs_lr_setting = {True: (4, [1e-3, 5e-4])}
+    finetune_epochs_lr_setting = {False: (20, [1e-4, 1e-5]), True: (10, [1e-4, 1e-5])}
     finetune_lr_list = []
     for ft, (epochs, lr_list) in finetune_epochs_lr_setting.items():
         for lr in lr_list:
