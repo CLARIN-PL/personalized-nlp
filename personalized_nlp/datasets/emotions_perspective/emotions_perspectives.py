@@ -34,7 +34,7 @@ class EmotionsPerspectiveDataModule(BaseDataModule):
         self.text_column = 'text'
         self.word_stats_annotation_column = 'arousal'
         self.embeddings_path = STORAGE_DIR / \
-            f'emotion_nlp_perspectives/embeddings/text_id_to_emb_{self.embeddings_type}.p'
+                               f'emotion_nlp_perspectives/embeddings/text_id_to_emb_{self.embeddings_type}.p'
 
         self.train_split_names = ['present', 'past']
         self.val_split_names = ['future1']
@@ -48,7 +48,7 @@ class EmotionsPerspectiveDataModule(BaseDataModule):
     @property
     def class_dims(self):
         return [4] * 8 + [7, 4]
-    
+
     @property
     def texts_clean(self):
         return self.data[self.text_column].to_list()
@@ -58,6 +58,9 @@ class EmotionsPerspectiveDataModule(BaseDataModule):
             self.data_dir / 'texts' /'text_data.csv').dropna()
         self.annotations = pd.read_csv(
             self.data_dir / 'texts' /'annotation_data.csv')
+
+        annotated_text_ids = self.annotations.text_id.values
+        self.data = self.data.loc[self.data.text_id.isin(annotated_text_ids)].reset_index(False)
 
         if self.min_annotations_per_text is not None:
             text_id_value_counts = self.annotations.text_id.value_counts()
@@ -83,4 +86,3 @@ class EmotionsPerspectiveDataModule(BaseDataModule):
 
     def _assign_splits(self):
         self.data = split_texts(self.data, self.split_sizes)
-                
