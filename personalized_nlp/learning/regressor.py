@@ -79,18 +79,19 @@ class Regressor(pl.LightningModule):
     def log_all_metrics(self, output, y, split, on_step=None, on_epoch=None):
         class_names = self.class_names
 
-        log_dict = {}
-        for metric_type in self.metric_types:
-            metric_values = []
-            for class_idx, class_name in enumerate(class_names):
-                metric_key = f'{split}_{metric_type}_{class_name}'
-                metric_value = self.metrics[metric_key](
-                    output[:, class_idx], y[:, class_idx])
+        if len(output) >= 2:
+            log_dict = {}
+            for metric_type in self.metric_types:
+                metric_values = []
+                for class_idx, class_name in enumerate(class_names):
+                    metric_key = f'{split}_{metric_type}_{class_name}'
+                    metric_value = self.metrics[metric_key](
+                        output[:, class_idx], y[:, class_idx])
 
-                metric_values.append(metric_value)
-                log_dict[metric_key] = metric_value
+                    metric_values.append(metric_value)
+                    log_dict[metric_key] = metric_value
 
-            mean_metric_key = f'{split}_{metric_type}_mean'
-            log_dict[mean_metric_key] = torch.mean(torch.tensor(metric_values))
+                mean_metric_key = f'{split}_{metric_type}_mean'
+                log_dict[mean_metric_key] = torch.mean(torch.tensor(metric_values))
 
-            self.log_dict(log_dict, on_step=on_step, on_epoch=on_epoch)
+                self.log_dict(log_dict, on_step=on_step, on_epoch=on_epoch)
