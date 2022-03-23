@@ -16,7 +16,7 @@ if __name__ == "__main__":
 
     regression = True
     datamodule_cls = EmotionsPerspectiveDataModule
-    embedding_types = ['xlmr']
+    embedding_types = ['roberta']
     model_types = ['embedding']
     limit_past_annotations_list = [None] # range(20)
     fold_nums = 2
