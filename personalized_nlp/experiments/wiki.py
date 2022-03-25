@@ -10,6 +10,8 @@ from personalized_nlp.datasets.wiki.aggression import AggressionDataModule
 from personalized_nlp.utils import seed_everything
 from pytorch_lightning import loggers as pl_loggers
 
+from personalized_nlp.utils import callbacks
+
 os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 os.environ["WANDB_START_METHOD"] = "thread"
 
@@ -95,6 +97,17 @@ if __name__ == "__main__":
                 use_cuda=use_cuda,
                 logger=logger,
                 test_fold=fold_num,
+                custom_callbacks=[
+                    callbacks.SaveOutputsWandb(
+                        save_name='wandb_outputs.csv', 
+                        save_text=True
+                    ),
+                    callbacks.SaveOutputsLocal(
+                        save_dir='wiki_experiments_outputs',
+                        fold_num=fold_num,
+                        experiment='wiki_test'
+                    )
+                ]
             )
 
             logger.experiment.finish()
