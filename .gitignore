@@ -6,6 +6,7 @@ personalized_nlp/storage/checkpoints
 personalized_nlp/storage/results
 personalized_nlp/storage/emotions_data
 personalized_nlp/storage/emotions_simple_data/embeddings/
+personalized_nlp/storage/outputs/*
 
 # VirtualEnv dir
 venv/

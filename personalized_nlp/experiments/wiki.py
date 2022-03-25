@@ -29,7 +29,7 @@ if __name__ == "__main__":
     batch_size = 3000
     dp_embs = [0.25]
     embedding_dims = [50]
-    epochs = 20
+    epochs = 1
     lr_rate = 0.008
     
     use_cuda = True

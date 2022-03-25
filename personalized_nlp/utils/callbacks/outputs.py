@@ -8,7 +8,7 @@ import pandas as pd
 import numpy as np
 from pytorch_lightning.callbacks import Callback
 
-from personalized_nlp.settings import STORAGE_DIR
+from personalized_nlp.settings import STORAGE_DIR, OUTPUTS_DIR_NAME
 
 
 class AbstractSaveOutputsCallback(Callback):
@@ -28,8 +28,19 @@ class AbstractSaveOutputsCallback(Callback):
     def on_test_batch_end(self, trainer, pl_module, outputs, *args, **kwargs):
         self.outputs.append(outputs)
 
-    # def _create_logits(self, is_reggression: bool, p_true) -> Dict[str, np.ndarray]:
-    #     pass
+    def _create_logits(self, is_reggression: bool, x: Sequence[Any], class_names: Sequence[str], base: str) -> Dict[str, np.ndarray]:
+        if is_reggression:
+            assert len(class_names) == x.shape[1], f'Save output callbacks can only accept reggression, if len(class names) == output shape, but got len(class names) = {len(class_names)} and output shape = {x.shape[1]}'
+            out_dict = {
+                f'{base}_{class_name}': x[:, i].cpu().reshape(-1).numpy() for i, class_name in enumerate(class_names)
+            }
+            return out_dict
+        else:
+            out_dict = {
+                f'{base}_{i}': x[:, i].cpu().reshape(-1).numpy() for i in range(x.shape[1])
+            }
+            return out_dict
+
 
     def _create_dataframe(self) -> pd.DataFrame:
         if not self.outputs:
@@ -40,14 +51,29 @@ class AbstractSaveOutputsCallback(Callback):
             x = suboutput['x']
             y_true = suboutput['y']
             y_pred = suboutput['y_pred']
-            metric_dict = {
-                f'y_pred_{i}': y_pred[:, i].cpu().reshape(-1).numpy() for i in range(y_pred.shape[1])
-            }
+            is_reggression = suboutput['is_regression']
+            class_names = suboutput['class_names']
+
+            y_pred_dict = self._create_logits(
+                is_reggression=is_reggression,
+                x=y_pred,
+                class_names=class_names,
+                base='y_pred'
+            )
+            y_true_dict = self._create_logits(
+                is_reggression=is_reggression,
+                x=y_true,
+                class_names=class_names,
+                base='y_true'
+            )
+            metric_dict = {**y_pred_dict, **y_true_dict}
+
             metric_dict['text_ids'] = x['text_ids'].cpu().numpy()
             metric_dict['annotator_ids'] = x['annotator_ids'].cpu().numpy()
-            metric_dict['y_true'] = y_true.cpu().reshape(-1).numpy()
+
             if self.save_text:
                 metric_dict['raw_texts'] = x['raw_texts']
+
             df = pd.DataFrame(metric_dict)
             dfs.append(df)
         cat_df = pd.concat(dfs, ignore_index=True)     
@@ -78,6 +104,7 @@ class SaveOutputsLocal(AbstractSaveOutputsCallback):
         super(SaveOutputsLocal, self).__init__(save_text)
         self.save_dir = os.path.join(
             STORAGE_DIR,
+            OUTPUTS_DIR_NAME,
             save_dir)
         if not os.path.exists(self.save_dir):
             os.makedirs(self.save_dir)
@@ -86,6 +113,5 @@ class SaveOutputsLocal(AbstractSaveOutputsCallback):
     def on_test_end(self, *args, **kwargs):
         df = self._create_dataframe()
         if df is not None:
-            df.to_csv(os.path.join(wandb.run.dir, self.save_name), index=False)
-        save_path = os.path.join(self.save_dir, self.save_name)
-        df.to_csv(save_path, index=False)
+            save_path = os.path.join(self.save_dir, self.save_name)
+            df.to_csv(save_path, index=False)
