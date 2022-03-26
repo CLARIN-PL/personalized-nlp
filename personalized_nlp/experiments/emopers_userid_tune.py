@@ -105,24 +105,6 @@ if __name__ == "__main__":
                 bias_vector_length=len(data_module.class_dims)
             )
             
-            # Freeze layers to preserve pre-trained weights
-            for param in model.model.parameters():
-                param.requires_grad = False
-            
-            # initial train
-            train_test(
-                data_module,
-                model,
-                epochs=epochs,
-                lr=lr_rate,
-                regression=regression,
-                use_cuda=use_cuda,
-                logger=logger,
-                test_fold=fold_num,
-                flag_run_test=False,
-                output_dir='./results'
-            )
-            
             # Unfreeze weights to enable fine-tuning
             for param in model.model.parameters():
                 param.requires_grad = True
@@ -135,7 +117,7 @@ if __name__ == "__main__":
             )
 
             # train to fine-tune
-            train_func(
+            train_test(
                 data_module,
                 model,
                 epochs=epochs,
