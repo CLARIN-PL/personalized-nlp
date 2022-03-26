@@ -18,8 +18,8 @@ class NetUserID(nn.Module):
         self._tokenizer = AutoTokenizer.from_pretrained(model_name)
         self._tokenizer.add_special_tokens(special_tokens_dict)
 
-        self._model = AutoModel.from_pretrained(model_name)
-        self._model.resize_token_embeddings(len(self._tokenizer))
+        self.model = AutoModel.from_pretrained(model_name)
+        self.model.resize_token_embeddings(len(self._tokenizer))
 
         self.max_length = max_length
         self.base_model = base_model
@@ -28,7 +28,7 @@ class NetUserID(nn.Module):
         texts_raw = features['raw_texts'].tolist()
 
         tokenizer = self._tokenizer
-        model = self._model
+        model = self.model
 
         batch_encoding = tokenizer.batch_encode_plus(
             texts_raw,

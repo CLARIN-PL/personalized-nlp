@@ -1,16 +1,25 @@
-# code for USER_ID exp with fine-tuning
+# code for USER_ID exp without fine-tuning
 
 import os
 import torch
 import random
 import numpy as np
 from itertools import product
-from personalized_nlp.learning.train import train_test
+from personalized_nlp.learning.train_alt import train_test
 from personalized_nlp.models import models as models_dict
 from personalized_nlp.settings import LOGS_DIR
 from pytorch_lightning import loggers as pl_loggers
 from personalized_nlp.datasets.emotions_perspective.emotions_perspectives import EmotionsPerspectiveDataModule
-from transformers import TrainingArguments, Trainer
+
+from copy import copy
+import pytorch_lightning as pl
+from pytorch_lightning.callbacks import ModelCheckpoint
+from personalized_nlp.learning.classifier import Classifier
+from personalized_nlp.learning.regressor import Regressor
+from personalized_nlp.settings import CHECKPOINTS_DIR
+
+from torch.optim import AdamW
+from transformers import get_scheduler, TrainingArguments
 
 def seed_everything():
     torch.manual_seed(0)
@@ -31,19 +40,16 @@ if __name__ == "__main__":
     limit_past_annotations_list = [None] # range(20)
     fold_nums = 10
     min_annotations_per_text = 2
-
-    min_word_counts = [5]
+    
+    min_word_counts = [50]
     words_per_texts = [128]
-
+    
     batch_size = 16
     dp_embs = [0.25]
-    embedding_dims = [50]
-    epochs = 50
-    lr_rate = 0.001
-    w_decay = 0.01
-    eval_strat = "epoch";
-    #compute_metrics = ?
-
+    embedding_dims = [10]
+    epochs = 2
+    lr_rate = 0.1
+    
     use_cuda = True
 
     for (min_word_count, words_per_text, embeddings_type, limit_past_annotations) in product(
@@ -74,10 +80,6 @@ if __name__ == "__main__":
                 "words_per_texts": words_per_text,
                 "min_word_count": min_word_count,
                 "dp_emb": dp_emb,
-                "num_epochs": epochs,
-                "learning_rate": lr_rate,
-                "weight_decay": w_decay,
-                "eval_strat": eval_strat
             }
 
             logger = pl_loggers.WandbLogger(
@@ -90,7 +92,7 @@ if __name__ == "__main__":
             output_dim = len(data_module.class_dims) if regression else sum(data_module.class_dims)
             text_embedding_dim = data_module.text_embedding_dim
             model_cls = models_dict[model_type]
-
+            
             model = model_cls(
                 output_dim=output_dim,
                 text_embedding_dim=text_embedding_dim,
@@ -102,7 +104,12 @@ if __name__ == "__main__":
                 hidden_dim=100,
                 bias_vector_length=len(data_module.class_dims)
             )
-
+            
+            # Freeze layers to preserve pre-trained weights
+            for param in model.model.parameters():
+                param.requires_grad = False
+            
+            # initial train
             train_test(
                 data_module,
                 model,
@@ -112,12 +119,36 @@ if __name__ == "__main__":
                 use_cuda=use_cuda,
                 logger=logger,
                 test_fold=fold_num,
-                output_dir="./results",
-                per_device_train_batch_size=batch_size,
-                per_device_eval_batch_size=batch_size,
-                weight_decay=w_decay,
-                evaluation_strategy=eval_strat,
-                #compute_metrics=compute_metrics,
+                flag_run_test=False,
+                output_dir='./results'
+            )
+            
+            # Unfreeze weights to enable fine-tuning
+            for param in model.model.parameters():
+                param.requires_grad = True
+
+            # Lower the learning rate to prevent destruction of pre-trained weights
+            optimizer = AdamW(model.parameters(), lr=5e-5)
+            num_training_steps = epochs * 100
+            lr_scheduler = get_scheduler(
+                name="linear", optimizer=optimizer, num_warmup_steps=0, num_training_steps=num_training_steps
             )
 
+            # train to fine-tune
+            train_func(
+                data_module,
+                model,
+                epochs=epochs,
+                lr=lr_rate,
+                regression=regression,
+                use_cuda=use_cuda,
+                logger=logger,
+                test_fold=fold_num,
+                flag_run_test=True,
+                output_dir='../results',
+                optimizer=optimizer,
+                max_steps=num_training_steps,
+                lr_scheduler_type=lr_scheduler
+            )
+            
             logger.experiment.finish()
