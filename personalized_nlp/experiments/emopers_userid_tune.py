@@ -41,14 +41,14 @@ if __name__ == "__main__":
     fold_nums = 10
     min_annotations_per_text = 2
     
-    min_word_counts = [50]
+    min_word_counts = [5]
     words_per_texts = [128]
     
     batch_size = 16
     dp_embs = [0.25]
-    embedding_dims = [10]
-    epochs = 2
-    lr_rate = 0.1
+    embedding_dims = [100]
+    epochs = 25
+    lr_rate = 0.001
     
     use_cuda = True
 
@@ -111,7 +111,7 @@ if __name__ == "__main__":
 
             # Lower the learning rate to prevent destruction of pre-trained weights
             optimizer = AdamW(model.parameters(), lr=5e-5)
-            num_training_steps = epochs * 100
+            num_training_steps = epochs * 250
             lr_scheduler = get_scheduler(
                 name="linear", optimizer=optimizer, num_warmup_steps=0, num_training_steps=num_training_steps
             )
