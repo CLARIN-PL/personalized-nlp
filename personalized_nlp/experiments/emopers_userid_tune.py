@@ -12,7 +12,8 @@ from pytorch_lightning import loggers as pl_loggers
 from personalized_nlp.datasets.emotions_perspective.emotions_perspectives import EmotionsPerspectiveDataModule
 
 from torch.optim import AdamW
-from transformers import get_scheduler, TrainingArguments
+from transformers import get_scheduler
+from argparse import Namespace
 
 def seed_everything():
     torch.manual_seed(0)
@@ -98,6 +99,20 @@ if __name__ == "__main__":
                 bias_vector_length=len(data_module.class_dims)
             )
             
+            # Save the params for the model
+            model_hparams = {
+                'output_dim':output_dim,
+                'text_embedding_dim':text_embedding_dim,
+                'word_num':data_module.words_number,
+                'annotator_num':data_module.annotators_number,
+                'dp':0.0,
+                'dp_emb':dp_emb,
+                'embedding_dim':embedding_dim,
+                'hidden_dim':100,
+                'bias_vector_length':len(data_module.class_dims)
+            }
+            namespace = Namespace(**model_hparams)
+            
             # Freeze weights for initial training
             for param in model.model.parameters():
                 param.requires_grad = False
@@ -118,20 +133,34 @@ if __name__ == "__main__":
                 flag_run_test=False,
                 checkpoint_path=checkpoint_path,
             )
+            
+            # Save state dict
+            torch.save(model.state_dict(), checkpoint_path / 'state_dict')
 
             # Unfreeze weights to enable fine-tuning
             for param in model.model.parameters():
                 param.requires_grad = True
 
+            # Load model from checkpoint
+            model = model.load_from_checkpoint(checkpoint_path,
+                output_dim=output_dim,
+                text_embedding_dim=text_embedding_dim,
+                word_num=data_module.words_number,
+                annotator_num=data_module.annotators_number,
+                dp=0.0,
+                dp_emb=dp_emb,
+                embedding_dim=embedding_dim,
+                hidden_dim=100,
+                bias_vector_length=len(data_module.class_dims))
+            
             # Lower the learning rate to prevent destruction of pre-trained weights
-            model = model.load_from_checkpoint(checkpoint_path)
             optimizer = AdamW(model.parameters(), lr=5e-5)
             num_training_steps = epochs * 250
             lr_scheduler = get_scheduler(
                 name="linear", optimizer=optimizer, num_warmup_steps=0, num_training_steps=num_training_steps
             )
 
-            # train to fine-tune
+            # train to fine-tune and run the test
             train_test(
                 data_module,
                 model,

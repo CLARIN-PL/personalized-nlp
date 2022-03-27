@@ -56,6 +56,7 @@ def train_test(datamodule, model, epochs=6, lr=1e-2, regression=False,
         callbacks.append(
             ModelCheckpoint(
                 dirpath=checkpoint_dir,
+                filename='bestmodel',
                 save_top_k=1,
                 monitor='valid_loss',
                 mode='min',
