@@ -1,5 +1,6 @@
 import os
 from itertools import product
+import torch
 
 from personalized_nlp.learning.train import train_test
 from personalized_nlp.models import models as models_dict
@@ -7,30 +8,32 @@ from personalized_nlp.settings import LOGS_DIR
 from personalized_nlp.datasets.emotions_perspective.emotions_perspectives import EmotionsPerspectiveDataModule
 from personalized_nlp.utils import seed_everything
 from pytorch_lightning import loggers as pl_loggers
+from personalized_nlp.utils.callbacks.transformer_lr_scheduler import TransformerLrScheduler
 
+torch.cuda.empty_cache()
 os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 os.environ["WANDB_START_METHOD"] = "thread"
 
 if __name__ == "__main__":
-    wandb_project_name = 'EmoPerspectives_exp'
+    wandb_project_name = 'NLPPerspectives_Finetune_HuBiMed'
 
     regression = True
     datamodule_cls = EmotionsPerspectiveDataModule
     embedding_types = ['roberta']
-    model_types = ['embedding']
+    model_types = ['hubi_med']
     limit_past_annotations_list = [None] # range(20)
     fold_nums = 2
     
-    min_word_counts = [200]
-    words_per_texts = [100]
+    min_word_counts = [50]
+    words_per_texts = [15]
     
-    batch_size = 3000
+    batch_size = 16
     dp_embs = [0.25]
     embedding_dims = [50]
     epochs = 20
     lr_rate = 0.008
     user_folding = True
-    
+    nr_frozen_epochs = 5
     use_cuda = True
 
     for (min_word_count, words_per_text, embeddings_type, limit_past_annotations) in product(
@@ -63,6 +66,7 @@ if __name__ == "__main__":
                 "words_per_texts": words_per_text,
                 "min_word_count": min_word_count,
                 "dp_emb": dp_emb,
+                'nr_frozen_epochs': nr_frozen_epochs
             }
 
             logger = pl_loggers.WandbLogger(
@@ -85,7 +89,9 @@ if __name__ == "__main__":
                 dp_emb=dp_emb,
                 embedding_dim=embedding_dim,
                 hidden_dim=100,
-                bias_vector_length=len(data_module.class_dims)
+                bias_vector_length=len(data_module.class_dims),
+                nr_frozen_epochs=nr_frozen_epochs,
+                embedding_type=embeddings_type
             )
 
             test_fold = fold_num if user_folding else None

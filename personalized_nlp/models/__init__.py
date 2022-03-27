@@ -6,6 +6,8 @@ from personalized_nlp.models.bias import AnnotatorBiasNet
 from personalized_nlp.models.word_bias import WordBiasNet
 from personalized_nlp.models.annotator import AnnotatorEmbeddingNet
 from personalized_nlp.models.annotator_word import AnnotatorWordEmbeddingNet
+from personalized_nlp.models.hubi_med_finetune import HuBiMedium
+
 
 models = {
     'baseline': Net,
@@ -14,5 +16,6 @@ models = {
     'word_bias': WordBiasNet,
     'bias': AnnotatorBiasNet, 
     'embedding': AnnotatorEmbeddingNet, 
-    'word_embedding': AnnotatorWordEmbeddingNet
+    'word_embedding': AnnotatorWordEmbeddingNet,
+    'hubi_med' : HuBiMedium
 }
