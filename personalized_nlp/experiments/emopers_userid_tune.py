@@ -13,7 +13,6 @@ from personalized_nlp.datasets.emotions_perspective.emotions_perspectives import
 
 from torch.optim import AdamW
 from transformers import get_scheduler
-from argparse import Namespace
 
 def seed_everything():
     torch.manual_seed(0)
@@ -40,9 +39,9 @@ if __name__ == "__main__":
     
     batch_size = 16
     dp_embs = [0.25]
-    embedding_dims = [50]
-    epochs = 25
-    lr_rate = 0.001
+    embedding_dims = [10]
+    epochs = 5
+    lr_rate = 0.002
     
     use_cuda = True
 
@@ -99,20 +98,6 @@ if __name__ == "__main__":
                 bias_vector_length=len(data_module.class_dims)
             )
             
-            # Save the params for the model
-            model_hparams = {
-                'output_dim':output_dim,
-                'text_embedding_dim':text_embedding_dim,
-                'word_num':data_module.words_number,
-                'annotator_num':data_module.annotators_number,
-                'dp':0.0,
-                'dp_emb':dp_emb,
-                'embedding_dim':embedding_dim,
-                'hidden_dim':100,
-                'bias_vector_length':len(data_module.class_dims)
-            }
-            namespace = Namespace(**model_hparams)
-            
             # Freeze weights for initial training
             for param in model.model.parameters():
                 param.requires_grad = False
@@ -154,11 +139,12 @@ if __name__ == "__main__":
                 param.requires_grad = True
 
             # Lower the learning rate to prevent destruction of pre-trained weights
-            optimizer = AdamW(model.parameters(), lr=5e-5)
+            optimizer = AdamW(model.parameters(), lr=0.0005)
             num_training_steps = epochs * 250
             lr_scheduler = get_scheduler(
                 name="linear", optimizer=optimizer, num_warmup_steps=0, num_training_steps=num_training_steps
             )
+            w_decay=0.001
 
             # train to fine-tune and run the test
             train_test(
@@ -174,7 +160,8 @@ if __name__ == "__main__":
                 checkpoint_path=checkpoint_path,
                 optimizer=optimizer,
                 max_steps=num_training_steps,
-                lr_scheduler_type=lr_scheduler
+                lr_scheduler_type=lr_scheduler,
+                weight_decay=w_decay,
             )
             
             logger.experiment.finish()

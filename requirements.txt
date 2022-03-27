@@ -2,7 +2,6 @@ aiohttp==3.8.1
 aiohttp-retry==2.4.6
 aiosignal==1.2.0
 appdirs==1.4.4
-argparse==1.4.0
 async-timeout==4.0.1
 atpublic==2.3
 attrs==21.2.0

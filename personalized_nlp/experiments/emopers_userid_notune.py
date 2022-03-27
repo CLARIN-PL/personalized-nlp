@@ -26,19 +26,19 @@ if __name__ == "__main__":
     datamodule_cls = EmotionsPerspectiveDataModule
     embedding_types = ['roberta']
     model_types = ['userid']
-    wandb_project_name = 'nlpersTed'
+    wandb_project_name = 'nlpersTedNew'
     limit_past_annotations_list = [None] # range(20)
     fold_nums = 10
     min_annotations_per_text = 2
     
-    min_word_counts = [50]
+    min_word_counts = [5]
     words_per_texts = [128]
     
     batch_size = 16
     dp_embs = [0.25]
     embedding_dims = [10]
-    epochs = 2
-    lr_rate = 0.1
+    epochs = 5
+    lr_rate = 0.002
     
     use_cuda = True
 
