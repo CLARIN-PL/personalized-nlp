@@ -5,18 +5,11 @@ import torch
 import random
 import numpy as np
 from itertools import product
-from personalized_nlp.learning.train_alt import train_test
+from personalized_nlp.learning.train_alt import get_directory_path, train_test
 from personalized_nlp.models import models as models_dict
 from personalized_nlp.settings import LOGS_DIR
 from pytorch_lightning import loggers as pl_loggers
 from personalized_nlp.datasets.emotions_perspective.emotions_perspectives import EmotionsPerspectiveDataModule
-
-from copy import copy
-import pytorch_lightning as pl
-from pytorch_lightning.callbacks import ModelCheckpoint
-from personalized_nlp.learning.classifier import Classifier
-from personalized_nlp.learning.regressor import Regressor
-from personalized_nlp.settings import CHECKPOINTS_DIR
 
 from torch.optim import AdamW
 from transformers import get_scheduler, TrainingArguments
@@ -46,7 +39,7 @@ if __name__ == "__main__":
     
     batch_size = 16
     dp_embs = [0.25]
-    embedding_dims = [100]
+    embedding_dims = [50]
     epochs = 25
     lr_rate = 0.001
     
@@ -105,11 +98,33 @@ if __name__ == "__main__":
                 bias_vector_length=len(data_module.class_dims)
             )
             
+            # Freeze weights for initial training
+            for param in model.model.parameters():
+                param.requires_grad = False
+            
+            # Get checkpoint directory
+            checkpoint_path = get_directory_path(logger)
+            
+            # Initial training
+            train_test(
+                data_module,
+                model,
+                epochs=epochs,
+                lr=lr_rate,
+                regression=regression,
+                use_cuda=use_cuda,
+                logger=logger,
+                test_fold=fold_num,
+                flag_run_test=False,
+                checkpoint_path=checkpoint_path,
+            )
+
             # Unfreeze weights to enable fine-tuning
             for param in model.model.parameters():
                 param.requires_grad = True
 
             # Lower the learning rate to prevent destruction of pre-trained weights
+            model = model.load_from_checkpoint(checkpoint_path)
             optimizer = AdamW(model.parameters(), lr=5e-5)
             num_training_steps = epochs * 250
             lr_scheduler = get_scheduler(
@@ -127,7 +142,7 @@ if __name__ == "__main__":
                 logger=logger,
                 test_fold=fold_num,
                 flag_run_test=True,
-                output_dir='../results',
+                checkpoint_path=checkpoint_path,
                 optimizer=optimizer,
                 max_steps=num_training_steps,
                 lr_scheduler_type=lr_scheduler

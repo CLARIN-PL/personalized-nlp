@@ -10,9 +10,17 @@ from personalized_nlp.learning.regressor import Regressor
 from personalized_nlp.settings import LOGS_DIR, CHECKPOINTS_DIR
 
 
+def get_directory_path(logger=None):
+    if logger is None:
+        logger = pl_loggers.WandbLogger(save_dir=LOGS_DIR, log_model=log_model)
+
+    checkpoint_dir = CHECKPOINTS_DIR / logger.experiment.name
+    return checkpoint_dir
+
 def train_test(datamodule, model, epochs=6, lr=1e-2, regression=False,
                use_cuda=False, test_fold=None, logger=None, log_model=False,
-               custom_callbacks=None, flag_run_test=True, trainer_kwargs=None, **kwargs):
+               custom_callbacks=None, flag_run_test=True, checkpoint_path='',
+               trainer_kwargs=None, **kwargs):
     """ Train model and return predictions for test dataset"""
     train_loader = datamodule.train_dataloader(test_fold=test_fold)
     val_loader = datamodule.val_dataloader(test_fold=test_fold)
@@ -34,10 +42,11 @@ def train_test(datamodule, model, epochs=6, lr=1e-2, regression=False,
         model = Classifier(model=model, lr=lr, class_dims=class_dims,
                            class_names=class_names)
 
-    if logger is None:
-        logger = pl_loggers.WandbLogger(save_dir=LOGS_DIR, log_model=log_model)
-
-    checkpoint_dir = CHECKPOINTS_DIR / logger.experiment.name
+    if checkpoint_path == '' :
+        checkpoint_dir = get_directory_path(logger)
+    else :
+        checkpoint_dir = checkpoint_path
+        
     if custom_callbacks is not None:
         callbacks = copy(custom_callbacks)
     else:
