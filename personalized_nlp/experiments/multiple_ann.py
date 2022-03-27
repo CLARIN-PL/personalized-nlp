@@ -26,7 +26,7 @@ if __name__ == "__main__":
     regression = True
     datamodule_cls = EmotionsPerspectiveDataModule
     embedding_types = ['roberta']
-    model_types = ['baselines']
+    model_types = ['baseline']
     wandb_project_name = 'emotions_perspective_baseline_multiple_annotator'
     limit_past_annotations_list = [None] # range(20)
     fold_nums = 10
