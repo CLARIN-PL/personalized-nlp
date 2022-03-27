@@ -137,10 +137,6 @@ if __name__ == "__main__":
             # Save state dict
             torch.save(model.state_dict(), checkpoint_path / 'state_dict')
 
-            # Unfreeze weights to enable fine-tuning
-            for param in model.model.parameters():
-                param.requires_grad = True
-
             # Load model from checkpoint
             model = model.load_from_checkpoint(checkpoint_path,
                 output_dim=output_dim,
@@ -152,7 +148,11 @@ if __name__ == "__main__":
                 embedding_dim=embedding_dim,
                 hidden_dim=100,
                 bias_vector_length=len(data_module.class_dims))
-            
+
+            # Unfreeze weights to enable fine-tuning
+            for param in model.model.parameters():
+                param.requires_grad = True
+
             # Lower the learning rate to prevent destruction of pre-trained weights
             optimizer = AdamW(model.parameters(), lr=5e-5)
             num_training_steps = epochs * 250
