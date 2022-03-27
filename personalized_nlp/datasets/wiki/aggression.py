@@ -2,18 +2,21 @@ from personalized_nlp.datasets.wiki.base import WikiDataModule
 from personalized_nlp.settings import PROJECT_DIR, STORAGE_DIR, AGGRESSION_URL
 
 from typing import List
+from pathlib import Path
 
 
 class AggressionDataModule(WikiDataModule):
-    def __init__(
-            self,
-            **kwargs,
-    ):
-        super().__init__(**kwargs)
+    @property
+    def class_dims(self) -> List[int]:
+        return [2]
 
-        self.data_path = self.data_dir / 'aggression_annotations.tsv'
-        self.data_url = AGGRESSION_URL
+    @property
+    def annotation_columns(self) -> List[str]:
+        return ["aggression"]
 
-        self.annotation_column = 'aggression'
-        self.embeddings_path = STORAGE_DIR / \
-            f'wiki_data/embeddings/rev_id_to_emb_{self.embeddings_type}_aggression.p'
+    @property
+    def embeddings_path(self) -> Path:
+        return (
+            STORAGE_DIR
+            / f"wiki_data/embeddings/rev_id_to_emb_{self.embeddings_type}_aggression.p"
+        )
