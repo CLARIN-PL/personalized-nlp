@@ -1,5 +1,4 @@
 import abc
-from optparse import Option
 import os
 import pickle
 from pathlib import Path
@@ -89,6 +88,7 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         normalize: bool = False,
         past_annotations_limit: Optional[int] = None,
         stratify_folds_by: Optional[str] = "texts",
+        split_sizes: Optional[List[str]] = None,
         **kwargs
     ):
         """_summary_
@@ -119,13 +119,17 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         self.past_annotations_limit = past_annotations_limit
         self.stratify_folds_by = stratify_folds_by
 
+        self.split_sizes = (
+            split_sizes if split_sizes is not None else [0.55, 0.15, 0.15, 0.15]
+        )
+
         self.annotations = pd.DataFrame([])
         self.data = pd.DataFrame([])
 
         self._current_stats_fold: Optional[int] = None
 
     def _create_embeddings(self, use_cuda: Optional[bool] = None) -> None:
-        texts = self.data["text"]
+        texts = self.data["text"].tolist()
         embeddings_path = self.embeddings_path
 
         if self.embeddings_type in TRANSFORMER_MODEL_STRINGS:
@@ -159,6 +163,7 @@ class BaseDataModule(LightningDataModule, abc.ABC):
                 data[data.split.isin(train_split_names)].text_id.values
             )
             annotations = annotations.loc[train_split_mask]
+
         if fold_nums is not None:
             annotations = annotations.loc[annotations.fold.isin(fold_nums)].copy()
 
@@ -182,6 +187,9 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         annotations = self.annotations
 
         if self.stratify_folds_by != "texts":
+            """Fixed text split - we can precompute annotator biases and
+            limit past annotations.
+            """
             self._assign_splits()
             personal_df = self.annotations_with_data.loc[
                 self.annotations_with_data.split == "past"
@@ -196,7 +204,8 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         if self.major_voting:
             self.compute_major_votes()
 
-        self._normalize_labels()
+        if self.normalize:
+            self._normalize_labels()
 
         self._assign_folds()
 
@@ -269,6 +278,8 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         )
 
     def _recompute_stats_for_fold(self, test_fold):
+        """Recalculate annotator biases and words stats for
+        given text test fold"""
         if self.stratify_folds_by != "texts":
             return
 
@@ -304,9 +315,7 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         annotations = self.annotations
         data = self.data
 
-        if test_fold is not None:
-            self._recompute_stats_for_fold(test_fold)
-
+        if test_fold is not None and self.stratify_folds_by is not None:
             val_fold = (test_fold + 1) % self.folds_num
             # all annotations from train folds
             annotations = annotations.loc[~annotations.fold.isin([test_fold, val_fold])]
@@ -321,6 +330,8 @@ class BaseDataModule(LightningDataModule, abc.ABC):
                 personal_df = personal_df[personal_df.fold.isin([test_fold, val_fold])]
 
                 annotations = pd.concat([annotations, personal_df])
+            else:
+                self._recompute_stats_for_fold(test_fold)
 
         train_X, train_y = self._get_data_by_split(annotations, self.train_split_names)
         text_features = self._get_text_features()
@@ -346,7 +357,7 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         """
         annotations = self.annotations
 
-        if test_fold is not None:
+        if test_fold is not None and self.stratify_folds_by is not None:
             val_fold = (test_fold + 1) % self.folds_num
             annotations = annotations[annotations.fold.isin([val_fold])]
 
@@ -374,7 +385,7 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         """
         annotations = self.annotations
 
-        if test_fold is not None:
+        if test_fold is not None and self.stratify_folds_by is not None:
             annotations = annotations[annotations.fold.isin([test_fold])]
 
         test_X, test_y = self._get_data_by_split(annotations, self.test_split_names)
@@ -474,9 +485,12 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         """
         data = self.data
 
-        df = annotations.loc[
-            annotations.text_id.isin(data[data.split.isin(splits)].text_id.values)
-        ]
+        df = annotations
+        if self.stratify_folds_by != "texts":
+            df = annotations.loc[
+                annotations.text_id.isin(data[data.split.isin(splits)].text_id.values)
+            ]
+
         X = df.loc[:, ["text_id", "annotator_id"]]
         y = df[self.annotation_columns]
 
