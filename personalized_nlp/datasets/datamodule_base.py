@@ -87,7 +87,7 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         folds_num: int = 10,
         normalize: bool = False,
         past_annotations_limit: Optional[int] = None,
-        stratify_folds_by: Optional[str] = "texts",
+        stratify_folds_by: Optional[str] = "users",
         split_sizes: Optional[List[str]] = None,
         **kwargs
     ):
@@ -299,6 +299,8 @@ class BaseDataModule(LightningDataModule, abc.ABC):
             ~train_annotations.fold.isin([val_fold, test_fold])
         ]
         self.compute_annotator_biases(train_annotations)
+
+        self._current_stats_fold = test_fold
 
     def train_dataloader(
         self, test_fold: int = None, shuffle: bool = True
