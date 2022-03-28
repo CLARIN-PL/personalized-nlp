@@ -2,6 +2,7 @@ from typing import List
 
 import pandas as pd
 import os
+from pathlib import Path
 
 from personalized_nlp.settings import STORAGE_DIR
 from personalized_nlp.utils.data_splitting import split_texts
@@ -19,7 +20,7 @@ class HumorDataModule(BaseDataModule):
 
     @property
     def class_dims(self):
-        return [2]
+        return [6]
 
     def __init__(
         self,
