@@ -70,7 +70,7 @@ class Regressor(pl.LightningModule):
         self.log_all_metrics(output=output, y=y, split='test',
                              on_step=False, on_epoch=True)
 
-        return {"loss": loss, 'output': output, 'y': y}
+        return {"loss": loss, 'output': output, 'y': y, 'x': x, 'y_pred': output, 'is_regression': True, 'class_names': self.class_names}
 
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(self.parameters(), lr=self.lr)

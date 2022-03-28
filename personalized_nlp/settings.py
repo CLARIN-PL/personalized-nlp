@@ -4,6 +4,7 @@ PROJECT_DIR = Path(__file__).parent.resolve()
 STORAGE_DIR = PROJECT_DIR / 'storage'
 LOGS_DIR = STORAGE_DIR / 'logs'
 CHECKPOINTS_DIR = STORAGE_DIR / 'checkpoints'
+OUTPUTS_DIR_NAME = 'outputs'
 
 EMOTIONS_DATA = STORAGE_DIR / 'emotions_data'
 EMOTIONS_SIMPLE_DATA = STORAGE_DIR / 'emotions_simple_data'
