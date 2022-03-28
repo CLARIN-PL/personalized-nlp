@@ -14,15 +14,13 @@ os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 os.environ["WANDB_START_METHOD"] = "thread"
 
 if __name__ == "__main__":
-    wandb_project_name = 'hubimed_finetune_wdc'
-
-    regression = True
+    wandb_project_name = 'hubimed_cls_finetune'
+    regression = False
     datamodule_cls = EmotionsPerspectiveDataModule
     embedding_types = ['roberta']
     model_types = ['hubi_med']
-    limit_past_annotations_list = [None] 
     fold_nums = 10
-    
+
     min_word_counts = [50]
     words_per_texts = [15]
     
@@ -31,21 +29,16 @@ if __name__ == "__main__":
     embedding_dims = [50]
     epochs = 20
     lr_rate = 3e-5
-    weight_decay = 1e-6
-    nr_frozen_epochs = 5
 
-    user_folding = True
     use_cuda = True
+    user_folding = True
 
-    for (min_word_count, words_per_text, embeddings_type, limit_past_annotations) in product(
-        min_word_counts, words_per_texts, embedding_types, limit_past_annotations_list
-    ):
+    for (min_word_count, words_per_text, embeddings_type) in product(
+        min_word_counts, words_per_texts, embedding_types):
 
         seed_everything()
         data_module = datamodule_cls(
-            embeddings_type=embeddings_type, normalize=regression, batch_size=batch_size,
-            past_annotations_limit=limit_past_annotations
-        )
+            embeddings_type=embeddings_type, normalize=regression, batch_size=batch_size, regression=regression)
         data_module.prepare_data()
         data_module.setup()
         data_module.compute_word_stats(
@@ -66,9 +59,7 @@ if __name__ == "__main__":
                 "regression": regression,
                 "words_per_texts": words_per_text,
                 "min_word_count": min_word_count,
-                "dp_emb": dp_emb,
-                "weight_decay": weight_decay,
-                'nr_frozen_epochs': nr_frozen_epochs
+                "dp_emb": dp_emb
             }
 
             logger = pl_loggers.WandbLogger(
@@ -92,7 +83,6 @@ if __name__ == "__main__":
                 embedding_dim=embedding_dim,
                 hidden_dim=100,
                 bias_vector_length=len(data_module.class_dims),
-                nr_frozen_epochs=nr_frozen_epochs,
                 embedding_type=embeddings_type
             )
 
@@ -102,7 +92,6 @@ if __name__ == "__main__":
                 model,
                 epochs=epochs,
                 lr=lr_rate,
-                weight_decay=weight_decay,
                 regression=regression,
                 use_cuda=use_cuda,
                 logger=logger,
@@ -110,4 +99,3 @@ if __name__ == "__main__":
             )
 
             logger.experiment.finish()
-            
