@@ -1,4 +1,3 @@
-from imp import is_frozen
 import os
 import torch
 import random
