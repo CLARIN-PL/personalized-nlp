@@ -20,6 +20,7 @@ def train_test(datamodule,
                logger=None,
                log_model=False,
                custom_callbacks=None,
+               is_frozen=False,
                trainer_kwargs=None,
                **kwargs):
     """ Train model and return predictions for test dataset"""
@@ -32,7 +33,10 @@ def train_test(datamodule,
         if isinstance(datamodule.annotation_column, str):
             class_names = [datamodule.annotation_column]
 
-        model = Regressor(model=model, lr=lr, class_names=class_names)
+        model = Regressor(model=model,
+                          lr=lr,
+                          class_names=class_names,
+                          is_frozen=is_frozen)
 
     else:
         class_dims = datamodule.class_dims
@@ -43,7 +47,8 @@ def train_test(datamodule,
         model = Classifier(model=model,
                            lr=lr,
                            class_dims=class_dims,
-                           class_names=class_names)
+                           class_names=class_names,
+                           is_frozen=is_frozen)
 
     if logger is None:
         logger = pl_loggers.WandbLogger(save_dir=LOGS_DIR, log_model=log_model)

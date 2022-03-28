@@ -28,10 +28,3 @@ class NetTuned(nn.Module):
             for name, param in self.named_parameters():
                 param.requires_grad = True
         self.is_frozen = False
-
-    def on_epoch_start(self):
-        if self.current_epoch < self.hparams.frozen_epochs:
-            self.freeze()
-
-        if self.current_epoch >= self.hparams.frozen_epochs:
-            self.unfreeze()
