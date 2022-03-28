@@ -101,5 +101,3 @@ class HuBiMedium(nn.Module):
 
         if self.current_epoch >= self.hparams.nr_frozen_epochs:
             self.unfreeze()
-
-    

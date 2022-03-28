@@ -8,7 +8,6 @@ from personalized_nlp.settings import LOGS_DIR
 from personalized_nlp.datasets.emotions_perspective.emotions_perspectives import EmotionsPerspectiveDataModule
 from personalized_nlp.utils import seed_everything
 from pytorch_lightning import loggers as pl_loggers
-from personalized_nlp.utils.callbacks.transformer_lr_scheduler import TransformerLrScheduler
 
 torch.cuda.empty_cache()
 os.environ["CUDA_VISIBLE_DEVICES"] = "1"
@@ -21,7 +20,7 @@ if __name__ == "__main__":
     datamodule_cls = EmotionsPerspectiveDataModule
     embedding_types = ['roberta']
     model_types = ['hubi_med']
-    limit_past_annotations_list = [None] # range(20)
+    limit_past_annotations_list = [None] 
     fold_nums = 2
     
     min_word_counts = [50]
@@ -31,9 +30,11 @@ if __name__ == "__main__":
     dp_embs = [0.25]
     embedding_dims = [50]
     epochs = 20
-    lr_rate = 0.008
-    user_folding = True
+    lr_rate = 1e-5
+    weight_decay = 1e-6
     nr_frozen_epochs = 5
+
+    user_folding = True
     use_cuda = True
 
     for (min_word_count, words_per_text, embeddings_type, limit_past_annotations) in product(
@@ -66,6 +67,7 @@ if __name__ == "__main__":
                 "words_per_texts": words_per_text,
                 "min_word_count": min_word_count,
                 "dp_emb": dp_emb,
+                "weight_decay": weight_decay,
                 'nr_frozen_epochs': nr_frozen_epochs
             }
 
@@ -100,6 +102,7 @@ if __name__ == "__main__":
                 model,
                 epochs=epochs,
                 lr=lr_rate,
+                weight_decay=weight_decay,
                 regression=regression,
                 use_cuda=use_cuda,
                 logger=logger,
@@ -107,3 +110,4 @@ if __name__ == "__main__":
             )
 
             logger.experiment.finish()
+            
