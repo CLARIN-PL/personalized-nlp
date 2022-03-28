@@ -1,3 +1,4 @@
+from imp import is_frozen
 import os
 import torch
 import random
@@ -9,7 +10,6 @@ from personalized_nlp.models import models as models_dict
 from personalized_nlp.settings import LOGS_DIR
 from pytorch_lightning import loggers as pl_loggers
 from personalized_nlp.datasets.emotions_perspective.emotions_perspectives import EmotionsPerspectiveDataModule
-from transformers import TrainingArguments, Trainer
 
 
 def seed_everything():
@@ -27,8 +27,8 @@ if __name__ == "__main__":
     regression = True
     datamodule_cls = EmotionsPerspectiveDataModule
     embedding_types = ['roberta']
-    model_types = ['baseline']
-    wandb_project_name = 'emotions_perspective_baseline_single_annotator'
+    model_types = ['baseline_tuned']
+    wandb_project_name = 'emotions_perspective_baseline_multiple_annotator_tuned'
     limit_past_annotations_list = [None]  # range(20)
     fold_nums = 10
     min_annotations_per_text = 2
@@ -55,8 +55,9 @@ if __name__ == "__main__":
             embeddings_type=embeddings_type,
             normalize=regression,
             batch_size=batch_size,
-            is_averaged=False,
+            is_averaged=True,
             past_annotations_limit=limit_past_annotations)
+
         data_module.prepare_data()
         data_module.setup()
         data_module.compute_word_stats(
@@ -101,19 +102,26 @@ if __name__ == "__main__":
                               hidden_dim=100,
                               bias_vector_length=len(data_module.class_dims))
 
-            train_test(
-                data_module,
-                model,
-                epochs=epochs,
-                lr=lr_rate,
-                regression=regression,
-                use_cuda=use_cuda,
-                logger=logger,
-                test_fold=fold_num,
-                output_dir="./results",
-                per_device_train_batch_size=batch_size,
-                per_device_eval_batch_size=batch_size,
-                evaluation_strategy=eval_strat,
-            )
+            for epoch in range(0, epochs):
+                is_frozen = False
+                if (epoch > 10):
+                    is_frozen = True
+
+                train_test(
+                    data_module,
+                    model,
+                    epochs=epochs,
+                    lr=lr_rate,
+                    regression=regression,
+                    use_cuda=use_cuda,
+                    hparams=hparams,
+                    logger=logger,
+                    test_fold=fold_num,
+                    output_dir="./results",
+                    is_frozen=is_frozen,
+                    per_device_train_batch_size=batch_size,
+                    per_device_eval_batch_size=batch_size,
+                    evaluation_strategy=eval_strat,
+                )
 
             logger.experiment.finish()

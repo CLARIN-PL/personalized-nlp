@@ -1,4 +1,3 @@
-
 import os
 import torch
 import random
@@ -12,10 +11,12 @@ from pytorch_lightning import loggers as pl_loggers
 from personalized_nlp.datasets.emotions_perspective.emotions_perspectives import EmotionsPerspectiveDataModule
 from transformers import TrainingArguments, Trainer
 
+
 def seed_everything():
     torch.manual_seed(0)
     random.seed(0)
     np.random.seed(0)
+
 
 torch.cuda.empty_cache()
 
@@ -28,32 +29,34 @@ if __name__ == "__main__":
     embedding_types = ['roberta']
     model_types = ['baseline']
     wandb_project_name = 'emotions_perspective_baseline_multiple_annotator'
-    limit_past_annotations_list = [None] # range(20)
+    limit_past_annotations_list = [None]  # range(20)
     fold_nums = 10
     min_annotations_per_text = 2
-    
+
     min_word_counts = [50]
     words_per_texts = [128]
-    
+
     batch_size = 16
     dp_embs = [0.25]
     embedding_dims = [50]
-    epochs = 2
-    lr_rate = 0.1
-    eval_strat = "epoch";
-    
+    epochs = 20
+    lr_rate = 1e-5
+    eval_strat = "epoch"
+
     use_cuda = True
 
-    for (min_word_count, words_per_text, embeddings_type, limit_past_annotations) in product(
-        min_word_counts, words_per_texts, embedding_types, limit_past_annotations_list
-    ):
+    for (min_word_count, words_per_text, embeddings_type,
+         limit_past_annotations) in product(min_word_counts, words_per_texts,
+                                            embedding_types,
+                                            limit_past_annotations_list):
 
         seed_everything()
-        data_module = datamodule_cls(embeddings_type=embeddings_type, 
-                                     normalize=regression,
-                                     batch_size=batch_size, 
-                                     is_averaged=True,
-                                     past_annotations_limit=limit_past_annotations)
+        data_module = datamodule_cls(
+            embeddings_type=embeddings_type,
+            normalize=regression,
+            batch_size=batch_size,
+            is_averaged=True,
+            past_annotations_limit=limit_past_annotations)
         data_module.prepare_data()
         data_module.setup()
         data_module.compute_word_stats(
@@ -63,8 +66,8 @@ if __name__ == "__main__":
         )
 
         for model_type, embedding_dim, dp_emb, fold_num in product(
-            model_types, embedding_dims, dp_embs, range(fold_nums)
-        ):
+                model_types, embedding_dims, dp_embs, range(fold_nums)):
+
             hparams = {
                 "dataset": type(data_module).__name__,
                 "model_type": model_type,
@@ -84,21 +87,20 @@ if __name__ == "__main__":
                 log_model=False,
             )
 
-            output_dim = len(data_module.class_dims) if regression else sum(data_module.class_dims)
+            output_dim = len(data_module.class_dims) if regression else sum(
+                data_module.class_dims)
             text_embedding_dim = data_module.text_embedding_dim
             model_cls = models_dict[model_type]
-            
-            model = model_cls(
-                output_dim=output_dim,
-                text_embedding_dim=text_embedding_dim,
-                word_num=data_module.words_number,
-                annotator_num=data_module.annotators_number,
-                dp=0.0,
-                dp_emb=dp_emb,
-                embedding_dim=embedding_dim,
-                hidden_dim=100,
-                bias_vector_length=len(data_module.class_dims)
-            )
+
+            model = model_cls(output_dim=output_dim,
+                              text_embedding_dim=text_embedding_dim,
+                              word_num=data_module.words_number,
+                              annotator_num=data_module.annotators_number,
+                              dp=0.0,
+                              dp_emb=dp_emb,
+                              embedding_dim=embedding_dim,
+                              hidden_dim=100,
+                              bias_vector_length=len(data_module.class_dims))
 
             train_test(
                 data_module,

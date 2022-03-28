@@ -1,4 +1,5 @@
 from copy import copy
+import shutil
 
 import pytorch_lightning as pl
 import torch
@@ -10,9 +11,19 @@ from personalized_nlp.learning.regressor import Regressor
 from personalized_nlp.settings import LOGS_DIR, CHECKPOINTS_DIR
 
 
-def train_test(datamodule, model, epochs=6, lr=1e-2, regression=False,
-               use_cuda=False, test_fold=None, logger=None, log_model=False,
-               custom_callbacks=None, trainer_kwargs=None, **kwargs):
+def train_test(datamodule,
+               model,
+               epochs=6,
+               lr=1e-2,
+               regression=False,
+               use_cuda=False,
+               test_fold=None,
+               logger=None,
+               log_model=False,
+               custom_callbacks=None,
+               trainer_kwargs=None,
+               is_frozen=False,
+               **kwargs):
     """ Train model and return predictions for test dataset"""
     train_loader = datamodule.train_dataloader(test_fold=test_fold)
     val_loader = datamodule.val_dataloader(test_fold=test_fold)
@@ -23,15 +34,20 @@ def train_test(datamodule, model, epochs=6, lr=1e-2, regression=False,
         if isinstance(datamodule.annotation_column, str):
             class_names = [datamodule.annotation_column]
 
-        model = Regressor(model=model, lr=lr,
-                          class_names=class_names)
+        model = Regressor(model=model,
+                          lr=lr,
+                          class_names=class_names,
+                          is_frozen=is_frozen)
+
     else:
         class_dims = datamodule.class_dims
         class_names = datamodule.annotation_column
         if isinstance(datamodule.annotation_column, str):
             class_names = [datamodule.annotation_column]
 
-        model = Classifier(model=model, lr=lr, class_dims=class_dims,
+        model = Classifier(model=model,
+                           lr=lr,
+                           class_dims=class_dims,
                            class_names=class_names)
 
     if logger is None:
@@ -43,15 +59,15 @@ def train_test(datamodule, model, epochs=6, lr=1e-2, regression=False,
     else:
         callbacks = []
 
-    if not any(isinstance(callback, ModelCheckpoint) for callback in callbacks):
+    if not any(
+            isinstance(callback, ModelCheckpoint) for callback in callbacks):
         callbacks.append(
             ModelCheckpoint(
                 dirpath=checkpoint_dir,
                 save_top_k=1,
                 monitor='valid_loss',
                 mode='min',
-            )
-        )
+            ))
 
     _use_cuda = use_cuda and torch.cuda.is_available()
 
@@ -65,5 +81,12 @@ def train_test(datamodule, model, epochs=6, lr=1e-2, regression=False,
         callbacks=callbacks,
         **trainer_kwargs,
     )
+
     trainer.fit(model, train_loader, val_loader)
     trainer.test(test_dataloaders=test_loader)
+
+
+def save_checkpoint(state, is_best, filename='checkpoint.pth.tar'):
+    torch.save(state, filename)
+    if is_best:
+        shutil.copyfile(filename, 'model_best.pth.tar')
