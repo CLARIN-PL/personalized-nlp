@@ -1,5 +1,4 @@
 from copy import copy
-import shutil
 
 import pytorch_lightning as pl
 import torch
@@ -22,7 +21,6 @@ def train_test(datamodule,
                log_model=False,
                custom_callbacks=None,
                trainer_kwargs=None,
-               is_frozen=False,
                **kwargs):
     """ Train model and return predictions for test dataset"""
     train_loader = datamodule.train_dataloader(test_fold=test_fold)
@@ -34,10 +32,7 @@ def train_test(datamodule,
         if isinstance(datamodule.annotation_column, str):
             class_names = [datamodule.annotation_column]
 
-        model = Regressor(model=model,
-                          lr=lr,
-                          class_names=class_names,
-                          is_frozen=is_frozen)
+        model = Regressor(model=model, lr=lr, class_names=class_names)
 
     else:
         class_dims = datamodule.class_dims
@@ -84,9 +79,3 @@ def train_test(datamodule,
 
     trainer.fit(model, train_loader, val_loader)
     trainer.test(test_dataloaders=test_loader)
-
-
-def save_checkpoint(state, is_best, filename='checkpoint.pth.tar'):
-    torch.save(state, filename)
-    if is_best:
-        shutil.copyfile(filename, 'model_best.pth.tar')

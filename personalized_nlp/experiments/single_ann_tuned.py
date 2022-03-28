@@ -1,4 +1,3 @@
-from imp import is_frozen
 import os
 import torch
 import random
@@ -122,9 +121,5 @@ if __name__ == "__main__":
                     per_device_eval_batch_size=batch_size,
                     evaluation_strategy=eval_strat,
                 )
-
-            # get model score
-            # compare
-            # save
 
             logger.experiment.finish()

@@ -15,7 +15,7 @@ class Regressor(pl.LightningModule):
         self.class_names = class_names
         self.is_frozen = is_frozen
 
-        self.metric_types = [' ']
+        self.metric_types = ['r2']
 
         class_metrics = {}
 
