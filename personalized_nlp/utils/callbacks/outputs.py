@@ -28,7 +28,7 @@ class AbstractSaveOutputsCallback(Callback):
     def on_test_batch_end(self, trainer, pl_module, outputs, *args, **kwargs):
         self.outputs.append(outputs)
 
-    def _create_logits(self, is_reggression: bool, x: Sequence[Any], class_names: Sequence[str], base: str) -> Dict[str, np.ndarray]:
+    def _create_outputs(self, is_reggression: bool, x: Sequence[Any], class_names: Sequence[str], base: str) -> Dict[str, np.ndarray]:
         if is_reggression:
             assert len(class_names) == x.shape[1], f'Save output callbacks can only accept reggression, if len(class names) == output shape, but got len(class names) = {len(class_names)} and output shape = {x.shape[1]}'
             out_dict = {
@@ -36,9 +36,18 @@ class AbstractSaveOutputsCallback(Callback):
             }
             return out_dict
         else:
-            out_dict = {
-                f'{base}_{i}': x[:, i].cpu().reshape(-1).numpy() for i in range(x.shape[1])
-            }
+            if len(class_names) == 1 and x.shape[1] == 2:
+                out_dict = {
+                    f'{base}_{class_names[0]}_{i}': x[:, i].cpu().reshape(-1).numpy() for i in range(x.shape[1])
+                }
+            elif len(class_names) == x.shape[1]:
+                out_dict = {
+                    f'{base}_{class_name}': x[:, i].cpu().reshape(-1).numpy() for i, class_name in enumerate(class_names)
+                }
+            else:
+                out_dict = {
+                    f'{base}_{i}': x[:, i].cpu().reshape(-1).numpy() for i in range(x.shape[1])
+                }
             return out_dict
 
 
@@ -54,13 +63,13 @@ class AbstractSaveOutputsCallback(Callback):
             is_reggression = suboutput['is_regression']
             class_names = suboutput['class_names']
 
-            y_pred_dict = self._create_logits(
+            y_pred_dict = self._create_outputs(
                 is_reggression=is_reggression,
                 x=y_pred,
                 class_names=class_names,
                 base='y_pred'
             )
-            y_true_dict = self._create_logits(
+            y_true_dict = self._create_outputs(
                 is_reggression=is_reggression,
                 x=y_true,
                 class_names=class_names,
@@ -101,6 +110,17 @@ class SaveOutputsWandb(AbstractSaveOutputsCallback):
 class SaveOutputsLocal(AbstractSaveOutputsCallback):
     
     def __init__(self, save_dir: str, save_text: bool = True, **kwargs) -> None:
+        """Callback for loging outputs in local dir. Outputs in .csv file will be saved in $GLOBAL_OUTPUT_PATH/{save_dir},
+        and will be named: $TIME_{kwargs.key[0]}={kwargs.value[0]}_{kwargs.key[1]}={kwargs.value[1]}_..._{kwargs.key[N-1]}={kwargs.value[N-1]}
+        
+        For example:
+        `SaveOutputsLocal('mysave_dir', experiment='myexperiment', fold_num=0)`
+        will yield this file:
+        $GLOBAL_OUTPUT_PATH/mysave_dir/$TIME_experiment=myexperiment_fold_num=0.csv
+        Args:
+            save_dir (str): _description_
+            save_text (bool, optional): Whether to save texts or not. Defaults to True.
+        """
         super(SaveOutputsLocal, self).__init__(save_text)
         self.save_dir = os.path.join(
             STORAGE_DIR,
