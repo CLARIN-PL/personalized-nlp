@@ -24,7 +24,7 @@ def train_test(datamodule, model, epochs=6, lr=1e-2, weight_decay=0.0, regressio
         if isinstance(datamodule.annotation_column, str):
             class_names = [datamodule.annotation_column]
 
-        if not model._frozen and weight_decay!=0.0:
+        if weight_decay!=0.0:
           model = RegressorFinetune(model=model, lr=lr, class_names=class_names)
 
         model = Regressor(model=model, lr=lr,
