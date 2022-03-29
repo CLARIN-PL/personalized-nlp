@@ -201,9 +201,6 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         else:
             self.annotations["split"] = "none"
 
-        if self.major_voting:
-            self.compute_major_votes()
-
         if self.normalize:
             self._normalize_labels()
 
@@ -233,6 +230,11 @@ class BaseDataModule(LightningDataModule, abc.ABC):
             a_id: idx for idx, a_id in enumerate(annotator_id_category.cat.categories)
         }
 
+        self._original_annotations = annotations.copy()
+
+        if self.major_voting:
+            self.compute_major_votes(0)
+
     def _assign_splits(self):
         self.data = split_texts(self.data, self.split_sizes)
 
@@ -245,19 +247,42 @@ class BaseDataModule(LightningDataModule, abc.ABC):
 
         maxes = df.loc[:, annotation_columns].values.max(axis=0)
         df.loc[:, annotation_columns] = df.loc[:, annotation_columns] / maxes
+
         df.loc[:, annotation_columns] = df.loc[:, annotation_columns].fillna(0)
 
-    def compute_major_votes(self) -> None:
-        """Computes mean votes for every texts and replaces
-        each annotator with dummy annotator with id = 0"""
-        annotations = self.annotations
+    def compute_major_votes(self, test_fold: int) -> None:
+        """Computes mean votes for texts in train folds.
+        Works only for 'texts' folds"""
+        annotations = self._original_annotations.copy()
+        annotation_columns = self.annotation_columns
+        val_fold = (test_fold + 1) % self.folds_num
 
+        text_id_to_fold = (
+            annotations.loc[:, ["text_id", "fold"]]
+            .drop_duplicates()
+            .set_index("text_id")
+            .to_dict()["fold"]
+        )
+
+        val_test_annotations = annotations.loc[
+            annotations.fold.isin([val_fold, test_fold])
+        ]
+        annotations = annotations.loc[~annotations.fold.isin([val_fold, test_fold])]
+
+        dfs = []
+        for col in annotation_columns:
+            dfs.append(
+                annotations.groupby("text_id")[col].apply(
+                    lambda x: pd.Series.mode(x)[0]
+                )
+            )
+
+        annotations = pd.concat(dfs, axis=1).reset_index()
         annotations["annotator_id"] = 0
-        major_votes = annotations.groupby("text_id")[self.annotation_columns].mean()
-        major_votes = major_votes.round()
+        annotations["split"] = "none"
+        annotations["fold"] = annotations["text_id"].map(text_id_to_fold)
 
-        self.annotations = major_votes.reset_index()
-        self.annotations["annotator_id"] = 0  # dummy annotator id
+        self.annotations = pd.concat([annotations, val_test_annotations])
 
     def compute_annotator_biases(self, personal_df: pd.DataFrame):
         if self.past_annotations_limit is not None:
@@ -299,6 +324,9 @@ class BaseDataModule(LightningDataModule, abc.ABC):
             ~train_annotations.fold.isin([val_fold, test_fold])
         ]
         self.compute_annotator_biases(train_annotations)
+
+        if self.major_voting:
+            self.compute_major_votes(test_fold)
 
         self._current_stats_fold = test_fold
 
@@ -417,7 +445,9 @@ class BaseDataModule(LightningDataModule, abc.ABC):
             drop_last=False,
         )
 
-        return torch.utils.data.DataLoader(dataset, sampler=sampler, batch_size=None)
+        return torch.utils.data.DataLoader(
+            dataset, sampler=sampler, batch_size=None, num_workers=16
+        )
 
     def _get_text_features(self) -> Dict[str, Any]:
         """Returns dictionary of features of all texts in the dataset.
