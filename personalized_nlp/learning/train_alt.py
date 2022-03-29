@@ -7,19 +7,13 @@ from pytorch_lightning.callbacks import ModelCheckpoint
 
 from personalized_nlp.learning.classifier import Classifier
 from personalized_nlp.learning.regressor import Regressor
+from personalized_nlp.learning.regressor_finetune import RegressorFinetune
 from personalized_nlp.settings import LOGS_DIR, CHECKPOINTS_DIR
 
 
-def get_directory_path(logger=None):
-    if logger is None:
-        logger = pl_loggers.WandbLogger(save_dir=LOGS_DIR, log_model=log_model)
-
-    checkpoint_dir = CHECKPOINTS_DIR / logger.experiment.name
-    return checkpoint_dir
-
-def train_test(datamodule, model, epochs=6, lr=1e-2, regression=False,
-               use_cuda=False, test_fold=None, logger=None, log_model=False,
-               custom_callbacks=None, flag_run_test=True, checkpoint_path='',
+def train_test(datamodule, model, epochs=6, lr=1e-2, weight_decay=0.0,
+               regression=False, use_cuda=False, test_fold=None, logger=None,
+               log_model=False, custom_callbacks=None, flag_run_test=True,
                trainer_kwargs=None, **kwargs):
     """ Train model and return predictions for test dataset"""
     train_loader = datamodule.train_dataloader(test_fold=test_fold)
@@ -30,6 +24,9 @@ def train_test(datamodule, model, epochs=6, lr=1e-2, regression=False,
         class_names = datamodule.annotation_column
         if isinstance(datamodule.annotation_column, str):
             class_names = [datamodule.annotation_column]
+        
+        if not model._frozen and weight_decay!=0.0:
+          model = RegressorFinetune(model=model, lr=lr, class_names=class_names)
 
         model = Regressor(model=model, lr=lr,
                           class_names=class_names)
@@ -42,10 +39,10 @@ def train_test(datamodule, model, epochs=6, lr=1e-2, regression=False,
         model = Classifier(model=model, lr=lr, class_dims=class_dims,
                            class_names=class_names)
 
-    if checkpoint_path == '' :
-        checkpoint_dir = get_directory_path(logger)
-    else :
-        checkpoint_dir = checkpoint_path
+    if logger is None:
+        logger = pl_loggers.WandbLogger(save_dir=LOGS_DIR, log_model=log_model)
+
+    checkpoint_dir = CHECKPOINTS_DIR / logger.experiment.name
         
     if custom_callbacks is not None:
         callbacks = copy(custom_callbacks)
@@ -79,3 +76,5 @@ def train_test(datamodule, model, epochs=6, lr=1e-2, regression=False,
     
     if flag_run_test == True:
         trainer.test(test_dataloaders=test_loader)
+    else:
+        trainer.test(test_dataloaders=train_loader)

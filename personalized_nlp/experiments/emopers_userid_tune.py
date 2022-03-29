@@ -2,22 +2,16 @@
 
 import os
 import torch
-import random
-import numpy as np
 from itertools import product
-from personalized_nlp.learning.train_alt import get_directory_path, train_test
+from personalized_nlp.learning.train_alt import train_test
 from personalized_nlp.models import models as models_dict
 from personalized_nlp.settings import LOGS_DIR
-from pytorch_lightning import loggers as pl_loggers
 from personalized_nlp.datasets.emotions_perspective.emotions_perspectives import EmotionsPerspectiveDataModule
+from personalized_nlp.utils import seed_everything
+from pytorch_lightning import loggers as pl_loggers
 
 from torch.optim import AdamW
 from transformers import get_scheduler
-
-def seed_everything():
-    torch.manual_seed(0)
-    random.seed(0)
-    np.random.seed(0)
 
 torch.cuda.empty_cache()
 
@@ -34,15 +28,18 @@ if __name__ == "__main__":
     fold_nums = 10
     min_annotations_per_text = 2
     
-    min_word_counts = [5]
-    words_per_texts = [128]
+    min_word_counts = [50]
+    words_per_texts = [15]
     
     batch_size = 16
     dp_embs = [0.25]
-    embedding_dims = [10]
-    epochs = 5
-    lr_rate = 0.002
-    
+    embedding_dims = [50]
+    epochs = 20
+    lr_rate = 3e-5
+    weight_decay = 1e-6
+    nr_frozen_epochs = 5
+
+    user_folding = True
     use_cuda = True
 
     for (min_word_count, words_per_text, embeddings_type, limit_past_annotations) in product(
@@ -73,6 +70,8 @@ if __name__ == "__main__":
                 "words_per_texts": words_per_text,
                 "min_word_count": min_word_count,
                 "dp_emb": dp_emb,
+                "weight_decay": weight_decay,
+                'nr_frozen_epochs': nr_frozen_epochs
             }
 
             logger = pl_loggers.WandbLogger(
@@ -95,73 +94,25 @@ if __name__ == "__main__":
                 dp_emb=dp_emb,
                 embedding_dim=embedding_dim,
                 hidden_dim=100,
-                bias_vector_length=len(data_module.class_dims)
+                bias_vector_length=len(data_module.class_dims),
+                nr_frozen_epochs=nr_frozen_epochs,
+                embedding_type=embeddings_type
             )
             
-            # Freeze weights for initial training
-            for param in model.model.parameters():
-                param.requires_grad = False
+            test_fold = fold_num if user_folding else None
             
-            # Get checkpoint directory
-            checkpoint_path = get_directory_path(logger)
-            
-            # Initial training
             train_test(
                 data_module,
                 model,
                 epochs=epochs,
                 lr=lr_rate,
-                regression=regression,
-                use_cuda=use_cuda,
-                logger=logger,
-                test_fold=fold_num,
-                flag_run_test=False,
-                checkpoint_path=checkpoint_path,
-            )
-            
-            # Save state dict
-            torch.save(model.state_dict(), checkpoint_path / 'state_dict')
-
-            # Load model from checkpoint
-            model = model.load_from_checkpoint(checkpoint_path,
-                output_dim=output_dim,
-                text_embedding_dim=text_embedding_dim,
-                word_num=data_module.words_number,
-                annotator_num=data_module.annotators_number,
-                dp=0.0,
-                dp_emb=dp_emb,
-                embedding_dim=embedding_dim,
-                hidden_dim=100,
-                bias_vector_length=len(data_module.class_dims))
-
-            # Unfreeze weights to enable fine-tuning
-            for param in model.model.parameters():
-                param.requires_grad = True
-
-            # Lower the learning rate to prevent destruction of pre-trained weights
-            optimizer = AdamW(model.parameters(), lr=0.0005)
-            num_training_steps = epochs * 250
-            lr_scheduler = get_scheduler(
-                name="linear", optimizer=optimizer, num_warmup_steps=0, num_training_steps=num_training_steps
-            )
-            w_decay=0.001
-
-            # train to fine-tune and run the test
-            train_test(
-                data_module,
-                model,
-                epochs=epochs,
-                lr=lr_rate,
+                weight_decay=weight_decay,
                 regression=regression,
                 use_cuda=use_cuda,
                 logger=logger,
                 test_fold=fold_num,
                 flag_run_test=True,
-                checkpoint_path=checkpoint_path,
-                optimizer=optimizer,
-                max_steps=num_training_steps,
-                lr_scheduler_type=lr_scheduler,
-                weight_decay=w_decay,
             )
             
             logger.experiment.finish()
+            
