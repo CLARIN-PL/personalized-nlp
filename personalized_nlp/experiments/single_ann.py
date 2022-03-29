@@ -45,6 +45,7 @@ if __name__ == "__main__":
     eval_strat = "epoch"
 
     use_cuda = True
+    user_folding = True
 
     for (min_word_count, words_per_text, embeddings_type,
          limit_past_annotations) in product(min_word_counts, words_per_texts,
@@ -104,6 +105,7 @@ if __name__ == "__main__":
                               hidden_dim=100,
                               bias_vector_length=len(data_module.class_dims))
 
+            test_fold = fold_num if user_folding else None
             train_test(data_module,
                        model,
                        epochs=epochs,
@@ -112,7 +114,7 @@ if __name__ == "__main__":
                        use_cuda=use_cuda,
                        hparams=hparams,
                        logger=logger,
-                       test_fold=fold_num,
+                       test_fold=test_fold,
                        output_dir="./results",
                        per_device_train_batch_size=batch_size,
                        per_device_eval_batch_size=batch_size,
