@@ -1,3 +1,4 @@
+from imp import is_frozen
 import pytorch_lightning as pl
 import torch
 import torch.nn as nn
@@ -5,16 +6,23 @@ from torchmetrics import Accuracy, F1, Precision, Recall
 
 
 class Classifier(pl.LightningModule):
-    def __init__(self, model, class_dims, lr, class_names=None):
+
+    def __init__(self,
+                 model,
+                 class_dims,
+                 lr,
+                 class_names=None,
+                 is_frozen=is_frozen):
         super().__init__()
         self.model = model
         self.lr = lr
+        self.is_frozen = is_frozen
 
         self.class_dims = class_dims
         self.class_names = class_names
 
-        self.metric_types = ('accuracy', 'precision',
-                             'recall', 'f1', 'macro_f1')
+        self.metric_types = ('accuracy', 'precision', 'recall', 'f1',
+                             'macro_f1')
 
         class_metrics = {}
 
@@ -40,6 +48,35 @@ class Classifier(pl.LightningModule):
     def forward(self, x):
         x = self.model(x)
         return x
+
+    def configure_optimizers(self):
+        optimizer = torch.optim.Adam(self.parameters(), lr=self.lr)
+        if (self.is_frozen):
+            model = self.model
+            param_optimizer = list(model.named_parameters())
+            no_decay = ['bias', 'LayerNorm.bias', 'LayerNorm.weight']
+            optimizer_grouped_parameters = [
+                {
+                    "params": [
+                        p for n, p in param_optimizer
+                        if not any(nd in n for nd in no_decay)
+                    ],
+                    "weight_decay":
+                    self.hparams.weight_decay,
+                },
+                {
+                    "params": [
+                        p for n, p in param_optimizer
+                        if any(nd in n for nd in no_decay)
+                    ],
+                    "weight_decay":
+                    0.0,
+                },
+            ]
+            optimizer = torch.optim.AdamW(optimizer_grouped_parameters,
+                                          lr=self.lr)
+
+        return optimizer
 
     def step(self, output, y):
         loss = 0
@@ -86,8 +123,11 @@ class Classifier(pl.LightningModule):
         loss = self.step(output=output, y=y)
 
         self.log('test_loss', loss, prog_bar=True)
-        self.log_all_metrics(output=output, y=y, split='test',
-                             on_step=False, on_epoch=True)
+        self.log_all_metrics(output=output,
+                             y=y,
+                             split='test',
+                             on_step=False,
+                             on_epoch=True)
 
         return {"loss": loss, 'output': output, 'y': y}
 
@@ -108,8 +148,7 @@ class Classifier(pl.LightningModule):
             start_idx = sum(class_dims[:cls_idx])
             end_idx = start_idx + class_dims[cls_idx]
 
-            class_name = class_names[cls_idx] if class_names else str(
-                cls_idx)
+            class_name = class_names[cls_idx] if class_names else str(cls_idx)
 
             log_dict = {}
             for metric_type in self.metric_types:
@@ -121,8 +160,10 @@ class Classifier(pl.LightningModule):
                     # Log only metrics with single value (e.g. accuracy or metrics averaged over classes)
                     log_dict[metric_key] = self.metrics[metric_key]
 
-            self.log_dict(log_dict, on_step=on_step,
-                          on_epoch=on_epoch, prog_bar=True)
+            self.log_dict(log_dict,
+                          on_step=on_step,
+                          on_epoch=on_epoch,
+                          prog_bar=True)
 
     def log_class_metrics_at_epoch_end(self, split):
         class_dims = self.class_dims
