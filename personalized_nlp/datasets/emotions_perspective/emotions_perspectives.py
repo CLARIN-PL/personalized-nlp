@@ -1,4 +1,4 @@
-from lib2to3.pytree import Base
+# from lib2to3.pytree import Base
 # from tkinter import N
 from typing import List
 
@@ -9,6 +9,8 @@ from personalized_nlp.settings import STORAGE_DIR
 from personalized_nlp.utils.data_splitting import split_texts
 from personalized_nlp.datasets.datamodule_base import BaseDataModule
 
+VALENCE_MAPPING = {0: 3, 1: 4, 2: 5, 3: 6, -1: 2, -2: 1, -3: 0}
+
 
 class EmotionsPerspectiveDataModule(BaseDataModule):
 
@@ -16,7 +18,6 @@ class EmotionsPerspectiveDataModule(BaseDataModule):
         self,
         split_sizes: List[float] = [0.55, 0.15, 0.15, 0.15],
         normalize=False,
-        is_averaged=False,
         min_annotations_per_text=None,
         **kwargs,
     ):
@@ -57,6 +58,10 @@ class EmotionsPerspectiveDataModule(BaseDataModule):
         self.annotations = pd.read_csv(self.data_dir / 'texts' /
                                        'annotation_data.csv')
 
+        if not self.regression:
+            self.annotations['valence'] = self.annotations['valence'].map(
+                VALENCE_MAPPING)
+
         annotated_text_ids = self.annotations.text_id.values
         self.data = self.data.loc[self.data.text_id.isin(
             annotated_text_ids)].reset_index(False)
@@ -71,7 +76,6 @@ class EmotionsPerspectiveDataModule(BaseDataModule):
 
         if self.normalize:
             self.normalize_labels()
-
         self._assign_splits()
 
         personal_df = self.annotations_with_data.loc[
