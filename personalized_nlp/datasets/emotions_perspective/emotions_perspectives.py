@@ -39,6 +39,7 @@ class EmotionsPerspectiveDataModule(BaseDataModule):
 
         self.normalize = normalize
         self.min_annotations_per_text = min_annotations_per_text
+        self.regression = False
 
         os.makedirs(self.data_dir / 'embeddings', exist_ok=True)
 
