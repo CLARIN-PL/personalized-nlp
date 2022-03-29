@@ -124,7 +124,7 @@ class BaseDataModule(LightningDataModule):
             self.compute_major_votes()
 
         if self.is_averaged:
-            self.annotations = self.compute_average_annotations()
+            self.compute_average_annotations()
 
         if not os.path.exists(self.embeddings_path):
             self._create_embeddings()
@@ -458,9 +458,9 @@ class BaseDataModule(LightningDataModule):
         """Computes average annotations for each annotator"""
 
         annotations = self.annotations
-        annotations["annotator_id"] = 0
+        annotator_ids = annotations["annotator_id"]
         average_annotations = annotations.groupby("text_id")[
             self.annotation_column].mean()
 
-        self.annotations["annotator_id"] = 0
-        return average_annotations.reset_index()
+        self.annotations = average_annotations.reset_index()
+        self.annotations["annotator_id"] = annotator_ids
