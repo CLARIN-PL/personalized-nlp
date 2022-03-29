@@ -457,8 +457,10 @@ class BaseDataModule(LightningDataModule):
     def compute_average_annotations(self):
         """Computes average annotations for each annotator"""
 
+        annotations["annotator_id"] = 0
         annotations = self.annotations
         average_annotations = annotations.groupby("text_id")[
             self.annotation_column].mean()
 
         return average_annotations.reset_index()
+        self.annotations["annotator_id"] = 0
