@@ -20,11 +20,20 @@ class NetTuned(nn.Module):
 
     def freeze(self) -> None:
         for name, param in self.named_parameters():
-            param.requires_grad = False
+            if 'classifier' not in name:
+                param.requires_grad = False
         self.is_frozen = True
 
     def unfreeze(self) -> None:
         if self.is_frozen:
             for name, param in self.named_parameters():
-                param.requires_grad = True
+                if 'classifier' not in name:
+                    param.requires_grad = True
         self.is_frozen = False
+
+    def on_epoch_start(self):
+        if self.current_epoch < self.hparams.nr_frozen_epochs:
+            self.freeze()
+
+        if self.current_epoch >= self.hparams.nr_frozen_epochs:
+            self.unfreeze()
