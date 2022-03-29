@@ -462,5 +462,5 @@ class BaseDataModule(LightningDataModule):
         average_annotations = annotations.groupby("text_id")[
             self.annotation_column].mean()
 
-        return average_annotations.reset_index()
         self.annotations["annotator_id"] = 0
+        return average_annotations.reset_index()
