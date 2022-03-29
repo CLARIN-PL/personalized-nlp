@@ -1,4 +1,3 @@
-from imp import is_frozen
 import pytorch_lightning as pl
 import torch
 import torch.nn as nn
@@ -12,7 +11,7 @@ class Classifier(pl.LightningModule):
                  class_dims,
                  lr,
                  class_names=None,
-                 is_frozen=is_frozen):
+                 is_frozen=False):
         super().__init__()
         self.model = model
         self.lr = lr
