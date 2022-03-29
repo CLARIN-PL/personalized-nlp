@@ -6,16 +6,10 @@ from torchmetrics import Accuracy, F1, Precision, Recall
 
 class Classifier(pl.LightningModule):
 
-    def __init__(self,
-                 model,
-                 class_dims,
-                 lr,
-                 class_names=None,
-                 is_frozen=False):
+    def __init__(self, model, class_dims, lr, class_names=None):
         super().__init__()
         self.model = model
         self.lr = lr
-        self.is_frozen = is_frozen
 
         self.class_dims = class_dims
         self.class_names = class_names

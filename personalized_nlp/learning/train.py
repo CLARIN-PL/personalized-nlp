@@ -47,8 +47,7 @@ def train_test(datamodule,
         model = Classifier(model=model,
                            lr=lr,
                            class_dims=class_dims,
-                           class_names=class_names,
-                           is_frozen=is_frozen)
+                           class_names=class_names)
 
     if logger is None:
         logger = pl_loggers.WandbLogger(save_dir=LOGS_DIR, log_model=log_model)
