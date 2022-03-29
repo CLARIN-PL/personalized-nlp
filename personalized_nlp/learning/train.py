@@ -34,8 +34,6 @@ def train_test(datamodule,
         if isinstance(datamodule.annotation_column, str):
             class_names = [datamodule.annotation_column]
 
-        model = Regressor(model=model, lr=lr, class_names=class_names)
-
         if not model.is_frozen and weight_decay != 0.0:
             model = RegressorFinetune(model=model,
                                       lr=lr,

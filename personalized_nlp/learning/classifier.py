@@ -42,35 +42,6 @@ class Classifier(pl.LightningModule):
         x = self.model(x)
         return x
 
-    def configure_optimizers(self):
-        optimizer = torch.optim.Adam(self.parameters(), lr=self.lr)
-        if (self.is_frozen):
-            model = self.model
-            param_optimizer = list(model.named_parameters())
-            no_decay = ['bias', 'LayerNorm.bias', 'LayerNorm.weight']
-            optimizer_grouped_parameters = [
-                {
-                    "params": [
-                        p for n, p in param_optimizer
-                        if not any(nd in n for nd in no_decay)
-                    ],
-                    "weight_decay":
-                    self.hparams.weight_decay,
-                },
-                {
-                    "params": [
-                        p for n, p in param_optimizer
-                        if any(nd in n for nd in no_decay)
-                    ],
-                    "weight_decay":
-                    0.0,
-                },
-            ]
-            optimizer = torch.optim.AdamW(optimizer_grouped_parameters,
-                                          lr=self.lr)
-
-        return optimizer
-
     def step(self, output, y):
         loss = 0
         class_dims = self.class_dims
