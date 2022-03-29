@@ -23,11 +23,11 @@ os.environ["CUDA_VISIBLE_DEVICES"] = '0'
 os.environ["WANDB_START_METHOD"] = "thread"
 
 if __name__ == "__main__":
-    regression = True
+    regression = False
     datamodule_cls = EmotionsPerspectiveDataModule
     embedding_types = ['roberta']
     model_types = ['baseline_tuned']
-    wandb_project_name = 'emotions_perspective_baseline_multiple_annotator_tuned'
+    wandb_project_name = 'emotions_perspective_baseline_multiple_annotator_tuned_class'
     limit_past_annotations_list = [None]  # range(20)
     fold_nums = 10
     min_annotations_per_text = 2
@@ -40,6 +40,8 @@ if __name__ == "__main__":
     embedding_dims = [50]
     epochs = 20
     lr_rate = 1e-5
+    weight_decay = 1e-6
+    nr_frozen_epochs = 5
     eval_strat = "epoch"
 
     use_cuda = True
@@ -56,7 +58,6 @@ if __name__ == "__main__":
             batch_size=batch_size,
             is_averaged=True,
             past_annotations_limit=limit_past_annotations)
-
         data_module.prepare_data()
         data_module.setup()
         data_module.compute_word_stats(
@@ -77,6 +78,8 @@ if __name__ == "__main__":
                 "words_per_texts": words_per_text,
                 "min_word_count": min_word_count,
                 "dp_emb": dp_emb,
+                "nr_frozen_epochs": nr_frozen_epochs,
+                "weight_decay": weight_decay,
             }
 
             logger = pl_loggers.WandbLogger(
@@ -101,26 +104,19 @@ if __name__ == "__main__":
                               hidden_dim=100,
                               bias_vector_length=len(data_module.class_dims))
 
-            for epoch in range(0, epochs):
-                is_frozen = False
-                if (epoch > 10):
-                    is_frozen = True
-
-                train_test(
-                    data_module,
-                    model,
-                    epochs=epochs,
-                    lr=lr_rate,
-                    regression=regression,
-                    use_cuda=use_cuda,
-                    hparams=hparams,
-                    logger=logger,
-                    test_fold=fold_num,
-                    output_dir="./results",
-                    is_frozen=is_frozen,
-                    per_device_train_batch_size=batch_size,
-                    per_device_eval_batch_size=batch_size,
-                    evaluation_strategy=eval_strat,
-                )
+            train_test(data_module,
+                       model,
+                       epochs=epochs,
+                       lr=lr_rate,
+                       regression=regression,
+                       use_cuda=use_cuda,
+                       hparams=hparams,
+                       logger=logger,
+                       test_fold=fold_num,
+                       output_dir="./results",
+                       per_device_train_batch_size=batch_size,
+                       per_device_eval_batch_size=batch_size,
+                       evaluation_strategy=eval_strat,
+                       weight_decay=weight_decay)
 
             logger.experiment.finish()
