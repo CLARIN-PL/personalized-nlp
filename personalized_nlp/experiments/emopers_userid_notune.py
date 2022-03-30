@@ -2,27 +2,21 @@
 
 import os
 import torch
-import random
-import numpy as np
 from itertools import product
-from personalized_nlp.learning.train import train_test
+from personalized_nlp.learning.train_alt import train_test
 from personalized_nlp.models import models as models_dict
 from personalized_nlp.settings import LOGS_DIR
 from pytorch_lightning import loggers as pl_loggers
 from personalized_nlp.datasets.emotions_perspective.emotions_perspectives import EmotionsPerspectiveDataModule
-
-def seed_everything():
-    torch.manual_seed(0)
-    random.seed(0)
-    np.random.seed(0)
+from personalized_nlp.utils import seed_everything
 
 torch.cuda.empty_cache()
 
-os.environ["CUDA_VISIBLE_DEVICES"] = '0'
+os.environ["CUDA_VISIBLE_DEVICES"] = '1'
 os.environ["WANDB_START_METHOD"] = "thread"
 
 if __name__ == "__main__":
-    regression = True
+    regression = False
     datamodule_cls = EmotionsPerspectiveDataModule
     embedding_types = ['roberta']
     model_types = ['userid']
@@ -31,24 +25,24 @@ if __name__ == "__main__":
     fold_nums = 10
     min_annotations_per_text = 2
     
-    min_word_counts = [5]
-    words_per_texts = [128]
+    min_word_counts = [50]
+    words_per_texts = [15]
     
     batch_size = 16
     dp_embs = [0.25]
-    embedding_dims = [10]
-    epochs = 5
-    lr_rate = 0.002
+    embedding_dims = [50]
+    epochs = 20
+    lr_rate = 3e-5
     
     use_cuda = True
+    user_folding = True
 
     for (min_word_count, words_per_text, embeddings_type, limit_past_annotations) in product(
         min_word_counts, words_per_texts, embedding_types, limit_past_annotations_list
     ):
 
         seed_everything()
-        data_module = datamodule_cls(embeddings_type=embeddings_type, normalize=regression,
-                                     batch_size=batch_size, past_annotations_limit=limit_past_annotations)
+        data_module = datamodule_cls(embeddings_type=embeddings_type, normalize=regression, batch_size=batch_size, regression=regression)
         data_module.prepare_data()
         data_module.setup()
         data_module.compute_word_stats(
@@ -92,9 +86,11 @@ if __name__ == "__main__":
                 dp_emb=dp_emb,
                 embedding_dim=embedding_dim,
                 hidden_dim=100,
-                bias_vector_length=len(data_module.class_dims)
+                bias_vector_length=len(data_module.class_dims),
+                embedding_type=embeddings_type
             )
 
+            test_fold = fold_num if user_folding else None
             train_test(
                 data_module,
                 model,
@@ -103,7 +99,7 @@ if __name__ == "__main__":
                 regression=regression,
                 use_cuda=use_cuda,
                 logger=logger,
-                test_fold=fold_num,
+                test_fold=test_fold,
             )
 
             logger.experiment.finish()

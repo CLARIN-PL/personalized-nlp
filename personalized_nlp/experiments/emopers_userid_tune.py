@@ -1,4 +1,4 @@
-# code for USER_ID exp without fine-tuning
+# code for USER_ID exp with fine-tuning
 
 import os
 import torch
@@ -10,8 +10,6 @@ from personalized_nlp.datasets.emotions_perspective.emotions_perspectives import
 from personalized_nlp.utils import seed_everything
 from pytorch_lightning import loggers as pl_loggers
 
-from torch.optim import AdamW
-from transformers import get_scheduler
 
 torch.cuda.empty_cache()
 
@@ -90,7 +88,7 @@ if __name__ == "__main__":
                 text_embedding_dim=text_embedding_dim,
                 word_num=data_module.words_number,
                 annotator_num=data_module.annotators_number,
-                dp=0.0,
+                dp=0.5,
                 dp_emb=dp_emb,
                 embedding_dim=embedding_dim,
                 hidden_dim=100,
