@@ -25,7 +25,7 @@ if __name__ == "__main__":
     model_types = ['userid']
     wandb_project_name = 'nlpersTedNew'
     limit_past_annotations_list = [None] # range(20)
-    fold_nums = 5
+    fold_nums = 10
     min_annotations_per_text = 2
     
     min_word_counts = [50]
