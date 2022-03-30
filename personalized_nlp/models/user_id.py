@@ -26,7 +26,7 @@ class NetUserID(pl.LightningModule):
         if not self._frozen:
             if embedding_type in TRANSFORMER_MODEL_STRINGS:
                 embedding_type = TRANSFORMER_MODEL_STRINGS[embedding_type]
-            self._model = AutoModel.from_pretrained(embedding_type)
+            self.model = AutoModel.from_pretrained(embedding_type)
             self._tokenizer = AutoTokenizer.from_pretrained(embedding_type)
             self.max_length = max_length
 
@@ -48,9 +48,9 @@ class NetUserID(pl.LightningModule):
                 truncation=True, 
                 max_length=self.max_length,
                 return_tensors='pt',
-            ).to(self._model.device)
+            ).to(self.model.device)
 
-            emb = self._model(**batch_encoding).pooler_output
+            emb = self.model(**batch_encoding).pooler_output
         else:
             emb = features['embeddings']
 
