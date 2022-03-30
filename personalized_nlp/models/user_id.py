@@ -8,7 +8,7 @@ from typing import Dict, Any
 import pytorch_lightning as pl
 
 class NetUserID(pl.LightningModule):
-    def __init__(self, output_dim, annotator_num, text_embedding_dim=768, model_name='roberta-base', max_length=128,
+    def __init__(self, output_dim, annotator_num, embedding_type, text_embedding_dim=768, model_name='roberta-base', max_length=128,
                  base_model=None, dp=0.35, dp_emb=0.2, embedding_dim=20, hidden_dim=100, **kwargs):
         super().__init__()
         self.text_embedding_dim = text_embedding_dim
