@@ -35,9 +35,9 @@ if __name__ == "__main__":
     dp_embs = [0.25]
     embedding_dims = [50]
     epochs = 20
-    lr_rate = 0.001
-    weight_decay = 0.00005
-    nr_frozen_epochs = 10
+    lr_rate = 0.00003
+    weight_decay = 0.000001
+    nr_frozen_epochs = 5
 
     user_folding = True
     use_cuda = True
