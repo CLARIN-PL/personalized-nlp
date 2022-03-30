@@ -53,6 +53,7 @@ class BaseDataModule(LightningDataModule):
         past_annotations_limit: int = None,
         texts_num_in_annotator_past_emb: int = 4,
         is_averaged: bool = False,
+        texts_num_in_annotator_past_emb: int = 4,
         **kwargs
     ):
 
@@ -68,6 +69,7 @@ class BaseDataModule(LightningDataModule):
         self.embeddings_type = embeddings_type
         self.folds_num = folds_num
         self.past_annotations_limit = past_annotations_limit
+        self.texts_num_in_annotator_past_emb = texts_num_in_annotator_past_emb
         self.is_averaged = is_averaged
         self.texts_num_in_annotator_past_emb = texts_num_in_annotator_past_emb
 

@@ -19,14 +19,15 @@ os.environ["CUDA_VISIBLE_DEVICES"] = '0'
 os.environ["WANDB_START_METHOD"] = "thread"
 
 if __name__ == "__main__":
-    regression = False
+    regression = True
     datamodule_cls = EmotionsPerspectiveDataModule
     embedding_types = ['roberta']
 
     model_types = ['transformer_baseline', 'past_embeddings']
-    wandb_project_name = 'studemo_classification'
+    wandb_project_name = 'studemo_regr_2'
     limit_past_annotations_list = [None]  # range(20)
     fold_nums = 10
+    max_length = 256
 
     min_word_counts = [5]
     words_per_texts = [128]
@@ -35,7 +36,8 @@ if __name__ == "__main__":
     batch_size = 16
     dp_embs = [0.25]
     embedding_dims = [50]
-    finetune_epochs_lr_setting = {False: (20, [1e-4, 1e-5]), True: (4, [5e-5, 1e-5])}
+    # finetune_epochs_lr_setting = {False: (20, [1e-3, 1e-4]), True: (4, [1e-4, 1e-5])}
+    finetune_epochs_lr_setting = {True: (4, [1e-3, 5e-4])}
     finetune_lr_list = []
     for ft, (epochs, lr_list) in finetune_epochs_lr_setting.items():
         for lr in lr_list:
@@ -51,6 +53,7 @@ if __name__ == "__main__":
         data_module = datamodule_cls(
             embeddings_type=embeddings_type,
             normalize=regression,
+            classification=not regression,
             batch_size=batch_size,
             past_annotations_limit=limit_past_annotations,
         )
@@ -88,6 +91,7 @@ if __name__ == "__main__":
                 log_model=False,
             )
 
+            class_nums = len(data_module.class_dims)
             output_dim = len(data_module.class_dims) if regression else sum(data_module.class_dims)
             text_embedding_dim = data_module.text_embedding_dim
             model_cls = models_dict[model_type]
@@ -103,7 +107,9 @@ if __name__ == "__main__":
                 hidden_dim=100,
                 bias_vector_length=len(data_module.class_dims),
                 finetune=finetune,
-                model_name=embeddings_type
+                model_name=embeddings_type,
+                class_nums=class_nums,
+                max_length=max_length
             )
             custom_callbacks = [SetWeightDecay(lr=lr_rate, weight_decay=weight_decay)]
             if finetune:
