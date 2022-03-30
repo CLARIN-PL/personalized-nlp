@@ -90,7 +90,7 @@ if __name__ == "__main__":
                 text_embedding_dim=text_embedding_dim,
                 word_num=data_module.words_number,
                 annotator_num=data_module.annotators_number,
-                dp=0.0,
+                dp=0.5,
                 dp_emb=dp_emb,
                 embedding_dim=embedding_dim,
                 hidden_dim=100,
