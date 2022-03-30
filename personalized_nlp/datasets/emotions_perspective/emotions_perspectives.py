@@ -1,5 +1,3 @@
-from lib2to3.pytree import Base
-from tkinter import N
 from typing import List
 
 import pandas as pd
@@ -14,6 +12,7 @@ class EmotionsPerspectiveDataModule(BaseDataModule):
             self, 
             split_sizes: List[float] = [0.55, 0.15, 0.15, 0.15],
             normalize=False,
+            classification=False,
             min_annotations_per_text=None,
             **kwargs,
     ):
@@ -40,6 +39,7 @@ class EmotionsPerspectiveDataModule(BaseDataModule):
         self.val_split_names = ['future1']
         self.test_split_names = ['future2']
 
+        self.classification = classification
         self.normalize = normalize
         self.min_annotations_per_text = min_annotations_per_text
 
@@ -67,6 +67,8 @@ class EmotionsPerspectiveDataModule(BaseDataModule):
             text_id_value_counts = text_id_value_counts[text_id_value_counts >= self.min_annotations_per_text]
             self.annotations = self.annotations.loc[self.annotations.text_id.isin(text_id_value_counts.index.tolist())]
 
+        if self.classification:
+            self.annotations['valence'] += 3
         if self.normalize:
             self.normalize_labels()
         self._assign_splits()
