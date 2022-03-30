@@ -29,15 +29,15 @@ if __name__ == "__main__":
     min_annotations_per_text = 2
     
     min_word_counts = [50]
-    words_per_texts = [15]
+    words_per_texts = [128]
     
     batch_size = 16
     dp_embs = [0.25]
     embedding_dims = [50]
     epochs = 20
-    lr_rate = 3e-5
-    weight_decay = 1e-6
-    nr_frozen_epochs = 5
+    lr_rate = 0.001
+    weight_decay = 0.00005
+    nr_frozen_epochs = 10
 
     user_folding = True
     use_cuda = True
@@ -90,7 +90,7 @@ if __name__ == "__main__":
                 text_embedding_dim=text_embedding_dim,
                 word_num=data_module.words_number,
                 annotator_num=data_module.annotators_number,
-                dp=0.5,
+                dp=0.0,
                 dp_emb=dp_emb,
                 embedding_dim=embedding_dim,
                 hidden_dim=100,
