@@ -8,6 +8,7 @@ from personalized_nlp.datasets.wiki.toxicity import ToxicityDataModule
 from personalized_nlp.datasets.wiki.attack import AttackDataModule
 from personalized_nlp.datasets.wiki.aggression import AggressionDataModule
 from personalized_nlp.utils import seed_everything
+import personalized_nlp.utils.callbacks as callbacks
 from pytorch_lightning import loggers as pl_loggers
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
@@ -19,29 +20,30 @@ if __name__ == "__main__":
     regression = False
     datamodule_clses = [AggressionDataModule, AttackDataModule, ToxicityDataModule]
     stratify_by_options = [
-        None,
-        "users",
+        # None,
+        # "users",
         "texts",
     ]
-    embedding_types = ["xlmr", "bert", "deberta", "mpnet", "random"]
+    embedding_types = ["labse"]
+    # embedding_types = ["xlmr", "bert", "deberta", "mpnet", "random"]
     model_types = [
-        "baseline",
-        "onehot",
-        "peb",
-        "word_bias",
-        "bias",
+        # "baseline",
+        # "onehot",
+        # "peb",
+        # "word_bias",
+        # "bias",
         "embedding",
-        "word_embedding",
-        "transformer_user_id",
+        # "word_embedding",
+        # "transformer_user_id",
     ]
     fold_nums = 10
 
     append_annotator_ids = (
         True  # If true, use UserID model, else use standard transfromer
     )
-    batch_size = 10
-    epochs = 3
-    lr_rate = 5e-5
+    batch_size = 3000
+    epochs = 15
+    lr_rate = 0.008
 
     use_cuda = True
 
@@ -57,6 +59,7 @@ if __name__ == "__main__":
             normalize=regression,
             batch_size=batch_size,
             stratify_folds_by=stratify_by,
+            major_voting=True,
         )
         data_module.prepare_data()
         data_module.setup()
@@ -67,6 +70,9 @@ if __name__ == "__main__":
         )
 
         for model_type, fold_num in product(model_types, range(fold_nums)):
+
+            data_module._recompute_stats_for_fold(fold_num)
+
             hparams = {
                 "dataset": type(data_module).__name__,
                 "model_type": model_type,
@@ -95,8 +101,8 @@ if __name__ == "__main__":
             model = model_cls(
                 output_dim=output_dim,
                 text_embedding_dim=text_embedding_dim,
-                word_num=data_module.words_number + 1,
-                annotator_num=data_module.annotators_number + 1,
+                word_num=data_module.words_number + 2,
+                annotator_num=data_module.annotators_number + 2,
                 dp=0.0,
                 dp_emb=0.25,
                 embedding_dim=50,

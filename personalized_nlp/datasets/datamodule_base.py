@@ -289,7 +289,7 @@ class BaseDataModule(LightningDataModule, abc.ABC):
             self.limit_past_annotations(self.past_annotations_limit)
 
         annotator_id_df = pd.DataFrame(
-            self.annotations.annotator_id.unique(), columns=["annotator_id"]
+            self._original_annotations.annotator_id.unique(), columns=["annotator_id"]
         )
 
         annotation_columns = self.annotation_columns
@@ -319,14 +319,14 @@ class BaseDataModule(LightningDataModule, abc.ABC):
 
         self.compute_word_stats(fold_nums=train_folds)
 
+        if self.major_voting:
+            self.compute_major_votes(test_fold)
+
         train_annotations = self.annotations
         train_annotations = train_annotations.loc[
             ~train_annotations.fold.isin([val_fold, test_fold])
         ]
         self.compute_annotator_biases(train_annotations)
-
-        if self.major_voting:
-            self.compute_major_votes(test_fold)
 
         self._current_stats_fold = test_fold
 
@@ -360,8 +360,6 @@ class BaseDataModule(LightningDataModule, abc.ABC):
                 personal_df = personal_df[personal_df.fold.isin([test_fold, val_fold])]
 
                 annotations = pd.concat([annotations, personal_df])
-            else:
-                self._recompute_stats_for_fold(test_fold)
 
         train_X, train_y = self._get_data_by_split(annotations, self.train_split_names)
         text_features = self._get_text_features()
