@@ -12,7 +12,7 @@ from personalized_nlp.utils import seed_everything
 
 torch.cuda.empty_cache()
 
-os.environ["CUDA_VISIBLE_DEVICES"] = '1'
+os.environ["CUDA_VISIBLE_DEVICES"] = '2'
 os.environ["WANDB_START_METHOD"] = "thread"
 
 if __name__ == "__main__":
@@ -26,12 +26,13 @@ if __name__ == "__main__":
     min_annotations_per_text = 2
     
     min_word_counts = [50]
-    words_per_texts = [15]
+    words_per_texts = [128]
     
     batch_size = 16
     dp_embs = [0.25]
     embedding_dims = [50]
     epochs = 20
+    nr_frozen_epochs = 0
     lr_rate = 3e-5
     
     use_cuda = True

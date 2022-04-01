@@ -89,7 +89,7 @@ class Regressor(pl.LightningModule):
                         output[:, class_idx], y[:, class_idx])
 
                     metric_values.append(metric_value)
-                    log_dict[metric_key] = metric_value
+                    log_dict[metric_key] = self.metrics[metric_key]
 
                 mean_metric_key = f'{split}_{metric_type}_mean'
                 log_dict[mean_metric_key] = torch.mean(torch.tensor(metric_values))

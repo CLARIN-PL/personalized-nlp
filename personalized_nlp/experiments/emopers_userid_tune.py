@@ -13,7 +13,7 @@ from pytorch_lightning import loggers as pl_loggers
 
 torch.cuda.empty_cache()
 
-os.environ["CUDA_VISIBLE_DEVICES"] = '1'
+os.environ["CUDA_VISIBLE_DEVICES"] = '2'
 os.environ["WANDB_START_METHOD"] = "thread"
 
 if __name__ == "__main__":
@@ -33,8 +33,8 @@ if __name__ == "__main__":
     dp_embs = [0.25]
     embedding_dims = [50]
     epochs = 20
-    lr_rate = 0.00003
-    weight_decay = 0.000001
+    lr_rate = 3e-5
+    weight_decay = 1e-6
     nr_frozen_epochs = 5
 
     user_folding = True
@@ -88,7 +88,7 @@ if __name__ == "__main__":
                 text_embedding_dim=text_embedding_dim,
                 word_num=data_module.words_number,
                 annotator_num=data_module.annotators_number,
-                dp=0.5,
+                dp=0.0,
                 dp_emb=dp_emb,
                 embedding_dim=embedding_dim,
                 hidden_dim=100,
