@@ -21,7 +21,7 @@ if __name__ == "__main__":
     datamodule_cls = EmotionsPerspectiveDataModule
     embedding_types = ['roberta']
     model_types = ['userid']
-    wandb_project_name = 'userid_finetune'
+    wandb_project_name = 'userid_finetune_theserver'
     limit_past_annotations_list = [None] # range(20)
     fold_nums = 10
     min_annotations_per_text = 2
