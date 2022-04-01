@@ -76,5 +76,3 @@ def train_test(datamodule, model, epochs=6, lr=1e-2, weight_decay=0.0,
     
     if flag_run_test == True:
         trainer.test(test_dataloaders=test_loader)
-    else:
-        trainer.test(test_dataloaders=train_loader)
