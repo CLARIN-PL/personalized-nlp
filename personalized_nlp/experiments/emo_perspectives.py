@@ -10,11 +10,11 @@ from personalized_nlp.utils import seed_everything
 from pytorch_lightning import loggers as pl_loggers
 
 torch.cuda.empty_cache()
-os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+os.environ["CUDA_VISIBLE_DEVICES"] = "2"
 os.environ["WANDB_START_METHOD"] = "thread"
 
 if __name__ == "__main__":
-    wandb_project_name = 'hubimed_finetune_wdc'
+    wandb_project_name = 'hubimed_finetune_r2_sklearn'
 
     regression = True
     datamodule_cls = EmotionsPerspectiveDataModule

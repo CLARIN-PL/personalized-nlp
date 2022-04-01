@@ -1,8 +1,10 @@
+from statistics import mean
 import torch
 import torch.nn as nn
 from torchmetrics import MeanAbsoluteError, MeanSquaredError, R2Score
 import pytorch_lightning as pl
-
+from sklearn.metrics import r2_score
+import numpy as np
 
 class Regressor(pl.LightningModule):
     def __init__(self, model, lr, class_names):
@@ -54,7 +56,7 @@ class Regressor(pl.LightningModule):
         loss = nn.MSELoss()(output, y)
 
         self.log('valid_loss', loss, prog_bar=True)
-        self.log_all_metrics(output=output, y=y, split='valid')
+        self.log_r2_sklearn(output=output, y=y, split='valid')
 
         return loss
 
@@ -67,7 +69,7 @@ class Regressor(pl.LightningModule):
         loss = nn.MSELoss()(output, y)
 
         self.log('test_loss', loss, on_step=False, on_epoch=True)
-        self.log_all_metrics(output=output, y=y, split='test',
+        self.log_r2_sklearn(output=output, y=y, split='test',
                              on_step=False, on_epoch=True)
 
         return {"loss": loss, 'output': output, 'y': y}
@@ -89,9 +91,30 @@ class Regressor(pl.LightningModule):
                         output[:, class_idx], y[:, class_idx])
 
                     metric_values.append(metric_value)
-                    log_dict[metric_key] = metric_value
+                    log_dict[metric_key] = self.metrics[metric_key]
 
                 mean_metric_key = f'{split}_{metric_type}_mean'
                 log_dict[mean_metric_key] = torch.mean(torch.tensor(metric_values))
 
                 self.log_dict(log_dict, on_step=on_step, on_epoch=on_epoch)
+
+    def log_r2_sklearn(self, output, y, split, on_step=None, on_epoch=None):
+        class_names = self.class_names
+        log_dict = {}
+        for metric_type in self.metric_types:
+            metric_values = []
+            for class_idx, class_name in enumerate(class_names):
+                metric_key = f'{split}_{metric_type}_{class_name}'
+                if len(output) == len(class_names):
+                    np_output = output[class_idx].detach().cpu().numpy()
+                    np_y = y[class_idx].detach().cpu().numpy()
+                    metric_value = r2_score([np_output.tolist()], [np_y.tolist()])
+                else:
+                    np_output = output[:, class_idx].detach().cpu().numpy()
+                    np_y = y[:, class_idx].detach().cpu().numpy()
+                    metric_value = r2_score(np_output, np_y)
+                metric_values.append(metric_value)
+                log_dict[metric_key] = metric_value
+            mean_metric_key = f'{split}_{metric_type}_mean'
+            log_dict[mean_metric_key] = np.mean(metric_value)
+            self.log_dict(log_dict, on_step=on_step, on_epoch=on_epoch)
