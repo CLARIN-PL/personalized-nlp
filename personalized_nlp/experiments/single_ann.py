@@ -23,7 +23,7 @@ os.environ["CUDA_VISIBLE_DEVICES"] = '0'
 os.environ["WANDB_START_METHOD"] = "thread"
 
 if __name__ == "__main__":
-    regression = False
+    regression = True
     datamodule_cls = EmotionsPerspectiveDataModule
     embedding_types = ['roberta']
     model_types = ['baseline_tuned']
