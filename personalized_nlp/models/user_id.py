@@ -48,7 +48,7 @@ class NetUserID(pl.LightningModule):
                 truncation=True, 
                 max_length=self.max_length,
                 return_tensors='pt',
-            ).to(self.model.device)
+            ).to('cuda')
 
             emb = self.model(**batch_encoding).pooler_output
         else:
