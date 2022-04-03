@@ -41,7 +41,7 @@ if __name__ == "__main__":
     epochs = 20
     lr_rate = 1e-5
     weight_decay = 1e-6
-    nr_frozen_epochs = 5
+    nr_frozen_epochs = 0
     eval_strat = "epoch"
 
     use_cuda = True
