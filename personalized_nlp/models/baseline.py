@@ -8,6 +8,8 @@ class Net(nn.Module):
         super().__init__()
         self.text_embedding_dim = text_embedding_dim
         self.fc1 = nn.Linear(text_embedding_dim, output_dim) 
+        self.is_frozen = False
+
 
     def forward(self, features):
         x = features['embeddings']
