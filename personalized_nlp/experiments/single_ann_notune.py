@@ -40,7 +40,7 @@ if __name__ == "__main__":
     embedding_dims = [50]
     epochs = 20
     lr_rate = 1e-5
-    weight_decay = 1e-6
+    weight_decay = 0.0
     nr_frozen_epochs = 0
     eval_strat = "epoch"
 
