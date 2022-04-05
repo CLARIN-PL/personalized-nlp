@@ -37,7 +37,7 @@ class GoEmotionsDataModule(BaseDataModule):
 
     @property
     def class_dims(self):
-        return 2*28
+        return [2] * 28
 
     @property
     def texts_clean(self):
