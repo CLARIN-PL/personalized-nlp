@@ -63,4 +63,4 @@ def train_test(
         callbacks=callbacks,
     )
     trainer.fit(model, train_loader, val_loader)
-    trainer.test(test_dataloaders=test_loader)
+    trainer.test(dataloaders=test_loader)

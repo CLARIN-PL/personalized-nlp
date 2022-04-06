@@ -10,6 +10,7 @@ from personalized_nlp.datasets.wiki.aggression import AggressionDataModule
 from personalized_nlp.utils import seed_everything
 import personalized_nlp.utils.callbacks as callbacks
 from pytorch_lightning import loggers as pl_loggers
+from personalized_nlp.settings import TRANSFORMER_MODEL_STRINGS
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 os.environ["WANDB_START_METHOD"] = "thread"
@@ -32,18 +33,18 @@ if __name__ == "__main__":
         # "peb",
         # "word_bias",
         # "bias",
-        "embedding",
+        # "embedding",
         # "word_embedding",
-        # "transformer_user_id",
+        "transformer_user_id",
     ]
     fold_nums = 10
 
     append_annotator_ids = (
         True  # If true, use UserID model, else use standard transfromer
     )
-    batch_size = 3000
-    epochs = 15
-    lr_rate = 0.008
+    batch_size = 10
+    epochs = 3
+    lr_rate = 5e-5
 
     use_cuda = True
 
@@ -108,6 +109,8 @@ if __name__ == "__main__":
                 embedding_dim=50,
                 hidden_dim=100,
                 bias_vector_length=len(data_module.class_dims),
+                append_annotator_ids=append_annotator_ids,
+                huggingface_model_name=TRANSFORMER_MODEL_STRINGS[embeddings_type],
             )
 
             train_test(
@@ -120,9 +123,9 @@ if __name__ == "__main__":
                 logger=logger,
                 test_fold=fold_num,
                 custom_callbacks=[
-                    callbacks.SaveOutputsWandb(
-                        save_name="wandb_outputs.csv", save_text=True
-                    ),
+                    # callbacks.SaveOutputsWandb(
+                    #     save_name="wandb_outputs.csv", save_text=True
+                    # ),
                     callbacks.SaveOutputsLocal(
                         save_dir="wiki_experiments_outputs",
                         fold_num=fold_num,

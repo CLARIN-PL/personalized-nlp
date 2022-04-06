@@ -271,11 +271,12 @@ class BaseDataModule(LightningDataModule, abc.ABC):
 
         dfs = []
         for col in annotation_columns:
-            dfs.append(
-                annotations.groupby("text_id")[col].apply(
-                    lambda x: pd.Series.mode(x)[0]
-                )
-            )
+            if self.normalize:
+                aggregate_lambda = lambda x: x.mean()
+            else:
+                aggregate_lambda = lambda x: pd.Series.mode(x)[0]
+
+            dfs.append(annotations.groupby("text_id")[col].apply(aggregate_lambda))
 
         annotations = pd.concat(dfs, axis=1).reset_index()
         annotations["annotator_id"] = 0
@@ -444,7 +445,9 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         )
 
         return torch.utils.data.DataLoader(
-            dataset, sampler=sampler, batch_size=None, num_workers=16
+            dataset,
+            sampler=sampler,
+            batch_size=None,
         )
 
     def _get_text_features(self) -> Dict[str, Any]:
