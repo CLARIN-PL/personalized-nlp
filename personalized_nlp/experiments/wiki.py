@@ -100,7 +100,7 @@ if __name__ == "__main__":
                 test_fold=fold_num,
                 custom_callbacks=[
                     callbacks.SaveOutputsLocal(
-                        save_dir=f"lrec_wiki_aggression_{model_type}",
+                        save_dir=f"lrec_{type(data_module).__name__}_{model_type}",
                         save_text=True,
                         **hparams
                     ),
