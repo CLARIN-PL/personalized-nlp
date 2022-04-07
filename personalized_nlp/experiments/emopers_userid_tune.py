@@ -3,7 +3,7 @@
 import os
 import torch
 from itertools import product
-from personalized_nlp.learning.train_alt import train_test
+from personalized_nlp.learning.train import train_test
 from personalized_nlp.models import models as models_dict
 from personalized_nlp.settings import LOGS_DIR
 from personalized_nlp.datasets.emotions_perspective.emotions_perspectives import EmotionsPerspectiveDataModule
@@ -113,4 +113,3 @@ if __name__ == "__main__":
             )
             
             logger.experiment.finish()
-            

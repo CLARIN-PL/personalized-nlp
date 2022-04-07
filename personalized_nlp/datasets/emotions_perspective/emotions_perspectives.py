@@ -7,6 +7,7 @@ from personalized_nlp.settings import STORAGE_DIR
 from personalized_nlp.utils.data_splitting import split_texts
 from personalized_nlp.datasets.datamodule_base import BaseDataModule
 
+
 VALENCE_MAPPING = {0:3, 1:4, 2:5, 3:6, -1:2, -2:1, -3:0}
 class EmotionsPerspectiveDataModule(BaseDataModule):
     def __init__(
