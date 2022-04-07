@@ -9,7 +9,7 @@ import pytorch_lightning as pl
 
 class NetUserID(torch.nn.Module):
     def __init__(self, output_dim, annotator_num, embedding_type, text_embedding_dim=768,
-    model_name='roberta-base', max_length=128, embedding_dim=20, hidden_dim=100,
+    model_name='roberta-base', max_length=256, embedding_dim=20, hidden_dim=100,
     **kwargs):
         super().__init__()
         self.text_embedding_dim = text_embedding_dim
@@ -21,6 +21,8 @@ class NetUserID(torch.nn.Module):
 
         additional_special_tokens = [f'_#{a_id}#_' for a_id in range(annotator_num)]
         special_tokens_dict = {'additional_special_tokens': additional_special_tokens}
+
+        self._frozen = False
 
         if embedding_type in TRANSFORMER_MODEL_STRINGS:
             embedding_type = TRANSFORMER_MODEL_STRINGS[embedding_type]

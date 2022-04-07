@@ -29,4 +29,5 @@ class RegressorFinetune(Regressor):
           },
       ]
       optimizer = torch.optim.AdamW(optimizer_grouped_parameters, lr=self.lr)
-      return [optimizer]
+      lr_scheduler = ReduceLROnPlateau(optimizer, 'min')
+      return [optimizer], [lr_scheduler]
