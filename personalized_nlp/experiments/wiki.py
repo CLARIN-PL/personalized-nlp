@@ -1,5 +1,6 @@
 import os
 from itertools import product
+from pytorch_lightning.callbacks import EarlyStopping
 
 from personalized_nlp.learning.train import train_test
 from personalized_nlp.models import models as models_dict
@@ -98,14 +99,13 @@ if __name__ == "__main__":
                 logger=logger,
                 test_fold=fold_num,
                 custom_callbacks=[
-                    callbacks.SaveOutputsWandb(
-                        save_name='wandb_outputs.csv', 
-                        save_text=True
-                    ),
                     callbacks.SaveOutputsLocal(
-                        save_dir='wiki_experiments_outputs',
-                        fold_num=fold_num,
-                        experiment='wiki_test'
+                        save_dir=f"lrec_wiki_aggression_{model_type}",
+                        save_text=True,
+                        **hparams
+                    ),
+                    EarlyStopping(
+                        monitor='valid_loss', mode='min', patience=3
                     )
                 ]
             )
