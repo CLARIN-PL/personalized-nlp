@@ -12,7 +12,7 @@ class TransformerUserId(nn.Module):
         text_embedding_dim: int,
         output_dim: int,
         huggingface_model_name: str = "bert-base-cased",
-        max_length: int = 256,
+        max_length: int = 128,
         append_annotator_ids=False,
         annotator_num=None,
         **kwargs,

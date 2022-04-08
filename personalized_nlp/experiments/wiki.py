@@ -12,7 +12,7 @@ import personalized_nlp.utils.callbacks as callbacks
 from pytorch_lightning import loggers as pl_loggers
 from personalized_nlp.settings import TRANSFORMER_MODEL_STRINGS
 
-os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 os.environ["WANDB_START_METHOD"] = "thread"
 
 if __name__ == "__main__":
@@ -39,12 +39,13 @@ if __name__ == "__main__":
     ]
     fold_nums = 10
 
+    majority_vote = False
     append_annotator_ids = (
         True  # If true, use UserID model, else use standard transfromer
     )
-    batch_size = 10
+    batch_size = 30
     epochs = 3
-    lr_rate = 5e-5
+    lr_rate = 1e-5
 
     use_cuda = True
 
@@ -60,7 +61,7 @@ if __name__ == "__main__":
             normalize=regression,
             batch_size=batch_size,
             stratify_folds_by=stratify_by,
-            major_voting=True,
+            major_voting=majority_vote,
         )
         data_module.prepare_data()
         data_module.setup()
@@ -82,6 +83,7 @@ if __name__ == "__main__":
                 "regression": regression,
                 "stratify_by": stratify_by,
                 "append_annotator_ids": append_annotator_ids,
+                'majority_vote': majority_vote
             }
 
             logger = pl_loggers.WandbLogger(
