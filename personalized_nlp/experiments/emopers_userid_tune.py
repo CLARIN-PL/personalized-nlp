@@ -33,7 +33,7 @@ if __name__ == "__main__":
     dp_embs = [0.25]
     embedding_dims = [50]
     epochs = 20
-    lr_rate = 3e-5
+    lr_rate = 1e-5
     weight_decay = 1e-6
     nr_frozen_epochs = 5
 
