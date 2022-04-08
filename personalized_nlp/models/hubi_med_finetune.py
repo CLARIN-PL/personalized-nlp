@@ -79,25 +79,3 @@ class HuBiMedium(nn.Module):
         x = self.fc2(x * annotator_embedding) + word_biases
         
         return x
-
-    def freeze(self) -> None:
-        for name, param in self.named_parameters():
-            if 'classifier' not in name: 
-                param.requires_grad = False
-                print('Freezing parameter:', name)
-        self._frozen = True
-
-    def unfreeze(self) -> None:
-        if self._frozen:
-            for name, param in self.named_parameters():
-                if 'classifier' not in name: 
-                    param.requires_grad = True
-                    print('Unfreezing parameter:', name)
-        self._frozen = False
-
-    def on_epoch_start(self):
-        if self.current_epoch < self.hparams.nr_frozen_epochs:
-            self.freeze()
-
-        if self.current_epoch >= self.hparams.nr_frozen_epochs:
-            self.unfreeze()

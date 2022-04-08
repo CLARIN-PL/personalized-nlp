@@ -10,8 +10,8 @@ import pytorch_lightning as pl
 
 
 class RegressorFinetune(Regressor):
-    def __init__(self, model, lr, class_names):
-        super().__init__(model, lr, class_names)
+    def __init__(self, model, lr, class_names, nr_frozen_epochs):
+        super().__init__(model, lr, class_names, nr_frozen_epochs)
 
     def configure_optimizers(self):
       model = self.model

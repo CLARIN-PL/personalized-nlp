@@ -10,11 +10,11 @@ from personalized_nlp.utils import seed_everything
 from pytorch_lightning import loggers as pl_loggers
 
 torch.cuda.empty_cache()
-os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 os.environ["WANDB_START_METHOD"] = "thread"
 
 if __name__ == "__main__":
-    wandb_project_name = 'hubimed_finetune_wdc'
+    wandb_project_name = 'test_on_epoch_hook'
 
     regression = True
     datamodule_cls = EmotionsPerspectiveDataModule
@@ -107,6 +107,7 @@ if __name__ == "__main__":
                 use_cuda=use_cuda,
                 logger=logger,
                 test_fold=test_fold,
+                nr_frozen_epochs=nr_frozen_epochs,
             )
 
             logger.experiment.finish()
