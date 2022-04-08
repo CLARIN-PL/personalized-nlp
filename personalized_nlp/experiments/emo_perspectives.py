@@ -17,7 +17,7 @@ os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 os.environ["WANDB_START_METHOD"] = "thread"
 
 if __name__ == "__main__":
-    wandb_project_name = 'test_on_epoch_hook_2'
+    wandb_project_name = 'hubi-med-finetune'
 
     regression = True
     datamodule_cls = EmotionsPerspectiveDataModule
@@ -41,7 +41,7 @@ if __name__ == "__main__":
     user_folding = True
     use_cuda = True
     # frozen=False by default for finetuning, set frozen=True for not finetuning
-    frozen = True
+    frozen = False
 
     for (min_word_count, words_per_text, embeddings_type, limit_past_annotations) in product(
         min_word_counts, words_per_texts, embedding_types, limit_past_annotations_list
