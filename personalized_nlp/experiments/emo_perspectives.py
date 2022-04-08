@@ -35,7 +35,7 @@ if __name__ == "__main__":
     epochs = 20
     lr_rates = [1e-5, 3e-5, 5e-5]
     weight_decay = 0.01
-    # set nr_frozen_epochs = 0 to finetuning from scratch, = epochs+1 to frozen the whole
+    # set nr_frozen_epochs = 0 to finetuning from scratch, = epochs to frozen the whole
     nr_frozen_epochs = 0
 
     user_folding = True
