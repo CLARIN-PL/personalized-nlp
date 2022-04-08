@@ -1,12 +1,7 @@
-from sched import scheduler
 import torch
 import torch.nn as nn
-from personalized_nlp.learning.regressor import Regressor
-from personalized_nlp.utils.callbacks.optimizer import SetLearningRates, SetWeightDecay
-from personalized_nlp.utils.callbacks.transformer_lr_scheduler import TransformerLrScheduler
-from transformers import get_linear_schedule_with_warmup
-
 import pytorch_lightning as pl
+from personalized_nlp.learning.regressor import Regressor
 
 
 class RegressorFinetune(Regressor):
@@ -30,5 +25,5 @@ class RegressorFinetune(Regressor):
           },
       ]
       optimizer = torch.optim.AdamW(optimizer_grouped_parameters, lr=self.lr)
-      lr_scheduler = ReduceLROnPlateau(optimizer, 'min')
+      lr_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min')
       return [optimizer], [lr_scheduler]
