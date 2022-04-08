@@ -47,14 +47,14 @@ class Regressor(pl.LightningModule):
         for name, param in self.named_parameters():
             if 'fc' not in name: 
                 param.requires_grad = False
-        self._frozen = True
+        self.model.frozen = True
 
     def unfreeze(self) -> None:
-        if self._frozen:
+        if self.model.frozen:
             for name, param in self.named_parameters():
                 if 'fc' not in name: 
                     param.requires_grad = True
-        self._frozen = False
+        self.model.frozen = False
 
     def on_epoch_start(self):
         if self.current_epoch < self.hparams.nr_frozen_epochs:
