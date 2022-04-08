@@ -86,7 +86,6 @@ if __name__ == "__main__":
                 embedding_type=embeddings_type
             )
 
-            test_fold = fold_num if user_folding else None
             train_test(
                 data_module,
                 model,
@@ -95,7 +94,7 @@ if __name__ == "__main__":
                 regression=regression,
                 use_cuda=use_cuda,
                 logger=logger,
-                test_fold=test_fold,
+                test_fold=fold_num,
             )
 
             logger.experiment.finish()
