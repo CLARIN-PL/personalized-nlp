@@ -10,13 +10,12 @@ import pytorch_lightning as pl
 class NetUserID(torch.nn.Module):
     def __init__(self, output_dim, annotator_num, embedding_type, text_embedding_dim=768,
     model_name='roberta-base', max_length=256, embedding_dim=20, hidden_dim=100,
-    weight_decay=0.0, **kwargs):
+    **kwargs):
         super().__init__()
         self.text_embedding_dim = text_embedding_dim
         self.embedding_dim = embedding_dim
         self.hidden_dim = hidden_dim
         self.embedding_type = embedding_type
-        self.weight_decay = weight_decay
 
         self.fc1 = nn.Linear(text_embedding_dim, output_dim)
 

@@ -10,8 +10,8 @@ import pytorch_lightning as pl
 
 
 class RegressorFinetune(Regressor):
-    def __init__(self, model, lr, class_names):
-        super().__init__(model, lr, class_names)
+    def __init__(self, model, lr, weight_decay, class_names):
+        super().__init__(model, lr, weight_decay, class_names)
 
     def configure_optimizers(self):
       model = self.model
@@ -21,7 +21,7 @@ class RegressorFinetune(Regressor):
       optimizer_grouped_parameters = [
           {
               "params": [p for n, p in param_optimizer if not any(nd in n for nd in no_decay)],
-              "weight_decay": self.hparams.weight_decay,
+              "weight_decay": weight_decay,
           },
           {
               "params": [p for n, p in param_optimizer if any(nd in n for nd in no_decay)],
