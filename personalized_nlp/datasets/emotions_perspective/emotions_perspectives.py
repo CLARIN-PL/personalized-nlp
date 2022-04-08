@@ -1,5 +1,3 @@
-# from lib2to3.pytree import Base
-# from tkinter import N
 from typing import List
 
 import pandas as pd
