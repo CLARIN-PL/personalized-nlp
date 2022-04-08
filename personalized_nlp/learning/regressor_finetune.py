@@ -24,6 +24,6 @@ class RegressorFinetune(Regressor):
               "weight_decay": 0.0,
           },
       ]
-      optimizer = torch.optim.AdamW(optimizer_grouped_parameters, lr=self.lr)
+      optimizer = torch.optim.AdamW(optimizer_grouped_parameters, lr=self.lr, monitor='valid_loss')
       lr_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min')
       return [optimizer], [lr_scheduler]
