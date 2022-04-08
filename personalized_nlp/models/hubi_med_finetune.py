@@ -8,16 +8,16 @@ from personalized_nlp.utils import tokenizer
 
 class HuBiMedium(nn.Module):
     def __init__(self, output_dim, text_embedding_dim, word_num, annotator_num, embedding_type,
-                 max_seq_len=128, dp=0.35, dp_emb=0.2, embedding_dim=20, hidden_dim=100, **kwargs):
+                 max_seq_len=128, dp=0.35, dp_emb=0.2, embedding_dim=20, hidden_dim=100, frozen=False, **kwargs):
         super().__init__()
         self.text_embedding_dim = text_embedding_dim
         self.embedding_dim = embedding_dim
         self.hidden_dim = hidden_dim
         self.embedding_type = embedding_type
 
-        self._frozen = False
+        self.frozen = frozen
 
-        if not self._frozen:
+        if not self.frozen:
             if embedding_type in TRANSFORMER_MODEL_STRINGS:
                 embedding_type = TRANSFORMER_MODEL_STRINGS[embedding_type]
             self._model = AutoModel.from_pretrained(embedding_type)
@@ -45,7 +45,7 @@ class HuBiMedium(nn.Module):
         self.softplus = nn.Softplus()
 
     def forward(self, features):
-        if not self._frozen:
+        if not self.frozen:
             batched_texts = features['raw_texts'].tolist()
             batch_encoding = self._tokenizer.batch_encode_plus(
                 batched_texts,
