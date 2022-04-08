@@ -18,14 +18,20 @@ class RegressorFinetune(Regressor):
           {
               "params": [p for n, p in param_optimizer if not any(nd in n for nd in no_decay)],
               "weight_decay": self.weight_decay,
-              "monitor": 'valid_loss',
           },
           {
               "params": [p for n, p in param_optimizer if any(nd in n for nd in no_decay)],
               "weight_decay": 0.0,
-              "monitor": 'valid_loss',
           },
       ]
       optimizer = torch.optim.AdamW(optimizer_grouped_parameters, lr=self.lr)
       lr_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min')
       return [optimizer], [lr_scheduler]
+      return {
+        "optimizer": optimizer,
+        "lr_scheduler": {
+            "scheduler": lr_scheduler,
+            "monitor": "valid_loss",
+            "frequency": 1,
+        },
+      }
