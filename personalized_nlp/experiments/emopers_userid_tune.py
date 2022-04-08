@@ -17,7 +17,7 @@ os.environ["CUDA_VISIBLE_DEVICES"] = '0'
 os.environ["WANDB_START_METHOD"] = "thread"
 
 if __name__ == "__main__":
-    regression = False
+    regression = True
     datamodule_cls = EmotionsPerspectiveDataModule
     embedding_types = ['roberta']
     model_types = ['userid']
@@ -33,7 +33,7 @@ if __name__ == "__main__":
     dp_embs = [0.25]
     embedding_dims = [50]
     epochs = 20
-    lr_rate = 1e-5
+    lr_rate = 4e-5
     weight_decay = 1e-6
     nr_frozen_epochs = 5
 
@@ -95,6 +95,7 @@ if __name__ == "__main__":
                 bias_vector_length=len(data_module.class_dims),
                 nr_frozen_epochs=nr_frozen_epochs,
                 embedding_type=embeddings_type,
+                flag_frozen=False,
             )
             
             test_fold = fold_num if user_folding else None

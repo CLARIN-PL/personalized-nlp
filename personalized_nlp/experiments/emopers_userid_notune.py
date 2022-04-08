@@ -3,7 +3,7 @@
 import os
 import torch
 from itertools import product
-from personalized_nlp.learning.train_alt import train_test
+from personalized_nlp.learning.train import train_test
 from personalized_nlp.models import models as models_dict
 from personalized_nlp.settings import LOGS_DIR
 from pytorch_lightning import loggers as pl_loggers
@@ -12,11 +12,11 @@ from personalized_nlp.utils import seed_everything
 
 torch.cuda.empty_cache()
 
-os.environ["CUDA_VISIBLE_DEVICES"] = '2'
+os.environ["CUDA_VISIBLE_DEVICES"] = '0'
 os.environ["WANDB_START_METHOD"] = "thread"
 
 if __name__ == "__main__":
-    regression = False
+    regression = True
     datamodule_cls = EmotionsPerspectiveDataModule
     embedding_types = ['roberta']
     model_types = ['userid']
@@ -26,7 +26,7 @@ if __name__ == "__main__":
     min_annotations_per_text = 2
     
     min_word_counts = [50]
-    words_per_texts = [128]
+    words_per_texts = [256]
     
     batch_size = 16
     dp_embs = [0.25]
@@ -34,6 +34,7 @@ if __name__ == "__main__":
     epochs = 20
     nr_frozen_epochs = 0
     lr_rate = 3e-5
+    weight_decay = 0
     
     use_cuda = True
     user_folding = True
@@ -65,6 +66,7 @@ if __name__ == "__main__":
                 "words_per_texts": words_per_text,
                 "min_word_count": min_word_count,
                 "dp_emb": dp_emb,
+                "weight_decay": weight_decay,
             }
 
             logger = pl_loggers.WandbLogger(
@@ -88,8 +90,15 @@ if __name__ == "__main__":
                 embedding_dim=embedding_dim,
                 hidden_dim=100,
                 bias_vector_length=len(data_module.class_dims),
-                embedding_type=embeddings_type
+                embedding_type=embeddings_type,
+                flag_frozen=True,
             )
+
+            # This should be done already by flag_frozen=True, but just
+            # in case... (there isn't time to debug this before paper submission)
+            for name, param in model.model.named_parameters():
+              if 'classifier' not in name:
+                param.requires_grad = False
 
             test_fold = fold_num if user_folding else None
             train_test(
@@ -97,6 +106,7 @@ if __name__ == "__main__":
                 model,
                 epochs=epochs,
                 lr=lr_rate,
+                weight_decay=weight_decay,
                 regression=regression,
                 use_cuda=use_cuda,
                 logger=logger,
