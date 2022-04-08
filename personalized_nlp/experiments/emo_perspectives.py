@@ -13,17 +13,17 @@ from personalized_nlp.utils.callbacks.optimizer import SetWeightDecay
 from personalized_nlp.utils.callbacks.transformer_lr_scheduler import TransformerLrScheduler
 
 torch.cuda.empty_cache()
-os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 os.environ["WANDB_START_METHOD"] = "thread"
 
 if __name__ == "__main__":
-    wandb_project_name = 'hubi-med-finetune'
+    wandb_project_name = 'hubi-med-finetune-params'
 
     regression = True
     datamodule_cls = EmotionsPerspectiveDataModule
     embedding_types = ['roberta']
     model_types = ['hubi_med']
-    limit_past_annotations_list = [None] 
+ 
     fold_nums = 10
     
     min_word_counts = [50]
@@ -33,9 +33,9 @@ if __name__ == "__main__":
     dp_embs = [0.25]
     embedding_dims = [50]
     epochs = 20
-    lr_rate = 3e-5
-    weight_decay = 1e-6
-    # set nr_frozen_epochs = 0 to finetuning from scratch, = epochs to frozen the whole
+    lr_rates = [1e-5, 3e-5, 5e-5]
+    weight_decay = 0.01
+    # set nr_frozen_epochs = 0 to finetuning from scratch, = epochs+1 to frozen the whole
     nr_frozen_epochs = 0
 
     user_folding = True
@@ -43,14 +43,13 @@ if __name__ == "__main__":
     # frozen=False by default for finetuning, set frozen=True for not finetuning
     frozen = False
 
-    for (min_word_count, words_per_text, embeddings_type, limit_past_annotations) in product(
-        min_word_counts, words_per_texts, embedding_types, limit_past_annotations_list
+    for (min_word_count, words_per_text, embeddings_type, lr_rate) in product(
+        min_word_counts, words_per_texts, embedding_types, lr_rates
     ):
 
         seed_everything()
         data_module = datamodule_cls(
             embeddings_type=embeddings_type, normalize=regression, batch_size=batch_size,
-            past_annotations_limit=limit_past_annotations
         )
         data_module.prepare_data()
         data_module.setup()
