@@ -33,7 +33,7 @@ if __name__ == "__main__":
     min_annotations_per_text = 2
 
     min_word_counts = [50]
-    words_per_texts = [128]
+    words_per_texts = [256]
 
     batch_size = 16
     dp_embs = [0.25]
