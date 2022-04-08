@@ -94,7 +94,8 @@ if __name__ == "__main__":
                 hidden_dim=100,
                 bias_vector_length=len(data_module.class_dims),
                 nr_frozen_epochs=nr_frozen_epochs,
-                embedding_type=embeddings_type
+                embedding_type=embeddings_type,
+                weight_decay=weight_decay,
             )
             
             test_fold = fold_num if user_folding else None
