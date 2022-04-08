@@ -16,7 +16,7 @@ class SetLearningRates(Callback):
         self.new_embeddings_lr = new_embeddings_lr
 
     def on_train_start(self, trainer: Trainer, pl_module: Classifier):
-        model = pl_module.model.model
+        model = pl_module.model
 
         param_optimizer = list(model.named_parameters())
         embedding_names = 'emotion_embeddings', 'sentiment_embeddings'
@@ -50,7 +50,7 @@ class SetWeightDecay(Callback):
         self.weight_decay = weight_decay
 
     def on_train_start(self, trainer: Trainer, pl_module: Classifier):
-        model = pl_module.model.model
+        model = pl_module.model
         param_optimizer = list(model.named_parameters())
         no_decay = ['bias', 'LayerNorm.bias', 'LayerNorm.weight']
         optimizer_grouped_parameters = [
