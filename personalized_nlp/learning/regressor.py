@@ -57,10 +57,10 @@ class Regressor(pl.LightningModule):
         self.model.frozen = False
 
     def on_epoch_start(self):
-        if self.current_epoch < self.hparams.nr_frozen_epochs:
+        if self.current_epoch <= self.hparams.nr_frozen_epochs:
             self.freeze()
 
-        if self.current_epoch >= self.hparams.nr_frozen_epochs:
+        if self.current_epoch > self.hparams.nr_frozen_epochs:
             self.unfreeze()
 
     def validation_step(self, batch, batch_idx):

@@ -7,11 +7,10 @@ from pytorch_lightning.callbacks import ModelCheckpoint
 
 from personalized_nlp.learning.classifier import Classifier
 from personalized_nlp.learning.regressor import Regressor
-from personalized_nlp.learning.regressor_finetune import RegressorFinetune
 from personalized_nlp.settings import LOGS_DIR, CHECKPOINTS_DIR
 
 
-def train_test(datamodule, model, epochs=6, lr=1e-2, weight_decay=0.0, nr_frozen_epochs=5, regression=False,
+def train_test(datamodule, model, epochs=6, lr=1e-2, nr_frozen_epochs=5, regression=False,
                use_cuda=False, test_fold=None, logger=None, log_model=False,
                custom_callbacks=None, trainer_kwargs=None, **kwargs):
     """ Train model and return predictions for test dataset"""
@@ -23,9 +22,6 @@ def train_test(datamodule, model, epochs=6, lr=1e-2, weight_decay=0.0, nr_frozen
         class_names = datamodule.annotation_column
         if isinstance(datamodule.annotation_column, str):
             class_names = [datamodule.annotation_column]
-
-        if not model._frozen and weight_decay!=0.0:
-          model = RegressorFinetune(model=model, lr=lr, class_names=class_names, nr_frozen_epochs=nr_frozen_epochs)
 
         model = Regressor(model=model, lr=lr,
                           class_names=class_names, nr_frozen_epochs=nr_frozen_epochs)

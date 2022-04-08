@@ -9,12 +9,15 @@ from personalized_nlp.datasets.emotions_perspective.emotions_perspectives import
 from personalized_nlp.utils import seed_everything
 from pytorch_lightning import loggers as pl_loggers
 
+from personalized_nlp.utils.callbacks.optimizer import SetWeightDecay
+from personalized_nlp.utils.callbacks.transformer_lr_scheduler import TransformerLrScheduler
+
 torch.cuda.empty_cache()
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 os.environ["WANDB_START_METHOD"] = "thread"
 
 if __name__ == "__main__":
-    wandb_project_name = 'test_on_epoch_hook'
+    wandb_project_name = 'test_on_epoch_hook_2'
 
     regression = True
     datamodule_cls = EmotionsPerspectiveDataModule
@@ -32,10 +35,13 @@ if __name__ == "__main__":
     epochs = 20
     lr_rate = 3e-5
     weight_decay = 1e-6
-    nr_frozen_epochs = 5
+    # set nr_frozen_epochs = 0 to finetuning from scratch, = epochs to frozen the whole
+    nr_frozen_epochs = 0
 
     user_folding = True
     use_cuda = True
+    # frozen=False by default for finetuning, set frozen=True for not finetuning
+    frozen = True
 
     for (min_word_count, words_per_text, embeddings_type, limit_past_annotations) in product(
         min_word_counts, words_per_texts, embedding_types, limit_past_annotations_list
@@ -93,10 +99,14 @@ if __name__ == "__main__":
                 hidden_dim=100,
                 bias_vector_length=len(data_module.class_dims),
                 nr_frozen_epochs=nr_frozen_epochs,
-                embedding_type=embeddings_type
+                embedding_type=embeddings_type,
+                frozen = frozen
             )
 
-            test_fold = fold_num if user_folding else None
+            custom_callbacks = [SetWeightDecay(lr=lr_rate, weight_decay=weight_decay)]
+            if frozen==False:
+                custom_callbacks += [TransformerLrScheduler(warmup_proportion=0.1)]
+
             train_test(
                 data_module,
                 model,
@@ -106,8 +116,9 @@ if __name__ == "__main__":
                 regression=regression,
                 use_cuda=use_cuda,
                 logger=logger,
-                test_fold=test_fold,
+                test_fold=fold_num,
                 nr_frozen_epochs=nr_frozen_epochs,
+                custom_callbacks=custom_callbacks
             )
 
             logger.experiment.finish()
