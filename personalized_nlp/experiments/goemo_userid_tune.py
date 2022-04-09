@@ -1,4 +1,4 @@
-# code for USER_ID exp without fine-tuning
+# code for USER_ID exp with fine-tuning
 
 import os
 from itertools import product

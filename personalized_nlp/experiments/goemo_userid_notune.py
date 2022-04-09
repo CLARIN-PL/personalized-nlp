@@ -106,6 +106,12 @@ if __name__ == "__main__":
                 frozen = frozen
             )
 
+            # This should be done already by flag_frozen=True, but just
+            # in case... (there isn't time to debug this before paper submission)
+            for name, param in model.model.named_parameters():
+              if 'fc' not in name:
+                param.requires_grad = False
+
             custom_callbacks = [SetWeightDecay(lr=lr_rate, weight_decay=weight_decay)]
             if frozen==False:
                 custom_callbacks += [TransformerLrScheduler(warmup_proportion=0.1)]
