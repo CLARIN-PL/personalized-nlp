@@ -5,14 +5,14 @@ import pytorch_lightning as pl
 
 
 class Regressor(pl.LightningModule):
-    def __init__(self, model, lr, class_names):
+    def __init__(self, model, lr, class_names, nr_frozen_epochs):
         super().__init__()
         self.model = model
         self.lr = lr
 
         self.class_names = class_names
-
         self.metric_types = ['r2']
+        self.hparams.nr_frozen_epochs = nr_frozen_epochs
 
         class_metrics = {}
 
@@ -44,6 +44,26 @@ class Regressor(pl.LightningModule):
 
     def training_epoch_end(self, outs):
         pass
+
+    def freeze(self) -> None:
+        for name, param in self.named_parameters():
+            if 'fc' not in name:
+                param.requires_grad = False
+        self.model.frozen = True
+
+    def unfreeze(self) -> None:
+        if self.model.frozen:
+            for name, param in self.named_parameters():
+                if 'fc' not in name:
+                    param.requires_grad = True
+        self.model.frozen = False
+
+    def on_epoch_start(self):
+        if self.current_epoch < self.hparams.nr_frozen_epochs:
+            self.freeze()
+
+        if self.current_epoch >= self.hparams.nr_frozen_epochs:
+            self.unfreeze()
 
     def validation_step(self, batch, batch_idx):
         x, y = batch

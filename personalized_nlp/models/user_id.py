@@ -7,9 +7,10 @@ from personalized_nlp.settings import TRANSFORMER_MODEL_STRINGS
 from typing import Dict, Any
 import pytorch_lightning as pl
 
+
 class NetUserID(torch.nn.Module):
     def __init__(self, output_dim, annotator_num, embedding_type, text_embedding_dim=768,
-    model_name='roberta-base', max_length=256, embedding_dim=20, hidden_dim=100, flag_frozen=False,
+    model_name='roberta-base', max_length=256, embedding_dim=20, hidden_dim=100, frozen=False,
     **kwargs):
         super().__init__()
         self.text_embedding_dim = text_embedding_dim
@@ -22,7 +23,7 @@ class NetUserID(torch.nn.Module):
         additional_special_tokens = [f'_#{a_id}#_' for a_id in range(annotator_num)]
         special_tokens_dict = {'additional_special_tokens': additional_special_tokens}
 
-        self._frozen = flag_frozen
+        self.frozen = frozen
 
         if embedding_type in TRANSFORMER_MODEL_STRINGS:
             embedding_type = TRANSFORMER_MODEL_STRINGS[embedding_type]
@@ -34,7 +35,7 @@ class NetUserID(torch.nn.Module):
         self.model.resize_token_embeddings(len(self._tokenizer))
 
     def forward(self, features):
-        if not self._frozen:
+        if not self.frozen:
             batched_texts = features['raw_texts'].tolist()
             batch_encoding = self._tokenizer.batch_encode_plus(
                 batched_texts,
@@ -54,23 +55,3 @@ class NetUserID(torch.nn.Module):
         x = x.view(-1, self.text_embedding_dim)
         x = self.fc1(torch.cat([x], dim=1))
         return x
-
-    def freeze(self) -> None:
-        for name, param in self.named_parameters():
-            if 'classifier' not in name:
-                param.requires_grad = False
-        self._frozen = True
-
-    def unfreeze(self) -> None:
-        if self._frozen:
-            for name, param in self.named_parameters():
-                if 'classifier' not in name:
-                    param.requires_grad = True
-        self._frozen = False
-
-    def on_epoch_start(self):
-        if self.current_epoch < self.hparams.nr_frozen_epochs:
-            self.freeze()
-
-        if self.current_epoch >= self.hparams.nr_frozen_epochs:
-            self.unfreeze()

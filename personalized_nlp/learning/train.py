@@ -7,13 +7,12 @@ from pytorch_lightning.callbacks import ModelCheckpoint
 
 from personalized_nlp.learning.classifier import Classifier
 from personalized_nlp.learning.regressor import Regressor
-from personalized_nlp.learning.regressor_finetune import RegressorFinetune
 from personalized_nlp.settings import LOGS_DIR, CHECKPOINTS_DIR
 
 
-def train_test(datamodule, model, epochs=6, lr=1e-2, weight_decay=0.0,
-               regression=False, use_cuda=False, test_fold=None, logger=None,
-               log_model=False, custom_callbacks=None, trainer_kwargs=None, **kwargs):
+def train_test(datamodule, model, epochs=6, lr=1e-2, nr_frozen_epochs=5, regression=False,
+               use_cuda=False, test_fold=None, logger=None, log_model=False,
+               custom_callbacks=None, trainer_kwargs=None, **kwargs):
     """ Train model and return predictions for test dataset"""
     train_loader = datamodule.train_dataloader(test_fold=test_fold)
     val_loader = datamodule.val_dataloader(test_fold=test_fold)
@@ -23,15 +22,9 @@ def train_test(datamodule, model, epochs=6, lr=1e-2, weight_decay=0.0,
         class_names = datamodule.annotation_column
         if isinstance(datamodule.annotation_column, str):
             class_names = [datamodule.annotation_column]
-        
-        if hasattr(model, '_frozen'):
-            if not model._frozen and weight_decay!=0.0:
-                model = RegressorFinetune(model=model, lr=lr, weight_decay=weight_decay, class_names=class_names)
-            else:
-                model = Regressor(model=model, lr=lr, class_names=class_names)
-        else:
-          model = Regressor(model=model, lr=lr, class_names=class_names)
 
+        model = Regressor(model=model, lr=lr,
+                          class_names=class_names, nr_frozen_epochs=nr_frozen_epochs)
     else:
         class_dims = datamodule.class_dims
         class_names = datamodule.annotation_column
@@ -39,13 +32,12 @@ def train_test(datamodule, model, epochs=6, lr=1e-2, weight_decay=0.0,
             class_names = [datamodule.annotation_column]
 
         model = Classifier(model=model, lr=lr, class_dims=class_dims,
-                           class_names=class_names)
+                           class_names=class_names, nr_frozen_epochs=nr_frozen_epochs)
 
     if logger is None:
         logger = pl_loggers.WandbLogger(save_dir=LOGS_DIR, log_model=log_model)
 
     checkpoint_dir = CHECKPOINTS_DIR / logger.experiment.name
-        
     if custom_callbacks is not None:
         callbacks = copy(custom_callbacks)
     else:
@@ -55,7 +47,6 @@ def train_test(datamodule, model, epochs=6, lr=1e-2, weight_decay=0.0,
         callbacks.append(
             ModelCheckpoint(
                 dirpath=checkpoint_dir,
-                filename='bestmodel',
                 save_top_k=1,
                 monitor='valid_loss',
                 mode='min',
