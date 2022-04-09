@@ -1,4 +1,4 @@
-# code for USER_ID exp without fine-tuning
+# code for USER_ID exp with fine-tuning
 
 import os
 import torch
@@ -7,25 +7,22 @@ from personalized_nlp.learning.train import train_test
 from personalized_nlp.models import models as models_dict
 from personalized_nlp.settings import LOGS_DIR
 from pytorch_lightning import loggers as pl_loggers
-from personalized_nlp.datasets.emotions_perspective.emotions_perspectives import EmotionsPerspectiveDataModule
+from personalized_nlp.datasets.goemotions.go_emotions import GoEmotionsDataModule
 from personalized_nlp.utils import seed_everything
 
 
 torch.cuda.empty_cache()
-
-os.environ["CUDA_VISIBLE_DEVICES"] = '0'
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 os.environ["WANDB_START_METHOD"] = "thread"
 
 if __name__ == "__main__":
+    wandb_project_name = 'userid_goemo_finetune'
     regression = True
-    datamodule_cls = EmotionsPerspectiveDataModule
+    datamodule_cls = GoEmotionsDataModule
     embedding_types = ['roberta']
     model_types = ['userid']
-    wandb_project_name = 'useird_notune'
-    limit_past_annotations_list = [None] # range(20)
     fold_nums = 10
-    min_annotations_per_text = 2
-    
+
     min_word_counts = [50]
     words_per_texts = [256]
     
@@ -33,19 +30,19 @@ if __name__ == "__main__":
     dp_embs = [0.25]
     embedding_dims = [50]
     epochs = 20
-    nr_frozen_epochs = 20
+    nr_frozen_epochs = 0
     lr_rate = 3e-5
-    weight_decay = 0
-    
+    weight_decay = 1e-6
+
     use_cuda = True
     user_folding = True
 
-    for (min_word_count, words_per_text, embeddings_type, limit_past_annotations) in product(
-        min_word_counts, words_per_texts, embedding_types, limit_past_annotations_list
-    ):
+    for (min_word_count, words_per_text, embeddings_type) in product(
+        min_word_counts, words_per_texts, embedding_types):
 
         seed_everything()
-        data_module = datamodule_cls(embeddings_type=embeddings_type, normalize=regression, batch_size=batch_size, regression=regression)
+        data_module = datamodule_cls(
+            embeddings_type=embeddings_type, normalize=regression, batch_size=batch_size, regression=regression)
         data_module.prepare_data()
         data_module.setup()
         data_module.compute_word_stats(
@@ -91,15 +88,8 @@ if __name__ == "__main__":
                 embedding_dim=embedding_dim,
                 hidden_dim=100,
                 bias_vector_length=len(data_module.class_dims),
-                embedding_type=embeddings_type,
-                flag_frozen=True,
+                embedding_type=embeddings_type
             )
-
-            # This should be done already by flag_frozen=True, but just
-            # in case... (there isn't time to debug this before paper submission)
-            for name, param in model.model.named_parameters():
-              if 'classifier' not in name:
-                param.requires_grad = False
 
             test_fold = fold_num if user_folding else None
             train_test(
