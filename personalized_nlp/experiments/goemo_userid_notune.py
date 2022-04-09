@@ -7,7 +7,7 @@ from personalized_nlp.learning.train import train_test
 from personalized_nlp.models import models as models_dict
 from personalized_nlp.settings import LOGS_DIR
 from pytorch_lightning import loggers as pl_loggers
-from personalized_nlp.datasets.emotions_perspective.emotions_perspectives import EmotionsPerspectiveDataModule
+from personalized_nlp.datasets.goemotions.go_emotions import GoEmotionsDataModule
 from personalized_nlp.utils import seed_everything
 
 
