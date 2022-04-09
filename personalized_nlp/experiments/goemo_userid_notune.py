@@ -17,7 +17,7 @@ os.environ["WANDB_START_METHOD"] = "thread"
 
 if __name__ == "__main__":
     wandb_project_name = 'userid_goemo_nofinetune'
-    regression = True
+    regression = False
     datamodule_cls = GoEmotionsDataModule
     embedding_types = ['roberta']
     model_types = ['userid']
@@ -31,7 +31,7 @@ if __name__ == "__main__":
     embedding_dims = [50]
     epochs = 20
     nr_frozen_epochs = 20
-    lr_rate = 5e-3
+    lr_rate = 8e-3
     weight_decay = 0
     
     use_cuda = True
