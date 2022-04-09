@@ -35,3 +35,33 @@ TRANSFORMER_MODEL_STRINGS = {
     'mpnet': 'sentence-transformers/paraphrase-multilingual-mpnet-base-v2',
     'roberta': 'roberta-base'
 }
+
+GO_EMOTIONS_LABELS = [
+    'admiration',
+    'amusement',
+    'anger',
+    'annoyance',
+    'approval',
+    'caring',
+    'confusion',
+    'curiosity',
+    'desire',
+    'disappointment',
+    'disapproval',
+    'disgust',
+    'embarrassment',
+    'excitement',
+    'fear',
+    'gratitude',
+    'grief',
+    'joy',
+    'love',
+    'nervousness',
+    'optimism',
+    'pride',
+    'realization',
+    'relief',
+    'remorse',
+    'sadness',
+    'surprise',
+    'neutral']
