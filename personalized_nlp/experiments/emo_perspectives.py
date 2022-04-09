@@ -13,11 +13,11 @@ from personalized_nlp.utils.callbacks.optimizer import SetWeightDecay
 from personalized_nlp.utils.callbacks.transformer_lr_scheduler import TransformerLrScheduler
 
 torch.cuda.empty_cache()
-os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 os.environ["WANDB_START_METHOD"] = "thread"
 
 if __name__ == "__main__":
-    wandb_project_name = 'hubi-med-finetune-params'
+    wandb_project_name = 'hubi-med-finetuned'
 
     regression = True
     datamodule_cls = EmotionsPerspectiveDataModule
@@ -73,7 +73,8 @@ if __name__ == "__main__":
                 "min_word_count": min_word_count,
                 "dp_emb": dp_emb,
                 "weight_decay": weight_decay,
-                'nr_frozen_epochs': nr_frozen_epochs
+                "nr_frozen_epochs": nr_frozen_epochs,
+                "learning_rate": lr_rate,
             }
 
             logger = pl_loggers.WandbLogger(

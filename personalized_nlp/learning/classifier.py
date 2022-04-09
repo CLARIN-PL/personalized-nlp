@@ -5,13 +5,14 @@ from torchmetrics import Accuracy, F1, Precision, Recall
 
 
 class Classifier(pl.LightningModule):
-    def __init__(self, model, class_dims, lr, class_names=None):
+    def __init__(self, model, class_dims, lr, nr_frozen_epochs, class_names=None):
         super().__init__()
         self.model = model
         self.lr = lr
 
         self.class_dims = class_dims
         self.class_names = class_names
+        self.hparams.nr_frozen_epochs = nr_frozen_epochs
 
         self.metric_types = ('accuracy', 'precision',
                              'recall', 'f1', 'macro_f1')
@@ -93,6 +94,26 @@ class Classifier(pl.LightningModule):
 
     def test_epoch_end(self, outputs) -> None:
         self.log_class_metrics_at_epoch_end('test')
+
+    def freeze(self) -> None:
+        for name, param in self.named_parameters():
+            if 'fc' not in name: 
+                param.requires_grad = False
+        self.model.frozen = True
+
+    def unfreeze(self) -> None:
+        if self.model.frozen:
+            for name, param in self.named_parameters():
+                if 'fc' not in name: 
+                    param.requires_grad = True
+        self.model.frozen = False
+
+    def on_epoch_start(self):
+        if self.current_epoch < self.hparams.nr_frozen_epochs:
+            self.freeze()
+
+        if self.current_epoch >= self.hparams.nr_frozen_epochs:
+            self.unfreeze()
 
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(self.parameters(), lr=self.lr)

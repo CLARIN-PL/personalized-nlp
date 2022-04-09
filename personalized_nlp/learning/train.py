@@ -32,7 +32,7 @@ def train_test(datamodule, model, epochs=6, lr=1e-2, nr_frozen_epochs=5, regress
             class_names = [datamodule.annotation_column]
 
         model = Classifier(model=model, lr=lr, class_dims=class_dims,
-                           class_names=class_names)
+                           class_names=class_names, nr_frozen_epochs=nr_frozen_epochs)
 
     if logger is None:
         logger = pl_loggers.WandbLogger(save_dir=LOGS_DIR, log_model=log_model)
