@@ -30,8 +30,8 @@ if __name__ == "__main__":
     dp_embs = [0.25]
     embedding_dims = [50]
     epochs = 20
-    nr_frozen_epochs = 0
-    lr_rate = 3e-5
+    nr_frozen_epochs = 10
+    lr_rate = 5e-3
     weight_decay = 1e-6
 
     use_cuda = True
