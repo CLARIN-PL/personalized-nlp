@@ -10,6 +10,7 @@ from pytorch_lightning import loggers as pl_loggers
 from personalized_nlp.datasets.emotions_perspective.emotions_perspectives import EmotionsPerspectiveDataModule
 from personalized_nlp.utils import seed_everything
 
+
 torch.cuda.empty_cache()
 
 os.environ["CUDA_VISIBLE_DEVICES"] = '0'
@@ -32,7 +33,7 @@ if __name__ == "__main__":
     dp_embs = [0.25]
     embedding_dims = [50]
     epochs = 20
-    nr_frozen_epochs = 0
+    nr_frozen_epochs = 20
     lr_rate = 3e-5
     weight_decay = 0
     
