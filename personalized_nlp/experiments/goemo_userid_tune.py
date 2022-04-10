@@ -30,7 +30,7 @@ if __name__ == "__main__":
     fold_nums = 10
 
     min_word_counts = [50]
-    words_per_texts = [15]
+    words_per_texts = [256]
 
     batch_size = 16
     dp_embs = [0.25]
