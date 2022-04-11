@@ -35,34 +35,3 @@ TRANSFORMER_MODEL_STRINGS = {
     'labse': 'sentence-transformers/LaBSE',
     'mpnet': 'sentence-transformers/paraphrase-multilingual-mpnet-base-v2'
 }
-
-GO_EMOTIONS_LABELS = [
-    'admiration',
-    'amusement',
-    'anger',
-    'annoyance',
-    'approval',
-    'caring',
-    'confusion',
-    'curiosity',
-    'desire',
-    'disappointment',
-    'disapproval',
-    'disgust',
-    'embarrassment',
-    'excitement',
-    'fear',
-    'gratitude',
-    'grief',
-    'joy',
-    'love',
-    'nervousness',
-    'optimism',
-    'pride',
-    'realization',
-    'relief',
-    'remorse',
-    'sadness',
-    'surprise',
-    'neutral']
-    
