@@ -89,6 +89,7 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         past_annotations_limit: Optional[int] = None,
         stratify_folds_by: Optional[str] = "users",
         split_sizes: Optional[List[str]] = None,
+        embeddings_fold: Optional[int] = None,
         **kwargs
     ):
         """_summary_
@@ -118,6 +119,7 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         self.folds_num = folds_num
         self.past_annotations_limit = past_annotations_limit
         self.stratify_folds_by = stratify_folds_by
+        self.embeddings_fold = embeddings_fold
 
         self.split_sizes = (
             split_sizes if split_sizes is not None else [0.55, 0.15, 0.15, 0.15]
@@ -209,7 +211,12 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         if not os.path.exists(self.embeddings_path):
             self._create_embeddings()
 
-        text_idx_to_emb = pickle.load(open(self.embeddings_path, "rb"))
+        embeddings_path = self.embeddings_path
+
+        if self.embeddings_fold is not None:
+            embeddings_path = f'{self.data_dir}/embeddings/{self.embeddings_type}_{self.embeddings_fold}.p'
+
+        text_idx_to_emb = pickle.load(open(embeddings_path, "rb"))
         embeddings = []
         for text_id in range(len(text_idx_to_emb.keys())):
             embeddings.append(text_idx_to_emb[text_id])
