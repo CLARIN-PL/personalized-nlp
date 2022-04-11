@@ -27,7 +27,7 @@ if __name__ == "__main__":
     embedding_types = ['roberta']
     model_types = ['userid']
 
-    fold_nums = [4, 5, 6, 7, 8, 9, 10]
+    fold_nums = [4, 5, 6, 7, 8, 9]
 
     min_word_counts = [50]
     words_per_texts = [15]
