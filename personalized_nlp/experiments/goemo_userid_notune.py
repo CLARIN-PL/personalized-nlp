@@ -35,7 +35,7 @@ if __name__ == "__main__":
     batch_size = 16
     dp_embs = [0.25]
     embedding_dims = [50]
-    lr_rates = [1e-3, 3e-3, 5e-3]
+    lr_rates = [1e-3]
     weight_decay = 0.01
     # set nr_frozen_epochs = 0 to finetuning from scratch, = epochs to frozen the whole
     epochs = 20

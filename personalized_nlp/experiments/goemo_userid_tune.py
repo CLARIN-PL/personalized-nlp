@@ -27,19 +27,19 @@ if __name__ == "__main__":
     embedding_types = ['roberta']
     model_types = ['userid']
 
-    fold_nums = 10
+    fold_nums = [4, 5, 6, 7, 8, 9, 10]
 
     min_word_counts = [50]
-    words_per_texts = [256]
+    words_per_texts = [15]
 
     batch_size = 16
     dp_embs = [0.25]
     embedding_dims = [50]
-    lr_rates = [1e-3, 3e-3, 5e-3]
+    lr_rates = [1e-3]
     weight_decay = 0.01
     # set nr_frozen_epochs = 0 to finetuning from scratch, = epochs to frozen the whole
-    epochs = 20
-    nr_frozen_epochs = 10
+    epochs = 10
+    nr_frozen_epochs = 5
 
     user_folding = True
     use_cuda = True
@@ -63,7 +63,7 @@ if __name__ == "__main__":
         )
 
         for model_type, embedding_dim, dp_emb, fold_num in product(
-            model_types, embedding_dims, dp_embs, range(fold_nums)
+            model_types, embedding_dims, dp_embs, fold_nums
         ):
             hparams = {
                 "dataset": type(data_module).__name__,
