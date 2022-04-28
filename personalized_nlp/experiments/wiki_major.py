@@ -12,21 +12,20 @@ import personalized_nlp.utils.callbacks as callbacks
 from pytorch_lightning import loggers as pl_loggers
 from personalized_nlp.settings import TRANSFORMER_MODEL_STRINGS
 
-os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 os.environ["WANDB_START_METHOD"] = "thread"
 
 if __name__ == "__main__":
-    wandb_project_name = "Architecture_experiments"
+    wandb_project_name = "Wiki_major_test_controversial_transformer"
 
     regression = False
-    datamodule_clses = [AttackDataModule]
-    # datamodule_clses = [AggressionDataModule, AttackDataModule, ToxicityDataModule]
+    datamodule_clses = [AggressionDataModule]
     stratify_by_options = [
         # None,
         # "users",
         "texts",
     ]
-    embedding_types = ["xlmr"]
+    embedding_types = ["labse"]
     # embedding_types = ["xlmr", "bert", "deberta", "mpnet", "random"]
     model_types = [
         # "baseline",
@@ -34,28 +33,28 @@ if __name__ == "__main__":
         # "peb",
         # "word_bias",
         # "bias",
-        "embedding",
+        # "embedding",
         # "word_embedding",
-        # "transformer_user_id",
+        "transformer_user_id",
     ]
     fold_nums = 10
 
+    majority_vote = True
     append_annotator_ids = (
         False  # If true, use UserID model, else use standard transfromer
     )
-    bigger_models = [False, True]
-    major_voting = False
-    batch_size = 1000
-    epochs = 30
+    filter_controversials = [False]
+    batch_size = 20
+    epochs = 3
     lr_rate = 2e-5
 
     use_cuda = True
 
-    for (datamodule_cls, embeddings_type, stratify_by, fold_num) in product(
+    for (datamodule_cls, embeddings_type, stratify_by, filter_controversial) in product(
         datamodule_clses,
         embedding_types,
         stratify_by_options,
-        range(fold_nums)
+        filter_controversials
     ):
 
         seed_everything(seed=22)
@@ -64,8 +63,8 @@ if __name__ == "__main__":
             normalize=regression,
             batch_size=batch_size,
             stratify_folds_by=stratify_by,
-            major_voting=major_voting,
-            embeddings_fold=fold_num
+            major_voting=majority_vote,
+            filter_controversial=filter_controversial
         )
         data_module.prepare_data()
         data_module.setup()
@@ -74,8 +73,8 @@ if __name__ == "__main__":
             min_std=0.0,
             words_per_text=100,
         )
-
-        for (model_type, bigger_model) in product(model_types, bigger_models):
+        folds = list(range(fold_nums))
+        for model_type, fold_num in product(model_types, folds):
 
             data_module._recompute_stats_for_fold(fold_num)
 
@@ -87,8 +86,8 @@ if __name__ == "__main__":
                 "regression": regression,
                 "stratify_by": stratify_by,
                 "append_annotator_ids": append_annotator_ids,
-                "major_voting": major_voting,
-                "bigger_model": bigger_model
+                'majority_vote': majority_vote,
+                "filter_controversial": filter_controversial
             }
 
             logger = pl_loggers.WandbLogger(
@@ -118,7 +117,6 @@ if __name__ == "__main__":
                 bias_vector_length=len(data_module.class_dims),
                 append_annotator_ids=append_annotator_ids,
                 huggingface_model_name=TRANSFORMER_MODEL_STRINGS[embeddings_type],
-                bigger_model=bigger_model,
             )
 
             train_test(
@@ -131,12 +129,14 @@ if __name__ == "__main__":
                 logger=logger,
                 test_fold=fold_num,
                 custom_callbacks=[
-                    callbacks.SaveOutputsWandb(
-                        save_name="wandb_outputs.csv", save_text=True
+                    # callbacks.SaveOutputsWandb(
+                    #     save_name="wandb_outputs.csv", save_text=True
+                    # ),
+                    callbacks.SaveOutputsLocal(
+                        save_dir="wiki_experiments_outputs",
+                        fold_num=fold_num,
+                        experiment="wiki_test",
                     ),
-                    # callbacks.SaveEmbeddingCallback(
-                    #     datamodule=data_module, 
-                    #     save_path=f'{data_module.data_dir}/embeddings/{embeddings_type}_{fold_num}.p')
                 ],
             )
 

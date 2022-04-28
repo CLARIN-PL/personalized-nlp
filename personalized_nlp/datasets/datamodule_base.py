@@ -13,9 +13,9 @@ from personalized_nlp.settings import EMBEDDINGS_SIZES, TRANSFORMER_MODEL_STRING
 from personalized_nlp.utils.biases import get_annotator_biases
 from personalized_nlp.utils.data_splitting import split_texts
 from personalized_nlp.utils.embeddings import create_embeddings
-from personalized_nlp.utils.tokenizer import get_text_data
 from personalized_nlp.utils.controversy import get_conformity
 from torch.utils.data import DataLoader
+from pytorch_lightning import seed_everything
 
 
 class BaseDataModule(LightningDataModule, abc.ABC):
@@ -30,14 +30,6 @@ class BaseDataModule(LightningDataModule, abc.ABC):
     @abc.abstractproperty
     def embeddings_path(self) -> Path:
         raise NotImplementedError()
-
-    @property
-    def word_stats_annotation_column(self) -> str:
-        return self.annotation_columns[0]
-
-    @property
-    def words_number(self) -> int:
-        return self.tokens_sorted.max()
 
     @property
     def annotators_number(self) -> int:
@@ -90,7 +82,9 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         stratify_folds_by: Optional[str] = "users",
         split_sizes: Optional[List[str]] = None,
         embeddings_fold: Optional[int] = None,
-        **kwargs
+        test_fold: Optional[int] = None,
+        seed: int = 22,
+        **kwargs,
     ):
         """_summary_
 
@@ -120,6 +114,7 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         self.past_annotations_limit = past_annotations_limit
         self.stratify_folds_by = stratify_folds_by
         self.embeddings_fold = embeddings_fold
+        self.test_fold = test_fold
 
         self.split_sizes = (
             split_sizes if split_sizes is not None else [0.55, 0.15, 0.15, 0.15]
@@ -128,7 +123,8 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         self.annotations = pd.DataFrame([])
         self.data = pd.DataFrame([])
 
-        self._current_stats_fold: Optional[int] = None
+        seed_everything(seed)
+        self.prepare_data()
 
     def _create_embeddings(self, use_cuda: Optional[bool] = None) -> None:
         texts = self.data["text"].tolist()
@@ -146,49 +142,14 @@ class BaseDataModule(LightningDataModule, abc.ABC):
             texts, embeddings_path, model_name=model_name, use_cuda=use_cuda
         )
 
-    def compute_word_stats(
-        self,
-        fold_nums: Optional[List[int]] = None,
-        min_word_count: int = 100,
-        min_std: float = 0.0,
-        words_per_text: int = 100,
-    ):
-        word_stats_annotation_column = self.word_stats_annotation_column
-
-        annotations = self.annotations
-        data = self.data
-
-        train_split_names = self.train_split_names
-
-        if self.stratify_folds_by != "texts":
-            train_split_mask = annotations.text_id.isin(
-                data[data.split.isin(train_split_names)].text_id.values
-            )
-            annotations = annotations.loc[train_split_mask]
-
-        if fold_nums is not None:
-            annotations = annotations.loc[annotations.fold.isin(fold_nums)].copy()
-
-        (
-            _,
-            self.text_tokenized,
-            self.idx_to_word,
-            self.tokens_sorted,
-            self.word_stats,
-        ) = get_text_data(
-            self.data,
-            annotations,
-            min_word_count=min_word_count,
-            min_std=min_std,
-            words_per_text=words_per_text,
-            annotation_column=word_stats_annotation_column,
-        )
-
     def setup(self, stage: Optional[str] = None) -> None:
         data = self.data
         annotations = self.annotations
+        self._original_annotations = annotations.copy()
 
-        if self.stratify_folds_by != "texts":
+        if self.stratify_folds_by == "texts":
+            self.annotations["split"] = "none"
+        else:
             """Fixed text split - we can precompute annotator biases and
             limit past annotations.
             """
@@ -200,8 +161,6 @@ class BaseDataModule(LightningDataModule, abc.ABC):
 
             if self.past_annotations_limit is not None:
                 self.limit_past_annotations(self.past_annotations_limit)
-        else:
-            self.annotations["split"] = "none"
 
         if self.normalize:
             self._normalize_labels()
@@ -214,7 +173,7 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         embeddings_path = self.embeddings_path
 
         if self.embeddings_fold is not None:
-            embeddings_path = f'{self.data_dir}/embeddings/{self.embeddings_type}_{self.embeddings_fold}.p'
+            embeddings_path = f"{self.data_dir}/embeddings/{self.embeddings_type}_{self.embeddings_fold}.p"
 
         text_idx_to_emb = pickle.load(open(embeddings_path, "rb"))
         embeddings = []
@@ -236,8 +195,6 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         self.annotator_id_idx_dict = {
             a_id: idx for idx, a_id in enumerate(annotator_id_category.cat.categories)
         }
-
-        self._original_annotations = annotations.copy()
 
         if self.major_voting:
             self.compute_major_votes(0)
@@ -324,8 +281,6 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         train_folds = list(range(self.folds_num))
         train_folds.remove(val_fold)
         train_folds.remove(test_fold)
-
-        self.compute_word_stats(fold_nums=train_folds)
 
         if self.major_voting:
             self.compute_major_votes(test_fold)
@@ -469,8 +424,6 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         """
         return {
             "embeddings": self.text_embeddings,
-            "text_tokenized": self.text_tokenized,
-            "tokens_sorted": self.tokens_sorted,
             "raw_texts": self.data["text"].values,
         }
 

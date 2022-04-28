@@ -14,32 +14,40 @@ os.environ["WANDB_START_METHOD"] = "thread"
 if __name__ == "__main__":
     regression = True
     datamodule_cls = HumorDataModule
-    embedding_types = ['labse', 'mpnet', 'xlmr', 'random']
-    model_types = ['baseline', 'onehot', 'peb', 'bias', 'embedding', 'word_embedding']
-    wandb_project_name = 'Humor_exp'
-    limit_past_annotations_list = [None] # range(20)
+    embedding_types = ["labse", "mpnet", "xlmr", "random"]
+    model_types = ["baseline", "onehot", "peb", "bias", "embedding", "word_embedding"]
+    wandb_project_name = "Humor_exp"
+    limit_past_annotations_list = [None]  # range(20)
     fold_nums = 2
     min_annotations_per_text = 2
-    
+
     min_word_counts = [50]
     words_per_texts = [15]
-    
+
     batch_size = 3000
     dp_embs = [0.25]
     embedding_dims = [50]
     epochs = 50
     lr_rate = 0.008
-    
+
     use_cuda = True
 
-    for (min_word_count, words_per_text, embeddings_type, limit_past_annotations) in product(
+    for (
+        min_word_count,
+        words_per_text,
+        embeddings_type,
+        limit_past_annotations,
+    ) in product(
         min_word_counts, words_per_texts, embedding_types, limit_past_annotations_list
     ):
 
         seed_everything()
         data_module = datamodule_cls(
-            embeddings_type=embeddings_type, normalize=regression, batch_size=batch_size,
-            min_annotations_per_text=min_annotations_per_text, past_annotations_limit=limit_past_annotations
+            embeddings_type=embeddings_type,
+            normalize=regression,
+            batch_size=batch_size,
+            min_annotations_per_text=min_annotations_per_text,
+            past_annotations_limit=limit_past_annotations,
         )
         data_module.prepare_data()
         data_module.setup()
@@ -71,10 +79,14 @@ if __name__ == "__main__":
                 log_model=False,
             )
 
-            output_dim = len(data_module.class_dims) if regression else sum(data_module.class_dims)
+            output_dim = (
+                len(data_module.class_dims)
+                if regression
+                else sum(data_module.class_dims)
+            )
             text_embedding_dim = data_module.text_embedding_dim
             model_cls = models_dict[model_type]
-            
+
             model = model_cls(
                 output_dim=output_dim,
                 text_embedding_dim=text_embedding_dim,
@@ -84,7 +96,7 @@ if __name__ == "__main__":
                 dp_emb=dp_emb,
                 embedding_dim=embedding_dim,
                 hidden_dim=100,
-                bias_vector_length=len(data_module.class_dims)
+                bias_vector_length=len(data_module.class_dims),
             )
 
             train_test(

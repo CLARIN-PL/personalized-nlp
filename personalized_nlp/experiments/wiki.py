@@ -35,7 +35,7 @@ if __name__ == "__main__":
         # "bias",
         # "embedding",
         # "word_embedding",
-        "transformer_user_id",
+        # "transformer_user_id",
     ]
     fold_nums = 10
 
