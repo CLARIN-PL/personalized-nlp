@@ -1,5 +1,6 @@
 import os
 from pathlib import Path
+from typing import List
 
 import pandas as pd
 
@@ -10,10 +11,11 @@ from personalized_nlp.datasets.datamodule_base import BaseDataModule
 class CockamamieGobbledegookDataModule(BaseDataModule):
     @property
     def embeddings_path(self) -> Path:
-        return (
-            STORAGE_DIR
-            / f"cockamamie_gobbledegook/embeddings/text_id_to_emb_{self.embeddings_type}.p"
-        )
+        return self.data_dir / f"embeddings/text_id_to_emb_{self.embeddings_type}.p"
+
+    @property
+    def data_dir(self) -> Path:
+        return STORAGE_DIR / "cockamamie_gobbledegook"
 
     @property
     def annotation_columns(self) -> List[str]:
@@ -24,12 +26,9 @@ class CockamamieGobbledegookDataModule(BaseDataModule):
         return [2]
 
     def __init__(
-        self,
-        **kwargs,
+        self, **kwargs,
     ):
         super().__init__(**kwargs)
-
-        self.data_dir = STORAGE_DIR / "cockamamie_gobbledegook"
 
         os.makedirs(self.data_dir / "embeddings", exist_ok=True)
 

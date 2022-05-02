@@ -16,6 +16,5 @@ class AttackDataModule(WikiDataModule):
     @property
     def embeddings_path(self) -> Path:
         return (
-            STORAGE_DIR
-            / f"wiki_data/embeddings/rev_id_to_emb_{self.embeddings_type}_attack.p"
+            self.data_dir / f"embeddings/rev_id_to_emb_{self.embeddings_type}_attack.p"
         )

@@ -12,7 +12,11 @@ from personalized_nlp.datasets.datamodule_base import BaseDataModule
 class HumorDataModule(BaseDataModule):
     @property
     def embeddings_path(self) -> Path:
-        return STORAGE_DIR / f"humor/embeddings/text_id_to_emb_{self.embeddings_type}.p"
+        return self.data_dir / f"embeddings/text_id_to_emb_{self.embeddings_type}.p"
+
+    @property
+    def data_dir(self) -> Path:
+        return STORAGE_DIR / "humor"
 
     @property
     def annotation_columns(self) -> List[str]:
@@ -23,13 +27,9 @@ class HumorDataModule(BaseDataModule):
         return [6]
 
     def __init__(
-        self,
-        min_annotations_per_text=None,
-        **kwargs,
+        self, min_annotations_per_text=None, **kwargs,
     ):
         super().__init__(**kwargs)
-
-        self.data_dir = STORAGE_DIR / "humor/"
 
         self.min_annotations_per_text = min_annotations_per_text
 

@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 
 import pandas as pd
 
@@ -8,13 +9,14 @@ from personalized_nlp.datasets.datamodule_base import BaseDataModule
 
 
 class WikiDataModule(BaseDataModule):
+    @property
+    def data_dir(self) -> Path:
+        return STORAGE_DIR / "wiki_data"
+
     def __init__(
-        self,
-        **kwargs,
+        self, **kwargs,
     ):
         super().__init__(**kwargs)
-
-        self.data_dir = STORAGE_DIR / "wiki_data"
 
         os.makedirs(self.data_dir / "embeddings", exist_ok=True)
 

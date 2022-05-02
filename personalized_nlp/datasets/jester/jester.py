@@ -11,9 +11,11 @@ from personalized_nlp.datasets.datamodule_base import BaseDataModule
 class JesterDataModule(BaseDataModule):
     @property
     def embeddings_path(self) -> Path:
-        return (
-            STORAGE_DIR / f"jester/embeddings/text_id_to_emb_{self.embeddings_type}.p"
-        )
+        return self.data_dir / f"embeddings/text_id_to_emb_{self.embeddings_type}.p"
+
+    @property
+    def data_dir(self) -> Path:
+        return STORAGE_DIR / "jester"
 
     @property
     def annotation_columns(self) -> List[str]:
@@ -24,13 +26,10 @@ class JesterDataModule(BaseDataModule):
         return [2]
 
     def __init__(
-        self,
-        binarize=False,
-        **kwargs,
+        self, binarize=False, **kwargs,
     ):
         super().__init__(**kwargs)
 
-        self.data_dir = STORAGE_DIR / "jester"
         self.binarize = binarize
 
         os.makedirs(self.data_dir / "embeddings", exist_ok=True)

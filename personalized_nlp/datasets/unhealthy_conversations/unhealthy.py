@@ -11,10 +11,11 @@ from personalized_nlp.datasets.datamodule_base import BaseDataModule
 class UnhealthyDataModule(BaseDataModule):
     @property
     def embeddings_path(self) -> Path:
-        return (
-            STORAGE_DIR
-            / f"unhealthy_conversations/embeddings/text_id_to_emb_{self.embeddings_type}.p"
-        )
+        return self.data_dir / f"embeddings/text_id_to_emb_{self.embeddings_type}.p"
+
+    @property
+    def data_dir(self) -> Path:
+        return STORAGE_DIR / "unhealthy_conversations"
 
     @property
     def annotation_columns(self) -> List[str]:
@@ -34,18 +35,11 @@ class UnhealthyDataModule(BaseDataModule):
         return [2] * 8
 
     def __init__(
-        self,
-        **kwargs,
+        self, **kwargs,
     ):
         super().__init__(**kwargs)
 
-        self.data_dir = STORAGE_DIR / "unhealthy_conversations/"
-
         os.makedirs(self.data_dir / "embeddings", exist_ok=True)
-
-    @property
-    def class_dims(self):
-        return [2] * 8
 
     def prepare_data(self) -> None:
         full_data = pd.read_csv(self.data_dir / "unhealthy_full.csv").dropna()

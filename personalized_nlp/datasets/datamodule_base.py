@@ -6,6 +6,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 import pandas as pd
+from sqlalchemy import false
 import torch
 from pytorch_lightning import LightningDataModule
 from personalized_nlp.datasets.dataset import BatchIndexedDataset
@@ -29,6 +30,10 @@ class BaseDataModule(LightningDataModule, abc.ABC):
 
     @abc.abstractproperty
     def embeddings_path(self) -> Path:
+        raise NotImplementedError()
+
+    @abc.abstractproperty
+    def data_dir(self) -> Path:
         raise NotImplementedError()
 
     @property
@@ -167,6 +172,9 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         if self.normalize:
             self._normalize_labels()
 
+        if self.major_voting:
+            self.compute_major_votes()
+
         if not os.path.exists(self.embeddings_path):
             self._create_embeddings()
 
@@ -195,9 +203,6 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         self.annotator_id_idx_dict = {
             a_id: idx for idx, a_id in enumerate(annotator_id_category.cat.categories)
         }
-
-        if self.major_voting:
-            self.compute_major_votes(0)
 
     def _assign_splits(self):
         if self.stratify_folds_by == "texts":
@@ -266,12 +271,11 @@ class BaseDataModule(LightningDataModule, abc.ABC):
 
         df.loc[:, annotation_columns] = df.loc[:, annotation_columns].fillna(0)
 
-    def compute_major_votes(self, test_fold: int) -> None:
+    def compute_major_votes(self) -> None:
         """Computes mean votes for texts in train folds.
         Works only for 'texts' folds"""
-        annotations = self._original_annotations.copy()
+        annotations = self.annotations
         annotation_columns = self.annotation_columns
-        val_fold = (test_fold + 1) % self.folds_num
 
         text_id_to_fold = (
             annotations.loc[:, ["text_id", "fold"]]
@@ -280,10 +284,8 @@ class BaseDataModule(LightningDataModule, abc.ABC):
             .to_dict()["fold"]
         )
 
-        val_test_annotations = annotations.loc[
-            annotations.fold.isin([val_fold, test_fold])
-        ]
-        annotations = annotations.loc[~annotations.fold.isin([val_fold, test_fold])]
+        val_test_annotations = annotations.loc[annotations.split.isin(["val", "test"])]
+        annotations = annotations.loc[~annotations.split.isin(["val", "test"])]
 
         dfs = []
         for col in annotation_columns:
@@ -296,7 +298,7 @@ class BaseDataModule(LightningDataModule, abc.ABC):
 
         annotations = pd.concat(dfs, axis=1).reset_index()
         annotations["annotator_id"] = 0
-        annotations["split"] = "none"
+        annotations["split"] = "train"
         annotations["fold"] = annotations["text_id"].map(text_id_to_fold)
 
         self.annotations = pd.concat([annotations, val_test_annotations])
@@ -324,35 +326,7 @@ class BaseDataModule(LightningDataModule, abc.ABC):
             annotator_biases.set_index("annotator_id").sort_index().fillna(0)
         )
 
-    def _recompute_stats_for_fold(self, test_fold):
-        """Recalculate annotator biases and words stats for
-        given text test fold"""
-        if self.stratify_folds_by != "texts":
-            return
-
-        if self._current_stats_fold == test_fold:
-            return
-
-        val_fold = (test_fold + 1) % self.folds_num
-
-        train_folds = list(range(self.folds_num))
-        train_folds.remove(val_fold)
-        train_folds.remove(test_fold)
-
-        if self.major_voting:
-            self.compute_major_votes(test_fold)
-
-        train_annotations = self.annotations
-        train_annotations = train_annotations.loc[
-            ~train_annotations.fold.isin([val_fold, test_fold])
-        ]
-        self.compute_annotator_biases(train_annotations)
-
-        self._current_stats_fold = test_fold
-
-    def train_dataloader(
-        self, test_fold: int = None, shuffle: bool = True
-    ) -> DataLoader:
+    def train_dataloader(self, shuffle: bool = True) -> DataLoader:
         """Returns dataloader for train part of the dataset.
 
         :param test_fold: Number of test fold used in test, defaults to None
@@ -362,39 +336,9 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         :return: train dataloader for the dataset
         :rtype: DataLoader
         """
-        annotations = self.annotations
-        data = self.data
+        return self._get_dataloader("train", True)
 
-        if test_fold is not None and self.stratify_folds_by is not None:
-            val_fold = (test_fold + 1) % self.folds_num
-            # all annotations from train folds
-            annotations = annotations.loc[~annotations.fold.isin([test_fold, val_fold])]
-
-            if self.stratify_folds_by == "users":
-                # past annotations for test and validation folds
-                personal_df = self.annotations[
-                    self.annotations.text_id.isin(
-                        data[data.split == "past"].text_id.values
-                    )
-                ]
-                personal_df = personal_df[personal_df.fold.isin([test_fold, val_fold])]
-
-                annotations = pd.concat([annotations, personal_df])
-
-        train_X, train_y = self._get_data_by_split(annotations, self.train_split_names)
-        text_features = self._get_text_features()
-        annotator_features = self._get_annotator_features()
-
-        train_dataset = BatchIndexedDataset(
-            train_X,
-            train_y,
-            text_features=text_features,
-            annotator_features=annotator_features,
-        )
-
-        return self._prepare_dataloader(train_dataset, shuffle=shuffle)
-
-    def val_dataloader(self, test_fold=None) -> DataLoader:
+    def val_dataloader(self) -> DataLoader:
         """Returns dataloader for validation part of the dataset.
 
         :param test_fold: number of test fold used in test, defaults to None.
@@ -403,25 +347,7 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         :return: validation dataloader for the dataset
         :rtype: DataLoader
         """
-        annotations = self.annotations
-
-        if test_fold is not None and self.stratify_folds_by is not None:
-            val_fold = (test_fold + 1) % self.folds_num
-            annotations = annotations[annotations.fold.isin([val_fold])]
-
-        dev_X, dev_y = self._get_data_by_split(annotations, self.val_split_names)
-
-        text_features = self._get_text_features()
-        annotator_features = self._get_annotator_features()
-
-        dev_dataset = BatchIndexedDataset(
-            dev_X,
-            dev_y,
-            text_features=text_features,
-            annotator_features=annotator_features,
-        )
-
-        return self._prepare_dataloader(dev_dataset, shuffle=False)
+        return self._get_dataloader("val", False)
 
     def test_dataloader(self, test_fold=None) -> DataLoader:
         """Returns dataloader for test part of the dataset.
@@ -431,23 +357,21 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         :return: validation dataloader for the dataset
         :rtype: DataLoader
         """
+        return self._get_dataloader("test", False)
+
+    def _get_dataloader(self, split, shuffle) -> DataLoader:
         annotations = self.annotations
+        annotations = annotations.loc[annotations.split == split]
 
-        if test_fold is not None and self.stratify_folds_by is not None:
-            annotations = annotations[annotations.fold.isin([test_fold])]
-
-        test_X, test_y = self._get_data_by_split(annotations, self.test_split_names)
+        X, y = self._get_data_by_split(annotations)
         text_features = self._get_text_features()
         annotator_features = self._get_annotator_features()
 
-        test_dataset = BatchIndexedDataset(
-            test_X,
-            test_y,
-            text_features=text_features,
-            annotator_features=annotator_features,
+        train_dataset = BatchIndexedDataset(
+            X, y, text_features=text_features, annotator_features=annotator_features,
         )
 
-        return self._prepare_dataloader(test_dataset, shuffle=False)
+        return self._prepare_dataloader(train_dataset, shuffle=shuffle)
 
     def _prepare_dataloader(
         self, dataset: torch.utils.data.Dataset, shuffle: bool = True
@@ -458,16 +382,10 @@ class BaseDataModule(LightningDataModule, abc.ABC):
             order_sampler_cls = torch.utils.data.sampler.SequentialSampler
 
         sampler = torch.utils.data.sampler.BatchSampler(
-            order_sampler_cls(dataset),
-            batch_size=self.batch_size,
-            drop_last=False,
+            order_sampler_cls(dataset), batch_size=self.batch_size, drop_last=False,
         )
 
-        return torch.utils.data.DataLoader(
-            dataset,
-            sampler=sampler,
-            batch_size=None,
-        )
+        return torch.utils.data.DataLoader(dataset, sampler=sampler, batch_size=None,)
 
     def _get_text_features(self) -> Dict[str, Any]:
         """Returns dictionary of features of all texts in the dataset.
@@ -497,7 +415,7 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         return {"annotator_biases": self.annotator_biases.values.astype(float)}
 
     def _get_data_by_split(
-        self, annotations: pd.DataFrame, splits: List[str]
+        self, annotations: pd.DataFrame
     ) -> Tuple[np.ndarray, np.ndarray]:
         """Returns annotations (coded indices of annotators and texts), and
         their labels in the dataset for given splits. Used during training.
@@ -514,10 +432,6 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         data = self.data
 
         df = annotations
-        if self.stratify_folds_by != "texts":
-            df = annotations.loc[
-                annotations.text_id.isin(data[data.split.isin(splits)].text_id.values)
-            ]
 
         X = df.loc[:, ["text_id", "annotator_id"]]
         y = df[self.annotation_columns]

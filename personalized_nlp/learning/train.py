@@ -24,9 +24,9 @@ def train_test(
     **kwargs
 ):
     """Train model and return predictions for test dataset"""
-    train_loader = datamodule.train_dataloader(test_fold=test_fold)
-    val_loader = datamodule.val_dataloader(test_fold=test_fold)
-    test_loader = datamodule.test_dataloader(test_fold=test_fold)
+    train_loader = datamodule.train_dataloader()
+    val_loader = datamodule.val_dataloader()
+    test_loader = datamodule.test_dataloader()
 
     if regression:
         class_names = datamodule.annotation_columns

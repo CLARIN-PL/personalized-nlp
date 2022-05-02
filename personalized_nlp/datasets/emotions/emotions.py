@@ -12,9 +12,13 @@ class EmotionsDataModule(BaseDataModule):
     @property
     def embeddings_path(self) -> Path:
         return (
-            STORAGE_DIR
-            / f"emotions_data/embeddings/text_id_to_emb_{self.embeddings_type}_{language}.p"
+            self.data_dir
+            / f"embeddings/text_id_to_emb_{self.embeddings_type}_{language}.p"
         )
+
+    @property
+    def data_dir(self) -> Path:
+        return STORAGE_DIR / "emotions_data"
 
     @property
     def annotation_columns(self) -> List[str]:
@@ -36,13 +40,10 @@ class EmotionsDataModule(BaseDataModule):
         return [5] * 8 + [7, 5]
 
     def __init__(
-        self,
-        language: str = "english",
-        **kwargs,
+        self, language: str = "english", **kwargs,
     ):
         super().__init__(**kwargs)
 
-        self.data_dir = STORAGE_DIR / "emotions_data"
         self.language = language
 
         os.makedirs(self.data_dir / "embeddings", exist_ok=True)
