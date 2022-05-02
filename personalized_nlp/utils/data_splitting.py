@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 
 
-def split_texts(df, sizes):
+def split_texts(df, sizes, split_column_name="text_split"):
     present_ratio, past_ratio, future1_ratio, future2_ratio = sizes
 
     present_idx = int(present_ratio * len(df.index))
@@ -13,12 +13,13 @@ def split_texts(df, sizes):
     np.random.shuffle(indexes)
 
     df = df.copy()
-    df['split'] = ''
-    df.iloc[indexes[:present_idx], df.columns.get_loc('split')] = 'present'
-    df.iloc[indexes[present_idx:past_idx],
-            df.columns.get_loc('split')] = 'past'
-    df.iloc[indexes[past_idx:future1_idx],
-            df.columns.get_loc('split')] = 'future1'
-    df.iloc[indexes[future1_idx:], df.columns.get_loc('split')] = 'future2'
+
+    df[split_column_name] = ""
+    split_column_name_loc = df.columns.get_loc(split_column_name)
+
+    df.iloc[indexes[:present_idx], split_column_name_loc] = "present"
+    df.iloc[indexes[present_idx:past_idx], split_column_name_loc] = "past"
+    df.iloc[indexes[past_idx:future1_idx], split_column_name_loc] = "future1"
+    df.iloc[indexes[future1_idx:], split_column_name_loc] = "future2"
 
     return df

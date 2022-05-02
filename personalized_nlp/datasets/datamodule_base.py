@@ -36,25 +36,31 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         return max(self.annotator_id_idx_dict.values())
 
     @property
-    def train_split_names(self) -> List[str]:
-        if self.stratify_folds_by == "text":
-            return ["none"]
-
+    def train_text_split_names(self) -> List[str]:
         return ["present", "past"]
 
     @property
-    def val_split_names(self) -> List[str]:
-        if self.stratify_folds_by == "text":
-            return ["none"]
-
+    def val_text_split_names(self) -> List[str]:
         return ["future1"]
 
     @property
-    def test_split_names(self) -> List[str]:
-        if self.stratify_folds_by == "text":
-            return ["none"]
-
+    def test_text_split_names(self) -> List[str]:
         return ["future2"]
+
+    @property
+    def train_folds(self) -> List[int]:
+        all_folds = range(self.folds_num)
+        exclude_folds = [self.val_fold, self.test_fold]
+
+        return [fold for fold in all_folds if fold not in exclude_folds]
+
+    @property
+    def val_fold(self) -> int:
+        return (self._test_fold + 1) % self.folds_num
+
+    @property
+    def test_fold(self) -> int:
+        return self._test_fold
 
     @property
     def text_embedding_dim(self) -> int:
@@ -113,8 +119,9 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         self.folds_num = folds_num
         self.past_annotations_limit = past_annotations_limit
         self.stratify_folds_by = stratify_folds_by
+
         self.embeddings_fold = embeddings_fold
-        self.test_fold = test_fold
+        self._test_fold = test_fold if test_fold is not None else 0
 
         self.split_sizes = (
             split_sizes if split_sizes is not None else [0.55, 0.15, 0.15, 0.15]
@@ -124,7 +131,9 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         self.data = pd.DataFrame([])
 
         seed_everything(seed)
+
         self.prepare_data()
+        self.setup()
 
     def _create_embeddings(self, use_cuda: Optional[bool] = None) -> None:
         texts = self.data["text"].tolist()
@@ -147,25 +156,16 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         annotations = self.annotations
         self._original_annotations = annotations.copy()
 
-        if self.stratify_folds_by == "texts":
-            self.annotations["split"] = "none"
-        else:
-            """Fixed text split - we can precompute annotator biases and
-            limit past annotations.
-            """
-            self._assign_splits()
-            personal_df = self.annotations_with_data.loc[
-                self.annotations_with_data.split == "past"
-            ]
-            self.compute_annotator_biases(personal_df)
+        self._assign_folds()
+        self._assign_splits()
 
-            if self.past_annotations_limit is not None:
-                self.limit_past_annotations(self.past_annotations_limit)
+        if self.past_annotations_limit is not None:
+            self.limit_past_annotations(self.past_annotations_limit)
+
+        self.compute_annotator_biases()
 
         if self.normalize:
             self._normalize_labels()
-
-        self._assign_folds()
 
         if not os.path.exists(self.embeddings_path):
             self._create_embeddings()
@@ -200,7 +200,59 @@ class BaseDataModule(LightningDataModule, abc.ABC):
             self.compute_major_votes(0)
 
     def _assign_splits(self):
-        self.data = split_texts(self.data, self.split_sizes)
+        if self.stratify_folds_by == "texts":
+            val_fold = self.val_fold
+            test_fold = self.test_fold
+
+            self.annotations["split"] = "train"
+            self.annotations.loc[self.annotations.fold == val_fold, "split"] = "val"
+            self.annotations.loc[self.annotations.fold == test_fold, "split"] = "test"
+        else:
+            self.data = split_texts(self.data, self.split_sizes)
+
+            text_id_to_text_split = self.data.set_index("text_id")["text_split"]
+            text_id_to_text_split = text_id_to_text_split.to_dict()
+
+            text_id_to_fold = self.annotations.set_index("text_id")["fold"]
+            text_id_to_fold = text_id_to_fold.to_dict()
+
+            def _get_annotation_split(text_id):
+                text_split = text_id_to_text_split[text_id]
+                text_fold = text_id_to_fold[text_id]
+
+                if text_split == "past":
+                    return "train"
+                if text_split == "present" and text_fold in self.train_folds:
+                    return "train"
+                if text_split == "future1" and text_fold == self.val_fold:
+                    return "val"
+                if text_split == "future2" and text_fold == self.test_fold:
+                    return "test"
+
+                return "none"
+
+            self.annotations["split"] = self.annotations["text_id"].apply(
+                _get_annotation_split
+            )
+
+    def _assign_folds(self):
+        """Randomly assign fold to each annotation."""
+        if self.stratify_folds_by == "texts":
+            stratify_column = "text_id"
+        else:
+            stratify_column = "annotator_id"
+
+        annotations = self.annotations
+        ids = annotations[stratify_column].unique()
+        np.random.shuffle(ids)
+
+        folded_ids = np.array_split(ids, self.folds_num)
+
+        annotations["fold"] = 0
+        for i in range(self.folds_num):
+            annotations.loc[
+                annotations[stratify_column].isin(folded_ids[i]), "fold"
+            ] = i
 
     def _normalize_labels(self):
         annotation_columns = self.annotation_columns
@@ -249,17 +301,22 @@ class BaseDataModule(LightningDataModule, abc.ABC):
 
         self.annotations = pd.concat([annotations, val_test_annotations])
 
-    def compute_annotator_biases(self, personal_df: pd.DataFrame):
-        if self.past_annotations_limit is not None:
-            self.limit_past_annotations(self.past_annotations_limit)
+    def compute_annotator_biases(self):
+        annotations_with_data = self.annotations_with_data
 
-        annotator_id_df = pd.DataFrame(
-            self._original_annotations.annotator_id.unique(), columns=["annotator_id"]
-        )
+        if self.stratify_folds_by == "users":
+            personal_df_mask = annotations_with_data.text_split == "past"
+        else:
+            personal_df_mask = annotations_with_data.split == "train"
+
+        personal_df = annotations_with_data.loc[personal_df_mask]
 
         annotation_columns = self.annotation_columns
-
         annotator_biases = get_annotator_biases(personal_df, annotation_columns)
+
+        all_annotator_ids = self._original_annotations.annotator_id.unique()
+        annotator_id_df = pd.DataFrame(all_annotator_ids, columns=["annotator_id"])
+
         annotator_biases = annotator_id_df.merge(
             annotator_biases.reset_index(), how="left"
         )
@@ -438,28 +495,6 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         :rtype: Dict[str, Any]
         """
         return {"annotator_biases": self.annotator_biases.values.astype(float)}
-
-    def _assign_folds(self):
-        """Randomly assign fold to each annotation."""
-        if self.stratify_folds_by is None:
-            return
-
-        if self.stratify_folds_by == "texts":
-            stratify_column = "text_id"
-        else:
-            stratify_column = "annotator_id"
-
-        annotations = self.annotations
-        ids = annotations[stratify_column].unique()
-        np.random.shuffle(ids)
-
-        folded_ids = np.array_split(ids, self.folds_num)
-
-        annotations["fold"] = 0
-        for i in range(self.folds_num):
-            annotations.loc[
-                annotations[stratify_column].isin(folded_ids[i]), "fold"
-            ] = i
 
     def _get_data_by_split(
         self, annotations: pd.DataFrame, splits: List[str]
