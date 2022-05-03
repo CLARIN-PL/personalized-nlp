@@ -13,6 +13,7 @@ from personalized_nlp.utils.biases import get_annotator_biases
 from personalized_nlp.utils.controversy import get_conformity
 from personalized_nlp.utils.data_splitting import split_texts
 from personalized_nlp.utils.embeddings import create_embeddings
+from personalized_nlp.utils.finetune import finetune_datamodule_embeddings
 from pytorch_lightning import LightningDataModule, seed_everything
 from torch.utils.data import DataLoader
 
@@ -115,6 +116,8 @@ class BaseDataModule(LightningDataModule, abc.ABC):
             dims=dims,
         )
 
+        self._init_args = locals()
+
         self.batch_size = batch_size
         self.embeddings_type = embeddings_type
         self.major_voting = major_voting
@@ -178,6 +181,7 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         embeddings_path = self.embeddings_path
 
         if self.use_finetuned_embeddings:
+            finetune_datamodule_embeddings(self)
             embeddings_path = (
                 f"{self.data_dir}/embeddings/{self.embeddings_type}_{self.test_fold}.p"
             )
