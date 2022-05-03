@@ -6,17 +6,15 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 import pandas as pd
-from sqlalchemy import false
 import torch
-from pytorch_lightning import LightningDataModule
 from personalized_nlp.datasets.dataset import BatchIndexedDataset
 from personalized_nlp.settings import EMBEDDINGS_SIZES, TRANSFORMER_MODEL_STRINGS
 from personalized_nlp.utils.biases import get_annotator_biases
+from personalized_nlp.utils.controversy import get_conformity
 from personalized_nlp.utils.data_splitting import split_texts
 from personalized_nlp.utils.embeddings import create_embeddings
-from personalized_nlp.utils.controversy import get_conformity
+from pytorch_lightning import LightningDataModule, seed_everything
 from torch.utils.data import DataLoader
-from pytorch_lightning import seed_everything
 
 
 class BaseDataModule(LightningDataModule, abc.ABC):
@@ -92,7 +90,7 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         past_annotations_limit: Optional[int] = None,
         stratify_folds_by: Optional[str] = "users",
         split_sizes: Optional[List[str]] = None,
-        embeddings_fold: Optional[int] = None,
+        use_finetuned_embeddings: bool = False,
         test_fold: Optional[int] = None,
         seed: int = 22,
         **kwargs,
@@ -106,8 +104,8 @@ class BaseDataModule(LightningDataModule, abc.ABC):
             folds_num (int, optional): Number of folds. Defaults to 10.
             normalize (bool, optional): Normalize labels to [0, 1] range with min-max method. Defaults to False.
             past_annotations_limit (Optional[int], optional): Maximum number of annotations in past dataset part. Defaults to None.
-            ignore_train_test_val (bool, optional): If true, use only folds. Defaults to False.
             stratify_folds_by (str, optional): How to stratify annotations: 'texts' or 'users'. Defaults to 'texts'.
+            use_finetuned_embeddings (bool, optional): if true, use finetuned embeddings. Defaults to False.
         """
 
         super().__init__(
@@ -117,16 +115,15 @@ class BaseDataModule(LightningDataModule, abc.ABC):
             dims=dims,
         )
 
-        self.normalize = normalize
-        self.major_voting = major_voting
         self.batch_size = batch_size
         self.embeddings_type = embeddings_type
+        self.major_voting = major_voting
         self.folds_num = folds_num
+        self.normalize = normalize
         self.past_annotations_limit = past_annotations_limit
         self.stratify_folds_by = stratify_folds_by
-
-        self.embeddings_fold = embeddings_fold
         self._test_fold = test_fold if test_fold is not None else 0
+        self.use_finetuned_embeddings = use_finetuned_embeddings
 
         self.split_sizes = (
             split_sizes if split_sizes is not None else [0.55, 0.15, 0.15, 0.15]
@@ -180,13 +177,19 @@ class BaseDataModule(LightningDataModule, abc.ABC):
 
         embeddings_path = self.embeddings_path
 
-        if self.embeddings_fold is not None:
-            embeddings_path = f"{self.data_dir}/embeddings/{self.embeddings_type}_{self.embeddings_fold}.p"
+        if self.use_finetuned_embeddings:
+            embeddings_path = (
+                f"{self.data_dir}/embeddings/{self.embeddings_type}_{self.test_fold}.p"
+            )
 
-        text_idx_to_emb = pickle.load(open(embeddings_path, "rb"))
+        with open(embeddings_path, "rb") as f:
+            text_idx_to_emb = pickle.load(f)
+
         embeddings = []
         for text_id in range(len(text_idx_to_emb.keys())):
             embeddings.append(text_idx_to_emb[text_id])
+
+        embeddings = np.array(embeddings)
 
         assert len(self.data.index) == len(embeddings)
 
@@ -272,8 +275,7 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         df.loc[:, annotation_columns] = df.loc[:, annotation_columns].fillna(0)
 
     def compute_major_votes(self) -> None:
-        """Computes mean votes for texts in train folds.
-        Works only for 'texts' folds"""
+        """Computes mean votes for texts in train folds."""
         annotations = self.annotations
         annotation_columns = self.annotation_columns
 
@@ -329,8 +331,6 @@ class BaseDataModule(LightningDataModule, abc.ABC):
     def train_dataloader(self, shuffle: bool = True) -> DataLoader:
         """Returns dataloader for train part of the dataset.
 
-        :param test_fold: Number of test fold used in test, defaults to None
-        :type test_fold: int, optional
         :param shuffle: if true, shuffles data during training, defaults to True
         :type shuffle: bool, optional
         :return: train dataloader for the dataset
@@ -341,19 +341,15 @@ class BaseDataModule(LightningDataModule, abc.ABC):
     def val_dataloader(self) -> DataLoader:
         """Returns dataloader for validation part of the dataset.
 
-        :param test_fold: number of test fold used in test, defaults to None.
-        Number of validation fold is calculated as: (test_fold + 1) % folds_num
         :type test_fold: int, optional
         :return: validation dataloader for the dataset
         :rtype: DataLoader
         """
         return self._get_dataloader("val", False)
 
-    def test_dataloader(self, test_fold=None) -> DataLoader:
+    def test_dataloader(self) -> DataLoader:
         """Returns dataloader for test part of the dataset.
 
-        :param test_fold: Number of test fold used in test, defaults to None
-        :type test_fold: int, optional
         :return: validation dataloader for the dataset
         :rtype: DataLoader
         """
@@ -367,25 +363,29 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         text_features = self._get_text_features()
         annotator_features = self._get_annotator_features()
 
-        train_dataset = BatchIndexedDataset(
-            X, y, text_features=text_features, annotator_features=annotator_features,
+        dataset = BatchIndexedDataset(
+            X,
+            y,
+            text_features=text_features,
+            annotator_features=annotator_features,
         )
 
-        return self._prepare_dataloader(train_dataset, shuffle=shuffle)
-
-    def _prepare_dataloader(
-        self, dataset: torch.utils.data.Dataset, shuffle: bool = True
-    ):
         if shuffle:
             order_sampler_cls = torch.utils.data.sampler.RandomSampler
         else:
             order_sampler_cls = torch.utils.data.sampler.SequentialSampler
 
         sampler = torch.utils.data.sampler.BatchSampler(
-            order_sampler_cls(dataset), batch_size=self.batch_size, drop_last=False,
+            order_sampler_cls(dataset),
+            batch_size=self.batch_size,
+            drop_last=False,
         )
 
-        return torch.utils.data.DataLoader(dataset, sampler=sampler, batch_size=None,)
+        return torch.utils.data.DataLoader(
+            dataset,
+            sampler=sampler,
+            batch_size=None,
+        )
 
     def _get_text_features(self) -> Dict[str, Any]:
         """Returns dictionary of features of all texts in the dataset.
@@ -429,8 +429,6 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         tuples and y is numpy array of labels for the annotations.
         :rtype: [type]
         """
-        data = self.data
-
         df = annotations
 
         X = df.loc[:, ["text_id", "annotator_id"]]
