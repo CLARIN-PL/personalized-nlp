@@ -29,32 +29,25 @@ def finetune_datamodule_embeddings(
     datamodule_cls = type(original_datamodule)
     init_args = dict(original_datamodule._init_args)
     init_args["major_voting"] = True
+    init_args["batch_size"] = batch_size
 
     datamodule = datamodule_cls(init_args)
-    datamodule.batch_size = batch_size
 
     regression = datamodule.normalize
-    class_dims = datamodule.class_dims
-    output_dim = len(class_dims) if regression else sum(class_dims)
-    text_embedding_dim = datamodule.text_embedding_dim
-
     model_cls = models_dict["transformer"]
-
-    model = model_cls(
-        output_dim=output_dim,
-        text_embedding_dim=text_embedding_dim,
-        huggingface_model_name=TRANSFORMER_MODEL_STRINGS[embeddings_type],
-        max_length=128,
-    )
+    model_kwargs = {
+        "huggingface_model_name": TRANSFORMER_MODEL_STRINGS[embeddings_type],
+        "max_length": 128,
+    }
 
     train_test(
         datamodule,
-        model,
+        model_kwargs=model_kwargs,
+        model_type=model_cls,
         epochs=epochs,
         lr=lr_rate,
         regression=regression,
         use_cuda=use_cuda,
-        test_fold=fold_num,
         custom_callbacks=[
             callbacks.SaveEmbeddingCallback(
                 datamodule=datamodule,
