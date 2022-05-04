@@ -18,7 +18,7 @@ class HuBiSimple(nn.Module):
         self.hidden_dim = hidden_dim
 
         self.annotator_biases = torch.nn.Embedding(
-            num_embeddings=annotator_num, embedding_dim=output_dim, padding_idx=0
+            num_embeddings=annotator_num + 1, embedding_dim=output_dim, padding_idx=0
         )
 
         self.annotator_biases.weight.data.uniform_(-0.001, 0.001)

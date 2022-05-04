@@ -1,29 +1,41 @@
-import torch
-
 import pytorch_lightning as pl
-from pytorch_lightning.callbacks import ModelCheckpoint
-from pytorch_lightning import loggers as pl_loggers
-
-
-from personalized_nlp.settings import LOGS_DIR, CHECKPOINTS_DIR
-from personalized_nlp.learning.regressor import Regressor
+import torch
 from personalized_nlp.learning.classifier import Classifier
+from personalized_nlp.learning.regressor import Regressor
+from personalized_nlp.models import models as models_dict
+from personalized_nlp.settings import CHECKPOINTS_DIR, LOGS_DIR
+from pytorch_lightning import loggers as pl_loggers
+from pytorch_lightning.callbacks import ModelCheckpoint
 
 
 def train_test(
     datamodule,
-    model,
+    model_kwargs,
+    model_type,
     epochs=6,
     lr=1e-2,
     regression=False,
     use_cuda=False,
-    test_fold=None,
     logger=None,
     log_model=False,
     custom_callbacks=None,
     **kwargs
 ):
     """Train model and return predictions for test dataset"""
+    output_dim = (
+        len(datamodule.class_dims) if regression else sum(datamodule.class_dims)
+    )
+    text_embedding_dim = datamodule.text_embedding_dim
+    model_cls = models_dict[model_type]
+
+    model = model_cls(
+        output_dim=output_dim,
+        text_embedding_dim=text_embedding_dim,
+        annotator_num=datamodule.annotators_number,
+        bias_vector_length=len(datamodule.class_dims),
+        **model_kwargs
+    )
+
     train_loader = datamodule.train_dataloader()
     val_loader = datamodule.val_dataloader()
     test_loader = datamodule.test_dataloader()
@@ -44,7 +56,6 @@ def train_test(
         logger = pl_loggers.WandbLogger(save_dir=LOGS_DIR, log_model=log_model)
 
     checkpoint_dir = CHECKPOINTS_DIR / logger.experiment.name
-
     checkpoint_callback = ModelCheckpoint(
         dirpath=checkpoint_dir, save_top_k=1, monitor="valid_loss", mode="min"
     )

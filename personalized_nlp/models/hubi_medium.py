@@ -21,7 +21,7 @@ class HuBiMedium(nn.Module):
         self.hidden_dim = hidden_dim
 
         self.annotator_embeddings = torch.nn.Embedding(
-            num_embeddings=annotator_num,
+            num_embeddings=annotator_num + 1,
             embedding_dim=self.embedding_dim,
             padding_idx=0,
         )

@@ -37,7 +37,7 @@ class BaseDataModule(LightningDataModule, abc.ABC):
 
     @property
     def annotators_number(self) -> int:
-        return max(self.annotator_id_idx_dict.values())
+        return max(self.annotator_id_idx_dict.values()) + 1
 
     @property
     def train_text_split_names(self) -> List[str]:
@@ -87,7 +87,7 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         embeddings_type: str = "bert",
         major_voting: bool = False,
         folds_num: int = 10,
-        normalize: bool = False,
+        regression: bool = False,
         past_annotations_limit: Optional[int] = None,
         stratify_folds_by: Optional[str] = "users",
         split_sizes: Optional[List[str]] = None,
@@ -103,7 +103,7 @@ class BaseDataModule(LightningDataModule, abc.ABC):
             embeddings_type (str, optional): string identifier of embedding. Defaults to "bert".
             major_voting (bool, optional): if true, use major voting. Defaults to False.
             folds_num (int, optional): Number of folds. Defaults to 10.
-            normalize (bool, optional): Normalize labels to [0, 1] range with min-max method. Defaults to False.
+            regression (bool, optional): Normalize labels to [0, 1] range with min-max method. Defaults to False.
             past_annotations_limit (Optional[int], optional): Maximum number of annotations in past dataset part. Defaults to None.
             stratify_folds_by (str, optional): How to stratify annotations: 'texts' or 'users'. Defaults to 'texts'.
             use_finetuned_embeddings (bool, optional): if true, use finetuned embeddings. Defaults to False.
@@ -122,7 +122,7 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         self.embeddings_type = embeddings_type
         self.major_voting = major_voting
         self.folds_num = folds_num
-        self.normalize = normalize
+        self.regression = regression
         self.past_annotations_limit = past_annotations_limit
         self.stratify_folds_by = stratify_folds_by
         self._test_fold = test_fold if test_fold is not None else 0
@@ -169,7 +169,7 @@ class BaseDataModule(LightningDataModule, abc.ABC):
 
         self.compute_annotator_biases()
 
-        if self.normalize:
+        if self.regression:
             self._normalize_labels()
 
         if self.major_voting:
@@ -295,7 +295,7 @@ class BaseDataModule(LightningDataModule, abc.ABC):
 
         dfs = []
         for col in annotation_columns:
-            if self.normalize:
+            if self.regression:
                 aggregate_lambda = lambda x: x.mean()
             else:
                 aggregate_lambda = lambda x: pd.Series.mode(x)[0]

@@ -1,14 +1,13 @@
 import os
 
 import personalized_nlp.utils.callbacks as callbacks
-from personalized_nlp.datasets.datamodule_base import BaseDataModule
 from personalized_nlp.learning.train import train_test
 from personalized_nlp.models import models as models_dict
 from personalized_nlp.settings import TRANSFORMER_MODEL_STRINGS
 
 
 def finetune_datamodule_embeddings(
-    original_datamodule: BaseDataModule,
+    original_datamodule,
     batch_size: int = 20,
     epochs=3,
     lr_rate=2e-5,
