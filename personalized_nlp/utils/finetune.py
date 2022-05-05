@@ -30,11 +30,11 @@ def finetune_datamodule_embeddings(
     init_args = dict(original_datamodule._init_args)
     init_args["major_voting"] = True
     init_args["batch_size"] = batch_size
+    init_args["use_finetuned_embeddings"] = False
 
-    datamodule = datamodule_cls(init_args)
+    datamodule = datamodule_cls(**init_args)
 
-    regression = datamodule.normalize
-    model_cls = models_dict["transformer"]
+    regression = datamodule.regression
     model_kwargs = {
         "huggingface_model_name": TRANSFORMER_MODEL_STRINGS[embeddings_type],
         "max_length": 128,
@@ -43,7 +43,7 @@ def finetune_datamodule_embeddings(
     train_test(
         datamodule,
         model_kwargs=model_kwargs,
-        model_type=model_cls,
+        model_type="transformer_user_id",
         epochs=epochs,
         lr=lr_rate,
         regression=regression,

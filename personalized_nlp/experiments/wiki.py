@@ -19,12 +19,16 @@ if __name__ == "__main__":
     datamodule_kwargs_list = product_kwargs(
         {
             "regression": [False],
-            "embedding_types": ["labse", "mpnet", "xlmr", "random", "skipgram", "cbow"],
+            "embedding_types": ["labse", "mpnet", "xlmr", "random", "skipgram", "cbow"][
+                :1
+            ],
             "limit_past_annotations_list": [None],
-            "stratify_folds_by": ["users"],
+            "stratify_folds_by": ["users", "texts"],
             "fold_nums": [10],
             "batch_size": [3000],
-            "fold_num": list(range(10))[:2],
+            "fold_num": list(range(10))[:1],
+            "use_finetuned_embeddings": [True],
+            "major_voting": [False],
         }
     )
     model_kwargs_list = product_kwargs(
@@ -41,7 +45,8 @@ if __name__ == "__main__":
             "lr_rate": [0.008],
             "regression": [False],
             "use_cuda": [False],
-            "model_type": ["baseline", "onehot", "peb", "bias", "embedding"],
+            # "model_type": ["baseline", "onehot", "peb", "bias", "embedding"],
+            "model_type": ["baseline", "onehot", "peb", "bias"],
         }
     )
 

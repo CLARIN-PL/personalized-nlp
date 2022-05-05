@@ -117,6 +117,8 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         )
 
         self._init_args = locals()
+        del self._init_args["self"]
+        del self._init_args["__class__"]
 
         self.batch_size = batch_size
         self.embeddings_type = embeddings_type
