@@ -1,3 +1,4 @@
+from typing import Any
 import pytorch_lightning as pl
 import torch
 import torch.nn as nn
@@ -72,7 +73,7 @@ class Classifier(pl.LightningModule):
         self.log("train_loss", loss, on_epoch=True, prog_bar=True)
         preds = torch.argmax(output, dim=1)
 
-        return {"loss": loss, "preds": preds}
+        return {"loss": loss, "preds": preds, "output": output}
 
     def validation_step(self, batch, batch_idx):
         x, y = batch
@@ -105,6 +106,11 @@ class Classifier(pl.LightningModule):
             "is_regression": False,
             "class_names": self.class_names,
         }
+
+    def predict_step(self, batch: Any, batch_idx: int, dataloader_idx: int = 0) -> Any:
+        x, _ = batch
+
+        return {"output": self.forward(x)}
 
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(self.parameters(), lr=self.lr)

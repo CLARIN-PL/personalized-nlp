@@ -75,3 +75,5 @@ def train_test(
     )
     trainer.fit(model, train_loader, val_loader)
     trainer.test(dataloaders=test_loader)
+
+    return trainer

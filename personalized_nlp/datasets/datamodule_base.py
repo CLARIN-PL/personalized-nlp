@@ -361,6 +361,9 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         """
         return self._get_dataloader("test", False)
 
+    def custom_dataloader(self, split_name='none', shuffle=False):
+        return self._get_dataloader(split_name, shuffle)
+
     def _get_dataloader(self, split, shuffle) -> DataLoader:
         annotations = self.annotations
         annotations = annotations.loc[annotations.split == split]
