@@ -2,7 +2,8 @@ from typing import Any
 import pytorch_lightning as pl
 import torch
 import torch.nn as nn
-from torchmetrics import Accuracy, F1
+from torchmetrics.classification.f_beta import F1Score
+from torchmetrics.classification.accuracy import Accuracy
 from personalized_nlp.utils.metrics import F1Class, PrecisionClass, RecallClass
 
 
@@ -41,7 +42,7 @@ class Classifier(pl.LightningModule):
                     class_metrics[f"{split}_f1_{class_name}_{class_dim}"] = F1Class(
                         average="none", num_classes=num_classes, class_idx=class_dim
                     )
-                class_metrics[f"{split}_macro_f1_{class_name}"] = F1(
+                class_metrics[f"{split}_macro_f1_{class_name}"] = F1Score(
                     average="macro", num_classes=num_classes
                 )
 

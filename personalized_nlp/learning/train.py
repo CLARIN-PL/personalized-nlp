@@ -5,7 +5,7 @@ from personalized_nlp.learning.regressor import Regressor
 from personalized_nlp.models import models as models_dict
 from personalized_nlp.settings import CHECKPOINTS_DIR, LOGS_DIR
 from pytorch_lightning import loggers as pl_loggers
-from pytorch_lightning.callbacks import ModelCheckpoint
+from pytorch_lightning.callbacks import ModelCheckpoint, TQDMProgressBar
 
 
 def train_test(
@@ -59,21 +59,21 @@ def train_test(
     checkpoint_callback = ModelCheckpoint(
         dirpath=checkpoint_dir, save_top_k=1, monitor="valid_loss", mode="min"
     )
+    progressbar_checkpoint = TQDMProgressBar(refresh_rate=20)
 
     _use_cuda = use_cuda and torch.cuda.is_available()
 
-    callbacks = [checkpoint_callback]
+    callbacks = [checkpoint_callback, progressbar_checkpoint]
     if custom_callbacks is not None:
         callbacks = callbacks + custom_callbacks
 
     trainer = pl.Trainer(
         gpus=1 if _use_cuda else 0,
         max_epochs=epochs,
-        progress_bar_refresh_rate=20,
         logger=logger,
         callbacks=callbacks,
     )
     trainer.fit(model, train_loader, val_loader)
-    trainer.test(dataloaders=test_loader)
+    trainer.test(dataloaders=test_loader, ckpt_path="best")
 
     return trainer
