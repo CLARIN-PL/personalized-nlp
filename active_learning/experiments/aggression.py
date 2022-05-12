@@ -3,6 +3,7 @@ from itertools import product
 
 from active_learning.module import ActiveLearningModule
 from active_learning.algorithms.random import random_selector
+from active_learning.algorithms.confidence import confidence_selector
 from personalized_nlp.datasets.wiki.aggression import AggressionDataModule
 
 from personalized_nlp.utils import seed_everything
@@ -13,9 +14,13 @@ os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 os.environ["WANDB_START_METHOD"] = "thread"
 
 if __name__ == "__main__":
-    wandb_project_name = "Wiki_ActiveLearning"
+    tracker = SummaryTracker()
+    wandb_project_name = "Wiki_ActiveLearning_5fold"
     datamodule_cls = AggressionDataModule
 
+    activelearning_kwargs_list = product_kwargs(
+        {"text_selector": [confidence_selector, random_selector]}
+    )
     datamodule_kwargs_list = product_kwargs(
         {
             "regression": [False],
@@ -23,10 +28,10 @@ if __name__ == "__main__":
                 :1
             ],
             "limit_past_annotations_list": [None],
-            "stratify_folds_by": ["users", "texts"][:1],
-            "fold_nums": [10],
+            "stratify_folds_by": ["users", "texts"][1:],
+            "fold_nums": [5],
             "batch_size": [3000],
-            "fold_num": list(range(10))[:1],
+            "fold_num": list(range(5))[1:],
             "use_finetuned_embeddings": [False],
             "major_voting": [False],
         }
@@ -45,23 +50,31 @@ if __name__ == "__main__":
             "lr_rate": [0.008],
             "regression": [False],
             "use_cuda": [False],
-            "model_type": ["baseline", "onehot", "bias"],
+            "model_type": ["baseline", "onehot", "embedding"],
         }
     )
 
-    for datamodule_kwargs, model_kwargs, trainer_kwargs in product(
-        datamodule_kwargs_list, model_kwargs_list, trainer_kwargs_list
+    for (
+        datamodule_kwargs,
+        model_kwargs,
+        trainer_kwargs,
+        activelearning_kwargs,
+    ) in product(
+        datamodule_kwargs_list,
+        model_kwargs_list,
+        trainer_kwargs_list,
+        activelearning_kwargs_list,
     ):
         seed_everything()
         data_module = datamodule_cls(**datamodule_kwargs)
 
         module = ActiveLearningModule(
             datamodule=data_module,
-            text_selector=random_selector,
             datamodule_kwargs=datamodule_kwargs,
             model_kwargs=model_kwargs,
             train_kwargs=trainer_kwargs,
             wandb_project_name=wandb_project_name,
+            **activelearning_kwargs,
         )
 
-        module.experiment(20_000, 1000)
+        module.experiment(10_000, 1000)

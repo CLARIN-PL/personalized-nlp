@@ -74,6 +74,7 @@ class ActiveLearningModule:
         hparams = {
             "dataset": type(datamodule).__name__,
             "annotation_amount": self.annotated_amount,
+            "text_selector": self.text_selector.__name__,
             **datamodule_kwargs,
             **model_kwargs,
             **train_kwargs,
@@ -95,6 +96,7 @@ class ActiveLearningModule:
 
         logger.experiment.finish()
 
+        # gather confidence levels
         not_annotated_dataloader = datamodule.custom_dataloader("none", shuffle=False)
         trainer.predict(dataloaders=not_annotated_dataloader)
 
@@ -104,5 +106,3 @@ class ActiveLearningModule:
         while self.annotated_amount < max_amount:
             self.add_annotations(step_size)
             self.train_model()
-
-            print(self.datamodule.annotations.split.value_counts())

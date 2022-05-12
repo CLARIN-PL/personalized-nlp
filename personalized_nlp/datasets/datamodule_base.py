@@ -361,7 +361,7 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         """
         return self._get_dataloader("test", False)
 
-    def custom_dataloader(self, split_name='none', shuffle=False):
+    def custom_dataloader(self, split_name="none", shuffle=False):
         return self._get_dataloader(split_name, shuffle)
 
     def _get_dataloader(self, split, shuffle) -> DataLoader:
@@ -391,9 +391,7 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         )
 
         return torch.utils.data.DataLoader(
-            dataset,
-            sampler=sampler,
-            batch_size=None,
+            dataset, sampler=sampler, batch_size=None, num_workers=1
         )
 
     def _get_text_features(self) -> Dict[str, Any]:

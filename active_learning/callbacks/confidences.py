@@ -1,6 +1,6 @@
 from collections import defaultdict
 
-import pandas as pd
+import torch.nn as nn
 import torch
 from pytorch_lightning.callbacks import Callback
 
@@ -17,6 +17,6 @@ class SaveConfidencesCallback(Callback):
         if not self._outputs:
             return
 
-        outputs = torch.cat(self._outputs)
+        outputs = nn.Softmax(dim=1)(torch.cat(self._outputs))
 
         self.predict_outputs = outputs.cpu().numpy()
