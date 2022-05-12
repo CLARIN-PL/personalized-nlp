@@ -391,7 +391,7 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         )
 
         return torch.utils.data.DataLoader(
-            dataset, sampler=sampler, batch_size=None, num_workers=1
+            dataset, sampler=sampler, batch_size=None, num_workers=4
         )
 
     def _get_text_features(self) -> Dict[str, Any]:
