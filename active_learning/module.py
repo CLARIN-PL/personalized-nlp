@@ -22,12 +22,13 @@ class ActiveLearningModule:
         train_kwargs: dict,
         wandb_project_name: str,
         validation_ratio: float = 0.2,
+        **kwargs
     ) -> None:
 
         self.datamodule = datamodule
-        self.model_kwargs = model_kwargs
-        self.train_kwargs = train_kwargs
-        self.datamodule_kwargs = datamodule_kwargs
+        self.model_kwargs = dict(model_kwargs)
+        self.train_kwargs = dict(train_kwargs)
+        self.datamodule_kwargs = dict(datamodule_kwargs)
         self.wandb_project_name = wandb_project_name
         self.validation_ratio = validation_ratio
         self.confidences = None
