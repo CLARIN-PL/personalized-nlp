@@ -19,6 +19,8 @@ def train_test(
     logger=None,
     log_model=False,
     custom_callbacks=None,
+    monitor_metric="valid_loss",
+    monitor_mode="min",
     **kwargs
 ):
     """Train model and return predictions for test dataset"""
@@ -57,7 +59,7 @@ def train_test(
 
     checkpoint_dir = CHECKPOINTS_DIR / logger.experiment.name
     checkpoint_callback = ModelCheckpoint(
-        dirpath=checkpoint_dir, save_top_k=1, monitor="valid_loss", mode="min"
+        dirpath=checkpoint_dir, save_top_k=1, monitor=monitor_metric, mode=monitor_mode
     )
     progressbar_checkpoint = TQDMProgressBar(refresh_rate=20)
 
@@ -74,6 +76,6 @@ def train_test(
         callbacks=callbacks,
     )
     trainer.fit(model, train_loader, val_loader)
-    trainer.test(dataloaders=test_loader, ckpt_path="best")
+    trainer.test(dataloaders=test_loader)
 
     return trainer

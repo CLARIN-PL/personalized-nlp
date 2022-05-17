@@ -26,9 +26,11 @@ class ActiveLearningModule:
     ) -> None:
 
         self.datamodule = datamodule
-        self.model_kwargs = dict(model_kwargs)
-        self.train_kwargs = dict(train_kwargs)
-        self.datamodule_kwargs = dict(datamodule_kwargs)
+
+        self.model_kwargs = model_kwargs
+        self.train_kwargs = train_kwargs
+        self.datamodule_kwargs = datamodule_kwargs
+
         self.wandb_project_name = wandb_project_name
         self.validation_ratio = validation_ratio
         self.confidences = None
@@ -62,9 +64,9 @@ class ActiveLearningModule:
 
     def train_model(self):
         datamodule = self.datamodule
-        datamodule_kwargs = self.datamodule_kwargs
-        model_kwargs = self.model_kwargs
-        train_kwargs = self.train_kwargs
+        datamodule_kwargs = dict(self.datamodule_kwargs)
+        model_kwargs = dict(self.model_kwargs)
+        train_kwargs = dict(self.train_kwargs)
 
         confidences_callback = SaveConfidencesCallback()
         if "custom_callbacks" in train_kwargs:
