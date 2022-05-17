@@ -2,7 +2,6 @@ import os
 
 import personalized_nlp.utils.callbacks as callbacks
 from personalized_nlp.learning.train import train_test
-from personalized_nlp.models import models as models_dict
 from personalized_nlp.settings import TRANSFORMER_MODEL_STRINGS
 
 
