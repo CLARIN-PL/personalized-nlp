@@ -14,12 +14,15 @@ os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 os.environ["WANDB_START_METHOD"] = "thread"
 
 if __name__ == "__main__":
-    tracker = SummaryTracker()
-    wandb_project_name = "Wiki_ActiveLearning_5fold"
+    wandb_project_name = "Wiki_ActiveLearning_10fold"
     datamodule_cls = AggressionDataModule
 
     activelearning_kwargs_list = product_kwargs(
-        {"text_selector": [confidence_selector, random_selector]}
+        {
+            "text_selector": [confidence_selector, random_selector][1:],
+            "max_amount": [50_000],
+            "step": [500],
+        }
     )
     datamodule_kwargs_list = product_kwargs(
         {
@@ -29,9 +32,9 @@ if __name__ == "__main__":
             ],
             "limit_past_annotations_list": [None],
             "stratify_folds_by": ["users", "texts"][1:],
-            "fold_nums": [5],
+            "fold_nums": [10],
             "batch_size": [3000],
-            "fold_num": list(range(5))[1:],
+            "fold_num": list(range(10))[:5],
             "use_finetuned_embeddings": [False],
             "major_voting": [False],
         }
@@ -51,19 +54,21 @@ if __name__ == "__main__":
             "regression": [False],
             "use_cuda": [False],
             "model_type": ["baseline", "onehot", "embedding"],
+            "monitor_metric": ["valid_f1_aggression_1"],
+            "monitor_mode": ["max"],
         }
     )
 
     for (
+        activelearning_kwargs,
         datamodule_kwargs,
         model_kwargs,
         trainer_kwargs,
-        activelearning_kwargs,
     ) in product(
+        activelearning_kwargs_list,
         datamodule_kwargs_list,
         model_kwargs_list,
         trainer_kwargs_list,
-        activelearning_kwargs_list,
     ):
         seed_everything()
         data_module = datamodule_cls(**datamodule_kwargs)
@@ -77,4 +82,6 @@ if __name__ == "__main__":
             **activelearning_kwargs,
         )
 
-        module.experiment(10_000, 1000)
+        module.experiment(
+            activelearning_kwargs["max_amount"], activelearning_kwargs["step"]
+        )
