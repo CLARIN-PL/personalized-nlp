@@ -1,0 +1,4 @@
+outs:
+- md5: 06f247fa5c28096afe9142326462ffbb
+  size: 5842922
+  path: data.tsv
