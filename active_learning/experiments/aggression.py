@@ -2,8 +2,8 @@ import os
 from itertools import product
 
 from active_learning.module import ActiveLearningModule
-from active_learning.algorithms.random import random_selector
-from active_learning.algorithms.confidence import confidence_selector
+from active_learning.algorithms.random import RandomSelector
+from active_learning.algorithms.confidence import ConfidenceSelector
 from personalized_nlp.datasets.wiki.aggression import AggressionDataModule
 
 from personalized_nlp.utils import seed_everything
@@ -19,9 +19,9 @@ if __name__ == "__main__":
 
     activelearning_kwargs_list = product_kwargs(
         {
-            "text_selector": [confidence_selector, random_selector][1:],
-            "max_amount": [50_000],
-            "step": [500],
+            "text_selector": [RandomSelector(), ConfidenceSelector()],
+            "max_amount": [100_000],
+            "step_size": [3000],
         }
     )
     datamodule_kwargs_list = product_kwargs(
@@ -34,7 +34,7 @@ if __name__ == "__main__":
             "stratify_folds_by": ["users", "texts"][1:],
             "fold_nums": [10],
             "batch_size": [3000],
-            "fold_num": list(range(10))[:5],
+            "fold_num": list(range(10))[:5][:1],
             "use_finetuned_embeddings": [False],
             "major_voting": [False],
         }
@@ -82,6 +82,4 @@ if __name__ == "__main__":
             **activelearning_kwargs,
         )
 
-        module.experiment(
-            activelearning_kwargs["max_amount"], activelearning_kwargs["step"]
-        )
+        module.experiment(**activelearning_kwargs)

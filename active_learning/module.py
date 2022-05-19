@@ -6,6 +6,7 @@ from personalized_nlp.learning.train import train_test
 from pytorch_lightning import loggers as pl_loggers
 
 from active_learning.callbacks.confidences import SaveConfidencesCallback
+from active_learning.algorithms.base import TextSelectorBase
 
 
 class ActiveLearningModule:
@@ -16,7 +17,7 @@ class ActiveLearningModule:
     def __init__(
         self,
         datamodule: BaseDataModule,
-        text_selector: Callable,
+        text_selector: TextSelectorBase,
         datamodule_kwargs: dict,
         model_kwargs: dict,
         train_kwargs: dict,
@@ -50,7 +51,7 @@ class ActiveLearningModule:
         ]
         not_annotated["original_index"] = not_annotated.index.values
 
-        selected = self.text_selector(
+        selected = self.text_selector.select_annotations(
             texts, amount, annotated, not_annotated, self.confidences
         )
 
@@ -77,7 +78,7 @@ class ActiveLearningModule:
         hparams = {
             "dataset": type(datamodule).__name__,
             "annotation_amount": self.annotated_amount,
-            "text_selector": self.text_selector.__name__,
+            "text_selector": type(self.text_selector).__name__,
             **datamodule_kwargs,
             **model_kwargs,
             **train_kwargs,
@@ -105,7 +106,7 @@ class ActiveLearningModule:
 
         self.confidences = confidences_callback.predict_outputs
 
-    def experiment(self, max_amount: int, step_size: int):
+    def experiment(self, max_amount: int, step_size: int, **kwargs):
         while self.annotated_amount < max_amount:
             self.add_annotations(step_size)
             self.train_model()
