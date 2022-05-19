@@ -4,8 +4,8 @@ import pandas as pd
 
 
 class TextSelectorBase(ABC):
-    def __init__(self) -> None:
-        pass
+    def __init__(self, class_dims=None) -> None:
+        self.class_dims = class_dims
 
     @abstractmethod
     def select_annotations(

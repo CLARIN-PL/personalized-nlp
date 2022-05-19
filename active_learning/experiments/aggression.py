@@ -19,9 +19,9 @@ if __name__ == "__main__":
 
     activelearning_kwargs_list = product_kwargs(
         {
-            "text_selector": [RandomSelector(), ConfidenceSelector()],
+            "text_selector_cls": [RandomSelector, ConfidenceSelector],
             "max_amount": [100_000],
-            "step_size": [3000],
+            "step_size": [5000],
         }
     )
     datamodule_kwargs_list = product_kwargs(
@@ -72,6 +72,10 @@ if __name__ == "__main__":
     ):
         seed_everything()
         data_module = datamodule_cls(**datamodule_kwargs)
+
+        text_selector_cls = activelearning_kwargs["text_selector_cls"]
+        text_selector = text_selector_cls(class_dims=data_module.class_dims)
+        activelearning_kwargs["text_selector"] = text_selector
 
         module = ActiveLearningModule(
             datamodule=data_module,

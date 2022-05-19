@@ -1,12 +1,11 @@
-from typing import Callable
-
+import numpy as np
 from personalized_nlp.datasets.datamodule_base import BaseDataModule
-from personalized_nlp.settings import LOGS_DIR
 from personalized_nlp.learning.train import train_test
+from personalized_nlp.settings import LOGS_DIR
 from pytorch_lightning import loggers as pl_loggers
 
-from active_learning.callbacks.confidences import SaveConfidencesCallback
 from active_learning.algorithms.base import TextSelectorBase
+from active_learning.callbacks.confidences import SaveConfidencesCallback
 
 
 class ActiveLearningModule:
@@ -57,11 +56,28 @@ class ActiveLearningModule:
 
         assert len(selected.index) <= amount
 
-        selected = selected.sample(frac=1.0)
-        train_amount = int(amount * (1 - self.validation_ratio))
+        self._assign_train_val_splits(selected)
 
-        annotations.loc[selected["original_index"][:train_amount], "split"] = "train"
-        annotations.loc[selected["original_index"][train_amount:], "split"] = "val"
+    def _assign_train_val_splits(self, selected_annotations):
+        annotations = self.datamodule.annotations
+
+        selected_texts = selected_annotations["text_id"].unique()
+        np.random.shuffle(selected_texts)
+
+        train_amount = int(len(selected_texts) * (1 - self.validation_ratio))
+
+        train_texts_ids = selected_texts[:train_amount]
+        val_texts_ids = selected_texts[train_amount:]
+
+        train_annotations = selected_annotations[
+            selected_annotations.text_id.isin(train_texts_ids)
+        ]
+        val_annotations = selected_annotations[
+            selected_annotations.text_id.isin(val_texts_ids)
+        ]
+
+        annotations.loc[train_annotations["original_index"], "split"] = "train"
+        annotations.loc[val_annotations["original_index"], "split"] = "val"
 
     def train_model(self):
         datamodule = self.datamodule
