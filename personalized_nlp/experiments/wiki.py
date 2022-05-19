@@ -7,6 +7,7 @@ from personalized_nlp.datasets.wiki.aggression import AggressionDataModule
 from personalized_nlp.learning.train import train_test
 from personalized_nlp.settings import LOGS_DIR
 from personalized_nlp.utils import seed_everything
+import personalized_nlp.utils.callbacks as callbacks
 from personalized_nlp.utils.experiments import product_kwargs
 from pytorch_lightning import loggers as pl_loggers
 
@@ -80,7 +81,7 @@ if __name__ == "__main__":
                 **trainer_kwargs,
                 custom_callbacks=[
                     callbacks.SaveOutputsLocal(
-                        save_dir=f"lrec_{type(data_module).__name__}_{model_type}",
+                        save_dir=f"lrec_{type(data_module).__name__}_{trainer_kwargs.get(model_type)}",
                         save_text=True,
                         **hparams,
                     ),
