@@ -1,0 +1,4 @@
+outs:
+- md5: 05191c6bd06a2b117a4a8077f40e1b1e
+  size: 186596
+  path: annotations.tsv
