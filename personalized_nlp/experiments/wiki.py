@@ -1,5 +1,6 @@
 import os
 from itertools import product
+from pytorch_lightning.callbacks import EarlyStopping
 
 from personalized_nlp.datasets.wiki.aggression import AggressionDataModule
 
@@ -76,7 +77,15 @@ if __name__ == "__main__":
                 datamodule=data_module,
                 model_kwargs=model_kwargs,
                 logger=logger,
-                **trainer_kwargs
+                **trainer_kwargs,
+                custom_callbacks=[
+                    callbacks.SaveOutputsLocal(
+                        save_dir=f"lrec_{type(data_module).__name__}_{model_type}",
+                        save_text=True,
+                        **hparams,
+                    ),
+                    EarlyStopping(monitor="valid_loss", mode="min", patience=3),
+                ],
             )
 
             logger.experiment.finish()
