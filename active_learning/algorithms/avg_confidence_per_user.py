@@ -8,8 +8,14 @@ from active_learning.algorithms.base import TextSelectorBase
 
 class AverageConfidencePerUserSelector(TextSelectorBase):
     
-    def __init__(self, *args, **kwargs) -> None:
+    def __init__(self, select_minimal_texts: bool = True, *args, **kwargs) -> None:
+        """Selector basing on model's average confidence on text. If there is a conflict, it is resolved based on mode's average confidence on user.
+
+        Args:
+            select_minimal_texts (bool, optional): Wheter to choose annotations with minimal/or maximal confidence. Defaults to True.
+        """
         super(AverageConfidencePerUserSelector, self).__init__()
+        self.select_minimal_texts: bool = select_minimal_texts
     
     def select_annotations(
             self,
@@ -19,7 +25,7 @@ class AverageConfidencePerUserSelector(TextSelectorBase):
             not_annotated: pd.DataFrame,
             confidences: np.ndarray,
         ) -> pd.DataFrame:
-            """Baseline active learning algorithm, which selects random annotations.
+            """Select annotations using rule, described in __init__()
 
             Args:
                 texts (pd.DataFrame): Dataframe with texts data. It contains (at least)
@@ -38,8 +44,15 @@ class AverageConfidencePerUserSelector(TextSelectorBase):
                 `amount`.
             """
             if confidences is not None:
-                not_annotated['max_confidences'] = confidences.max(axis=1)
-                raise Exception(f'Confidences: {confidences.shape} Annotated: {annotated} Not annotated: {not_annotated} texts: {texts}')
-            
+                original_columns = not_annotated.columns
+                view = not_annotated.loc[:, :]
+                view.loc[:, 'max_confidences'] = confidences.max(axis=1)
+                view.loc[:, 'text_avg'] = view.loc[:, 'text_id'].map(view.groupby('text_id')['max_confidences'].mean())
+                view.loc[:, 'ann_avg'] = view.loc[:, 'annotator_id'].map(view.groupby('annotator_id')['max_confidences'].mean())
+                
+                return_df = view.sort_values(by=['text_avg', 'ann_avg'], ascending=self.ascending).iloc[:amount, :].loc[:, original_columns]
+                not_annotated.drop(columns=['max_confidences', 'text_avg', 'ann_avg'], inplace=True)
+                
+                return return_df
             warnings.warn(f'There is no confidences, sampled {amount} of samples from not annotated data.')
             return not_annotated.sample(n=amount)
