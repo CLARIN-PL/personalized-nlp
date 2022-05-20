@@ -2,8 +2,7 @@ import os
 from itertools import product
 
 from active_learning.module import ActiveLearningModule
-from active_learning.algorithms.random import RandomSelector
-from active_learning.algorithms.confidence import ConfidenceSelector
+from active_learning.algorithms import RandomSelector, ConfidenceSelector, AverageConfidencePerUserSelector
 from personalized_nlp.datasets.wiki.aggression import AggressionDataModule
 
 from personalized_nlp.utils import seed_everything
@@ -17,12 +16,12 @@ os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 os.environ["WANDB_START_METHOD"] = "thread"
 
 if __name__ == "__main__":
-    wandb_project_name = "Wiki_ActiveLearning_10fold"
+    wandb_project_name = "ALSandbox"
     datamodule_cls = AggressionDataModule
 
     activelearning_kwargs_list = product_kwargs(
         {
-            "text_selector_cls": [RandomSelector, ConfidenceSelector],
+            "text_selector_cls": [AverageConfidencePerUserSelector],
             "max_amount": [100_000],
             "step_size": [5000],
         }
