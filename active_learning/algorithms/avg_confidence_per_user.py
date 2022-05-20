@@ -50,7 +50,7 @@ class AverageConfidencePerUserSelector(TextSelectorBase):
                 view.loc[:, 'text_avg'] = view.loc[:, 'text_id'].map(view.groupby('text_id')['max_confidences'].mean())
                 view.loc[:, 'ann_avg'] = view.loc[:, 'annotator_id'].map(view.groupby('annotator_id')['max_confidences'].mean())
                 
-                return_df = view.sort_values(by=['text_avg', 'ann_avg'], ascending=self.ascending).iloc[:amount, :].loc[:, original_columns]
+                return_df = view.sort_values(by=['text_avg', 'ann_avg'], ascending=self.select_minimal_texts).iloc[:amount, :].loc[:, original_columns]
                 not_annotated.drop(columns=['max_confidences', 'text_avg', 'ann_avg'], inplace=True)
                 
                 return return_df
