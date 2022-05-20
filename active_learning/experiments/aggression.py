@@ -8,6 +8,9 @@ from personalized_nlp.datasets.wiki.aggression import AggressionDataModule
 
 from personalized_nlp.utils import seed_everything
 from personalized_nlp.utils.experiments import product_kwargs
+from personalized_nlp.utils.callbacks.personal_metrics import (
+    PersonalizedMetricsCallback,
+)
 
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "1"
@@ -76,6 +79,8 @@ if __name__ == "__main__":
         text_selector_cls = activelearning_kwargs["text_selector_cls"]
         text_selector = text_selector_cls(class_dims=data_module.class_dims)
         activelearning_kwargs["text_selector"] = text_selector
+
+        trainer_kwargs["custom_callbacks"] = [PersonalizedMetricsCallback()]
 
         module = ActiveLearningModule(
             datamodule=data_module,
