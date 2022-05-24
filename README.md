@@ -1,16 +1,20 @@
-# humor-personalization
-Personalized sense of humor prediction
+Project: nlperspectives
 
-## Download data
+Method: USER_ID
 
-To download data, enter personalized_nlp folder and type in:
 
-`dvc pull`
+## Important files in this branch:
 
-## How to run experiments:
+- `personalized_nlp/models/user_id.py`	: Code for the 'userid' method (add the annotator_id as a special token on the embeddings without modifying the raw_texts or annotations)
 
-`python -m personalized_nlp.experiments.jester`
+- `personalized_nlp/models/__init__.py`	: Added mapping for the 'userid' method
 
-## How to add new dataset
+- `personalized_nlp/settings.py`	: Added EMBEDDINGS_SIZES and TRANSFORMER_MODEL_STRINGS for 'roberta' (specifically, roberta-base), added GO_EMOTIONS_LABELS for the GoEmo experiments
 
-Copy one of existings dataset classes (personalized_nlp/datasets/) and modify paths and settings. Next, copy one of the experiments (personalized_nlp/experiments/) and customize the settings.
+- `personalized_nlp/experiments/emopers_userid_notune.py`	: The experiment on StudEmo with User-ID without fine-tuning
+
+- `personalized_nlp/experiments/emopers_userid_tune.py`	: The experiment on StudEmo with User-ID with fine-tuning
+
+- `personalized_nlp/experiments/goemo_userid_notune.py`	: The experiment on GoEmo with User-ID without fine-tuning
+
+- `personalized_nlp/experiments/goemo_userid_tune.py.py`	: The experiment on GoEmo with User-ID with fine-tuning
