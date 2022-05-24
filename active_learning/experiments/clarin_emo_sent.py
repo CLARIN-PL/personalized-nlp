@@ -4,7 +4,7 @@ from itertools import product
 from active_learning.module import ActiveLearningModule
 from active_learning.algorithms.random import RandomSelector
 from active_learning.algorithms.confidence import ConfidenceSelector
-from personalized_nlp.datasets.humicroedit.humicroedit import HumicroeditDataModule
+from personalized_nlp.datasets.clarin_emo_sent.clarin_emo_sent import ClarinEmoSentDataModule
 
 from personalized_nlp.utils import seed_everything
 from personalized_nlp.utils.experiments import product_kwargs
@@ -15,8 +15,8 @@ os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 os.environ["WANDB_START_METHOD"] = "thread"
 
 if __name__ == "__main__":
-    wandb_project_name = "Humicroedit_ActiveLearning_10fold"
-    datamodule_cls = HumicroeditDataModule
+    wandb_project_name = "ClarinEmoSent_ActiveLearning_10fold"
+    datamodule_cls = ClarinEmoSentDataModule
 
     activelearning_kwargs_list = product_kwargs({
         "text_selector_cls": [RandomSelector, ConfidenceSelector],
