@@ -1,8 +1,9 @@
 # code for USER_ID exp with fine-tuning
 
 import os
-import torch
 from itertools import product
+import torch
+
 from personalized_nlp.learning.train import train_test
 from personalized_nlp.models import models as models_dict
 from personalized_nlp.settings import LOGS_DIR
@@ -10,43 +11,49 @@ from personalized_nlp.datasets.emotions_perspective.emotions_perspectives import
 from personalized_nlp.utils import seed_everything
 from pytorch_lightning import loggers as pl_loggers
 
+from personalized_nlp.utils.callbacks.optimizer import SetWeightDecay
+from personalized_nlp.utils.callbacks.transformer_lr_scheduler import TransformerLrScheduler
+
 
 torch.cuda.empty_cache()
-
 os.environ["CUDA_VISIBLE_DEVICES"] = '0'
 os.environ["WANDB_START_METHOD"] = "thread"
 
 if __name__ == "__main__":
-    regression = True
+    wandb_project_name = 'userid_finetune'
+    
+    regression = False
     datamodule_cls = EmotionsPerspectiveDataModule
     embedding_types = ['roberta']
     model_types = ['userid']
-    wandb_project_name = 'userid_finetune_theserver'
-    limit_past_annotations_list = [None] # range(20)
+    
     fold_nums = 10
-    min_annotations_per_text = 2
     
     min_word_counts = [50]
-    words_per_texts = [256]
+    words_per_texts = [15]
     
     batch_size = 16
     dp_embs = [0.25]
     embedding_dims = [50]
+    lr_rates = [1e-5, 3e-5, 5e-5]
+    weight_decay = 0.01
+    # set nr_frozen_epochs = 0 to finetuning from scratch, = epochs to frozen the whole
     epochs = 20
-    lr_rate = 1e-5
-    weight_decay = 1e-6
     nr_frozen_epochs = 0
 
     user_folding = True
     use_cuda = True
+    # frozen=False by default for finetuning, set frozen=True for not finetuning
+    frozen = False
 
-    for (min_word_count, words_per_text, embeddings_type, limit_past_annotations) in product(
-        min_word_counts, words_per_texts, embedding_types, limit_past_annotations_list
+    for (min_word_count, words_per_text, embeddings_type, lr_rate) in product(
+        min_word_counts, words_per_texts, embedding_types, lr_rates
     ):
 
         seed_everything()
-        data_module = datamodule_cls(embeddings_type=embeddings_type, normalize=regression,
-                                     batch_size=batch_size, past_annotations_limit=limit_past_annotations)
+        data_module = datamodule_cls(
+            embeddings_type=embeddings_type, normalize=regression, batch_size=batch_size,
+        )
         data_module.prepare_data()
         data_module.setup()
         data_module.compute_word_stats(
@@ -69,7 +76,8 @@ if __name__ == "__main__":
                 "min_word_count": min_word_count,
                 "dp_emb": dp_emb,
                 "weight_decay": weight_decay,
-                'nr_frozen_epochs': nr_frozen_epochs
+                'nr_frozen_epochs': nr_frozen_epochs,
+                "learning_rate": lr_rate,
             }
 
             logger = pl_loggers.WandbLogger(
@@ -95,11 +103,13 @@ if __name__ == "__main__":
                 bias_vector_length=len(data_module.class_dims),
                 nr_frozen_epochs=nr_frozen_epochs,
                 embedding_type=embeddings_type,
-                flag_frozen=False,
+                frozen = frozen
             )
             
-            test_fold = fold_num if user_folding else None
-            
+            custom_callbacks = [SetWeightDecay(lr=lr_rate, weight_decay=weight_decay)]
+            if frozen==False:
+                custom_callbacks += [TransformerLrScheduler(warmup_proportion=0.1)]
+
             train_test(
                 data_module,
                 model,
@@ -110,7 +120,8 @@ if __name__ == "__main__":
                 use_cuda=use_cuda,
                 logger=logger,
                 test_fold=fold_num,
-                flag_run_test=True,
+                nr_frozen_epochs=nr_frozen_epochs,
+                custom_callbacks=custom_callbacks
             )
             
             logger.experiment.finish()

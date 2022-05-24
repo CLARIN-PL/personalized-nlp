@@ -27,7 +27,7 @@ if __name__ == "__main__":
     embedding_types = ['roberta']
     model_types = ['userid']
 
-    fold_nums = [4, 5, 6, 7, 8, 9]
+    fold_nums = 10
 
     min_word_counts = [50]
     words_per_texts = [15]
@@ -63,7 +63,7 @@ if __name__ == "__main__":
         )
 
         for model_type, embedding_dim, dp_emb, fold_num in product(
-            model_types, embedding_dims, dp_embs, fold_nums
+            model_types, embedding_dims, dp_embs, range(fold_nums
         ):
             hparams = {
                 "dataset": type(data_module).__name__,

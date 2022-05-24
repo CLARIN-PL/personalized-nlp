@@ -106,8 +106,6 @@ if __name__ == "__main__":
                 frozen = frozen
             )
 
-            # This should be done already by flag_frozen=True, but just
-            # in case... (there isn't time to debug this before paper submission)
             for name, param in model.model.named_parameters():
               if 'fc' not in name:
                 param.requires_grad = False
@@ -116,6 +114,7 @@ if __name__ == "__main__":
             if frozen==False:
                 custom_callbacks += [TransformerLrScheduler(warmup_proportion=0.1)]
 
+            test_fold = fold_num if user_folding else None
             train_test(
                 data_module,
                 model,
