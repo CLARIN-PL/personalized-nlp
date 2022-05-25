@@ -24,7 +24,8 @@ EMBEDDINGS_SIZES = {
     'random': 768,
     'skipgram': 300,
     'cbow': 300,
-    'deberta': 1024
+    'deberta': 1024,
+    'roberta': 768
 }
 
 TRANSFORMER_MODEL_STRINGS = {
@@ -33,5 +34,37 @@ TRANSFORMER_MODEL_STRINGS = {
     'roberta': 'roberta-base',
     'deberta': 'microsoft/deberta-large',
     'labse': 'sentence-transformers/LaBSE',
-    'mpnet': 'sentence-transformers/paraphrase-multilingual-mpnet-base-v2'
+    'mpnet': 'sentence-transformers/paraphrase-multilingual-mpnet-base-v2',
+    'roberta': 'roberta-base'
 }
+
+GO_EMOTIONS_LABELS = [
+    'admiration',
+    'amusement',
+    'anger',
+    'annoyance',
+    'approval',
+    'caring',
+    'confusion',
+    'curiosity',
+    'desire',
+    'disappointment',
+    'disapproval',
+    'disgust',
+    'embarrassment',
+    'excitement',
+    'fear',
+    'gratitude',
+    'grief',
+    'joy',
+    'love',
+    'nervousness',
+    'optimism',
+    'pride',
+    'realization',
+    'relief',
+    'remorse',
+    'sadness',
+    'surprise',
+    'neutral'
+]
