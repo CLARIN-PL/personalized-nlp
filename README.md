@@ -1,15 +1,22 @@
 Project: nlperspectives
 
-Method: USER_ID
+## Download data
 
+To download data, enter personalized_nlp folder and type in:
 
-## Important files in this branch:
+`dvc pull`
+
+## How to run experiments
+
+`python -m personalized_nlp.experiments.jester`
+
+## How to add new dataset
+
+Copy one of existings dataset classes (personalized_nlp/datasets/) and modify paths and settings. Next, copy one of the experiments (personalized_nlp/experiments/) and customize the settings.
+
+## Important files for nlperspectives, method: USER_ID
 
 - `personalized_nlp/models/user_id.py`	: Code for the 'userid' method (add the annotator_id as a special token on the embeddings without modifying the raw_texts or annotations)
-
-- `personalized_nlp/models/__init__.py`	: Added mapping for the 'userid' method
-
-- `personalized_nlp/settings.py`	: Added EMBEDDINGS_SIZES and TRANSFORMER_MODEL_STRINGS for 'roberta' (specifically, roberta-base), added GO_EMOTIONS_LABELS for the GoEmo experiments
 
 - `personalized_nlp/experiments/emopers_userid_notune.py`	: The experiment on StudEmo with User-ID without fine-tuning
 

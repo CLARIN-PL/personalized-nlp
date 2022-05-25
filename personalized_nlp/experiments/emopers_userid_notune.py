@@ -111,7 +111,7 @@ if __name__ == "__main__":
                 param.requires_grad = False
 
             custom_callbacks = [SetWeightDecay(lr=lr_rate, weight_decay=weight_decay)]
-            if frozen==False:
+            if frozen == False:
                 custom_callbacks += [TransformerLrScheduler(warmup_proportion=0.1)]
 
             test_fold = fold_num if user_folding else None

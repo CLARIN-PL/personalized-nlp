@@ -66,4 +66,5 @@ GO_EMOTIONS_LABELS = [
     'remorse',
     'sadness',
     'surprise',
-    'neutral']
+    'neutral'
+]

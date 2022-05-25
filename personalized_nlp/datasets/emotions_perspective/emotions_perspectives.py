@@ -7,14 +7,12 @@ from personalized_nlp.settings import STORAGE_DIR
 from personalized_nlp.utils.data_splitting import split_texts
 from personalized_nlp.datasets.datamodule_base import BaseDataModule
 
-
 VALENCE_MAPPING = {0:3, 1:4, 2:5, 3:6, -1:2, -2:1, -3:0}
 class EmotionsPerspectiveDataModule(BaseDataModule):
     def __init__(
-            self,
+            self, 
             split_sizes: List[float] = [0.55, 0.15, 0.15, 0.15],
             normalize=False,
-            classification=False,
             min_annotations_per_text=None,
             **kwargs,
     ):
@@ -41,7 +39,6 @@ class EmotionsPerspectiveDataModule(BaseDataModule):
         self.val_split_names = ['future1']
         self.test_split_names = ['future2']
 
-        self.classification = classification
         self.normalize = normalize
         self.min_annotations_per_text = min_annotations_per_text
         self.regression = False
@@ -73,8 +70,6 @@ class EmotionsPerspectiveDataModule(BaseDataModule):
             text_id_value_counts = text_id_value_counts[text_id_value_counts >= self.min_annotations_per_text]
             self.annotations = self.annotations.loc[self.annotations.text_id.isin(text_id_value_counts.index.tolist())]
 
-        if self.classification:
-            self.annotations['valence'] += 3
         if self.normalize:
             self.normalize_labels()
         self._assign_splits()

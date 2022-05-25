@@ -44,7 +44,7 @@ class NetUserID(torch.nn.Module):
                 truncation=True,
                 max_length=self.max_length,
                 return_tensors='pt',
-            ).to('cuda')
+            ).to(self.model.device)
 
             emb = self.model(**batch_encoding).pooler_output
         else:

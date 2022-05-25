@@ -107,7 +107,7 @@ if __name__ == "__main__":
             )
 
             custom_callbacks = [SetWeightDecay(lr=lr_rate, weight_decay=weight_decay)]
-            if frozen==False:
+            if frozen == False:
                 custom_callbacks += [TransformerLrScheduler(warmup_proportion=0.1)]
 
             train_test(
