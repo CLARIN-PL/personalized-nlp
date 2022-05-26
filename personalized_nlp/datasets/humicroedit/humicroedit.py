@@ -25,24 +25,20 @@ class HumicroeditDataModule(BaseDataModule):
         os.makedirs(self.data_dir / "embeddings", exist_ok=True)
 
     def _remap_column_names(self, df):
-        mapping = {"user_id": "annotator_id"}
+        mapping = {"user_id": "annotator_id", "original": "text"}
         df.columns = [mapping.get(col, col) for col in df.columns]
         return df
 
     def prepare_data(self) -> None:
-        self.data = pd.read_csv(
-            self.data_dir / "data.tsv",
-            sep="\t",
-        )
+        self.data = pd.read_csv(self.data_dir / "data.csv")
         self.data = self._remap_column_names(self.data)
 
-        self.annotations = pd.read_csv(self.data_dir / "annotations.tsv",
-                                       sep="\t")
+        self.annotations = pd.read_csv(self.data_dir / "annotations.csv")
         self.annotations = self._remap_column_names(self.annotations)
 
     @property
     def class_dims(self) -> List[int]:
-        return [4]
+        return [2]
 
     @property
     def annotation_columns(self) -> List[str]:

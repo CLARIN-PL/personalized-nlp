@@ -1,4 +1,7 @@
 import os
+
+import torch
+
 from itertools import product
 
 from active_learning.module import ActiveLearningModule
@@ -11,16 +14,17 @@ from personalized_nlp.utils.experiments import product_kwargs
 from personalized_nlp.utils.callbacks.personal_metrics import (
     PersonalizedMetricsCallback, )
 
-os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 os.environ["WANDB_START_METHOD"] = "thread"
 
 if __name__ == "__main__":
-    wandb_project_name = "ClarinEmoSent_ActiveLearning_10fold"
+    torch.multiprocessing.set_sharing_strategy('file_system')
+    wandb_project_name = "ClarinEmoSent_ActiveLearning_5foldNewMetric"
     datamodule_cls = ClarinEmoSentDataModule
 
     activelearning_kwargs_list = product_kwargs({
         "text_selector_cls": [RandomSelector, ConfidenceSelector],
-        "max_amount": [100_000],
+        "max_amount": [35_000],
         "step_size": [5000],
     })
     datamodule_kwargs_list = product_kwargs({
@@ -29,10 +33,10 @@ if __name__ == "__main__":
         ["labse", "mpnet", "xlmr", "random", "skipgram", "cbow"][:1],
         "limit_past_annotations_list": [None],
         "stratify_folds_by": ["users", "texts"][1:],
-        "fold_nums": [10],
-        "batch_size": [3000],
+        "fold_nums": [5],
+        "batch_size": [1500],
         "fold_num":
-        list(range(10))[:5][:1],
+        list(range(5)),
         "use_finetuned_embeddings": [False],
         "major_voting": [False],
     })
@@ -48,7 +52,7 @@ if __name__ == "__main__":
         "regression": [False],
         "use_cuda": [False],
         "model_type": ["baseline", "onehot", "embedding"],
-        "monitor_metric": ["valid_f1_is_funny_1"],
+        "monitor_metric": ["valid_macro_f1_mean"],
         "monitor_mode": ["max"],
     })
 
