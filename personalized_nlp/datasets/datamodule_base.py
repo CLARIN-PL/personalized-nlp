@@ -93,6 +93,7 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         split_sizes: Optional[List[str]] = None,
         use_finetuned_embeddings: bool = False,
         test_fold: Optional[int] = None,
+        min_annotations_per_user_in_fold: Optional[int] = None,
         seed: int = 22,
         **kwargs,
     ):
@@ -129,6 +130,7 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         self.stratify_folds_by = stratify_folds_by
         self._test_fold = test_fold if test_fold is not None else 0
         self.use_finetuned_embeddings = use_finetuned_embeddings
+        self.min_annotations_per_user_in_fold = min_annotations_per_user_in_fold
 
         self.split_sizes = (
             split_sizes if split_sizes is not None else [0.55, 0.15, 0.15, 0.15]
@@ -168,6 +170,9 @@ class BaseDataModule(LightningDataModule, abc.ABC):
 
         if self.past_annotations_limit is not None:
             self.limit_past_annotations(self.past_annotations_limit)
+
+        if self.min_annotations_per_user_in_fold is not None:
+            self.filter_annotators()
 
         self.compute_annotator_biases()
 
@@ -504,3 +509,20 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         ]
 
         self.annotations = pd.concat([non_past_annotations, controversial_annotations])
+
+    def filter_annotators(self):
+        min_annotations = self.min_annotations_per_user_in_fold
+
+        annotation_counts = self.annotations.loc[
+            :, ["annotator_id", "fold"]
+        ].value_counts()
+        annotation_counts = annotation_counts.reset_index().rename(
+            columns={0: "annotation_number"}
+        )
+        annotators_to_ignore = annotation_counts.loc[
+            annotation_counts.annotation_number < min_annotations
+        ].annotator_id.unique()
+
+        self.annotations = self.annotations[
+            ~self.annotations.annotator_id.isin(annotators_to_ignore)
+        ]
