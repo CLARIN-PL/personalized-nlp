@@ -63,6 +63,28 @@ class Regressor(pl.LightningModule):
         if self.current_epoch >= self.hparams.nr_frozen_epochs:
             self.unfreeze()
 
+    def freeze(self) -> None:
+        for name, param in self.named_parameters():
+            if 'fc' not in name:
+                param.requires_grad = False
+        if hasattr(self.model, 'frozen'):
+            self.model.frozen = True
+
+    def unfreeze(self) -> None:
+        if hasattr(self.model, 'frozen'):
+            if self.model.frozen:
+                for name, param in self.named_parameters():
+                    if 'fc' not in name:
+                        param.requires_grad = True
+                self.model.frozen = False
+
+    def on_epoch_start(self):
+        if self.current_epoch < self.hparams.nr_frozen_epochs:
+            self.freeze()
+
+        if self.current_epoch >= self.hparams.nr_frozen_epochs:
+            self.unfreeze()
+
     def validation_step(self, batch, batch_idx):
         x, y = batch
         y = y.float()

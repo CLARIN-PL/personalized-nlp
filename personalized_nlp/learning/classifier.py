@@ -97,7 +97,7 @@ class Classifier(pl.LightningModule):
 
     def freeze(self) -> None:
         for name, param in self.named_parameters():
-            if 'fc' not in name: 
+            if 'fc' not in name:
                 param.requires_grad = False
         if hasattr(self.model, 'frozen'):
             self.model.frozen = True
@@ -106,7 +106,7 @@ class Classifier(pl.LightningModule):
         if hasattr(self.model, 'frozen'):
             if self.model.frozen:
                 for name, param in self.named_parameters():
-                    if 'fc' not in name: 
+                    if 'fc' not in name:
                         param.requires_grad = True
             self.model.frozen = False
 
