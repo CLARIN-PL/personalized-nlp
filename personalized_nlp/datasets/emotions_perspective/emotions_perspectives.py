@@ -13,6 +13,7 @@ class EmotionsPerspectiveDataModule(BaseDataModule):
             self, 
             split_sizes: List[float] = [0.55, 0.15, 0.15, 0.15],
             normalize=False,
+            regression=False,
             min_annotations_per_text=None,
             **kwargs,
     ):
@@ -41,7 +42,7 @@ class EmotionsPerspectiveDataModule(BaseDataModule):
 
         self.normalize = normalize
         self.min_annotations_per_text = min_annotations_per_text
-        self.regression = False
+        self.regression = regression
 
         os.makedirs(self.data_dir / 'embeddings', exist_ok=True)
 
