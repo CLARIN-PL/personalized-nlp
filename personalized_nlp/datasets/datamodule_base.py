@@ -511,6 +511,9 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         self.annotations = pd.concat([non_past_annotations, controversial_annotations])
 
     def filter_annotators(self):
+        """Filters annotators with less than `min_annotations_per_user_in_fold` annotations
+        in each fold and with less than one annotations per each (class_dim, fold) pair.
+        """
         min_annotations = self.min_annotations_per_user_in_fold
 
         annotation_counts = self.annotations.loc[
@@ -525,4 +528,36 @@ class BaseDataModule(LightningDataModule, abc.ABC):
 
         self.annotations = self.annotations[
             ~self.annotations.annotator_id.isin(annotators_to_ignore)
+        ]
+
+        annotations = self.annotations
+        annotation_columns = self.annotation_columns
+        folds_num = self.folds_num
+        min_class_annotations = 1
+
+        annotators_to_filter = set()
+
+        for annotation_column in annotation_columns:
+            class_dim = annotations[annotation_column].nunique()
+
+            annotations_per_class = annotations.loc[
+                :, ["annotator_id", "fold", annotation_column]
+            ].value_counts()
+
+            annotations_per_class = annotations_per_class[
+                annotations_per_class >= min_class_annotations
+            ]
+
+            class_fold_per_annotator = (
+                annotations_per_class.reset_index().annotator_id.value_counts()
+            )
+
+            annotators_to_filter.update(
+                class_fold_per_annotator[
+                    class_fold_per_annotator < folds_num * class_dim
+                ].index.tolist()
+            )
+
+        self.annotations = self.annotations.loc[
+            ~self.annotations.annotator_id.isin(annotators_to_filter)
         ]
