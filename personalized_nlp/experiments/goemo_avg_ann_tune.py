@@ -39,7 +39,7 @@ if __name__ == "__main__":
     batch_size = 16
     dp_embs = [0.25]
     embedding_dims = [50]
-    epochs = 20
+    epochs = 10
     lr_rates = [3e-5]
     weight_decay = 0.01
     nr_frozen_epochs = 0

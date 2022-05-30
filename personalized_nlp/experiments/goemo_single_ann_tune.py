@@ -24,7 +24,7 @@ os.environ["CUDA_VISIBLE_DEVICES"] = '0'
 os.environ["WANDB_START_METHOD"] = "thread"
 
 if __name__ == "__main__":
-    regression = True
+    regression = False
     datamodule_cls = GoEmotionsDataModule
     embedding_types = ['roberta']
     model_types = ['baseline']
@@ -38,7 +38,7 @@ if __name__ == "__main__":
     batch_size = 16
     dp_embs = [0.25]
     embedding_dims = [50]
-    epochs = 20
+    epochs = 10
     lr_rates = [1e-5, 3e-5, 5e-5]
     weight_decay = 0.01
     nr_frozen_epochs = 0
