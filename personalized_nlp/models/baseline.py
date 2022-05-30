@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from transformers import AutoModel
+from transformers import AutoTokenizer, AutoModel
 from personalized_nlp.settings import TRANSFORMER_MODEL_STRINGS
 
 
@@ -22,6 +22,8 @@ class Net(nn.Module):
             embedding_type = TRANSFORMER_MODEL_STRINGS[embedding_type]
         self.model = AutoModel.from_pretrained(embedding_type)
         self.max_length = max_length
+        self._tokenizer = AutoTokenizer.from_pretrained(embedding_type)
+
 
 
     def forward(self, features):
