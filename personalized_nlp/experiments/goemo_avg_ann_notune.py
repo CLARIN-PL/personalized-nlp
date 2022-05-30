@@ -29,7 +29,7 @@ if __name__ == "__main__":
     embedding_dims = [50]
     epochs = 20
     lr_rate = 3e-5
-    nr_frozen_epochs = 5
+    nr_frozen_epochs = 20
 
     use_cuda = True
     frozen=True
