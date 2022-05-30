@@ -17,7 +17,6 @@ class AbstractSaveOutputsCallback(Callback):
         """Saves the predictions to the .csv file. Csv file is stored in:
         ``` logs/wandb/{wandb.run.dir}/files/{save_name}``` 
         Stored attributes: [logit0 ..., logitN-1, y_true0, ... , y_trueK-1, annotator_id, text_id, ?text]
-
         Args:
             save_name (str, optional): Name of csv file. Defaults to 'outputs.csv'.
         """
