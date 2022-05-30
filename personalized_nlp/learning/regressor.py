@@ -2,8 +2,6 @@ import torch
 import torch.nn as nn
 from torchmetrics import MeanAbsoluteError, MeanSquaredError, R2Score
 import pytorch_lightning as pl
-
-
 class Regressor(pl.LightningModule):
     def __init__(self, model, lr, class_names, nr_frozen_epochs):
         super().__init__()
@@ -44,6 +42,26 @@ class Regressor(pl.LightningModule):
 
     def training_epoch_end(self, outs):
         pass
+    
+    def freeze(self) -> None:
+        for name, param in self.named_parameters():
+            if 'fc' not in name: 
+                param.requires_grad = False
+        self.model.frozen = True
+
+    def unfreeze(self) -> None:
+        if self.model.frozen:
+            for name, param in self.named_parameters():
+                if 'fc' not in name: 
+                    param.requires_grad = True
+        self.model.frozen = False
+
+    def on_epoch_start(self):
+        if self.current_epoch < self.hparams.nr_frozen_epochs:
+            self.freeze()
+
+        if self.current_epoch >= self.hparams.nr_frozen_epochs:
+            self.unfreeze()
 
     def freeze(self) -> None:
         for name, param in self.named_parameters():
