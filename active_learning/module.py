@@ -104,7 +104,7 @@ class ActiveLearningModule:
             save_dir=str(LOGS_DIR),
             config=hparams,
             project=self.wandb_project_name,
-            log_model=False,
+            log_model=False
         )
 
         trainer = train_test(
