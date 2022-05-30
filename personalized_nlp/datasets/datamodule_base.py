@@ -51,6 +51,7 @@ class BaseDataModule(LightningDataModule):
         major_voting: bool = False,
         folds_num: int = 10,
         past_annotations_limit: int = None,
+        is_averaged: bool = False,
         **kwargs
     ):
 
@@ -66,6 +67,8 @@ class BaseDataModule(LightningDataModule):
         self.embeddings_type = embeddings_type
         self.folds_num = folds_num
         self.past_annotations_limit = past_annotations_limit
+        self.is_averaged = is_averaged
+
 
     def _create_embeddings(self, use_cuda: Optional[bool] = None) -> None:
         texts = self.texts_clean
@@ -119,9 +122,12 @@ class BaseDataModule(LightningDataModule):
     def setup(self, stage: Optional[str] = None) -> None:
         data = self.data
         annotations = self.annotations
-
+            
         if self.major_voting:
-            self.compute_major_votes()
+            self.compute_major_votes(True, True)
+
+        if self.is_averaged:
+            self.compute_major_votes(True, False)
 
         if not os.path.exists(self.embeddings_path):
             self._create_embeddings()
@@ -153,17 +159,18 @@ class BaseDataModule(LightningDataModule):
         self._assign_folds()
         self.compute_word_stats()
 
-    def compute_major_votes(self) -> None:
+    def compute_major_votes(self, is_rounded = True, is_annotator_replaced = True) -> None:
         """Computes mean votes for every texts and replaces
         each annotator with dummy annotator with id = 0"""
         annotations = self.annotations
+        annotator_ids = annotations["annotator_id"]
+        annotations["annotator_id"] = 0 if is_annotator_replaced else annotator_ids
 
-        annotations["annotator_id"] = 0
         major_votes = annotations.groupby("text_id")[self.annotation_column].mean()
-        major_votes = major_votes.round()
+        major_votes = major_votes.round() if is_rounded else major_votes
 
         self.annotations = major_votes.reset_index()
-        self.annotations["annotator_id"] = 0
+        self.annotations["annotator_id"] = 0 if is_annotator_replaced else annotator_ids
 
     def compute_annotator_biases(self, personal_df: pd.DataFrame):
         if self.past_annotations_limit is not None:
