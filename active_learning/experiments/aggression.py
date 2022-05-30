@@ -2,8 +2,7 @@ import os
 from itertools import product
 
 from active_learning.module import ActiveLearningModule
-from active_learning.algorithms.random import RandomSelector
-from active_learning.algorithms.confidence import ConfidenceSelector
+from active_learning.algorithms import RandomSelector, ConfidenceSelector, AverageConfidencePerUserSelector
 from personalized_nlp.datasets.wiki.aggression import AggressionDataModule
 
 from personalized_nlp.utils import seed_everything

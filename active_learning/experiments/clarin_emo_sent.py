@@ -5,14 +5,14 @@ import torch
 from itertools import product
 
 from active_learning.module import ActiveLearningModule
-from active_learning.algorithms.random import RandomSelector
-from active_learning.algorithms.confidence import ConfidenceSelector
+from active_learning.algorithms import RandomSelector, ConfidenceSelector, AverageConfidencePerUserSelector
 from personalized_nlp.datasets.clarin_emo_sent.clarin_emo_sent import ClarinEmoSentDataModule
 
 from personalized_nlp.utils import seed_everything
 from personalized_nlp.utils.experiments import product_kwargs
 from personalized_nlp.utils.callbacks.personal_metrics import (
-    PersonalizedMetricsCallback, )
+    PersonalizedMetricsCallback, 
+)
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 os.environ["WANDB_START_METHOD"] = "thread"
