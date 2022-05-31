@@ -10,18 +10,19 @@ from personalized_nlp.utils.experiments import product_kwargs
 from personalized_nlp.utils.callbacks.personal_metrics import (
     PersonalizedMetricsCallback,
 )
+from personalized_nlp.utils.callbacks import SaveOutputsLocal
 
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 os.environ["WANDB_START_METHOD"] = "thread"
 
 if __name__ == "__main__":
-    wandb_project_name = "Wiki_ActiveLearning_10fold"
+    wandb_project_name = "AL_Aggression_Ablation_Study"
     datamodule_cls = AggressionDataModule
 
     activelearning_kwargs_list = product_kwargs(
         {
-            "text_selector_cls": [RandomSelector, ConfidenceSelector],
+            "text_selector_cls": [ConfidenceSelector], #[RandomSelector, ConfidenceSelector, AverageConfidencePerUserSelector],
             "max_amount": [100_000],
             "step_size": [5000],
         }
@@ -36,7 +37,7 @@ if __name__ == "__main__":
             "stratify_folds_by": ["users", "texts"][1:],
             "fold_nums": [10],
             "batch_size": [3000],
-            "fold_num": list(range(10))[:5][:1],
+            "fold_num": list(range(10)),
             "use_finetuned_embeddings": [False],
             "major_voting": [False],
         }
@@ -79,7 +80,17 @@ if __name__ == "__main__":
         text_selector = text_selector_cls(class_dims=data_module.class_dims)
         activelearning_kwargs["text_selector"] = text_selector
 
-        trainer_kwargs["custom_callbacks"] = [PersonalizedMetricsCallback()]
+        trainer_kwargs["custom_callbacks"] = [
+            #PersonalizedMetricsCallback(),
+            SaveOutputsLocal(
+                save_dir='wiki_agr_active_learning_ablation_study',
+                save_text=True,
+                sep='_',
+                text_selector=type(activelearning_kwargs["text_selector"]).__name__,
+                model=trainer_kwargs["model_type"],
+                fold_num=datamodule_kwargs["fold_num"]
+            )
+        ]
 
         module = ActiveLearningModule(
             datamodule=data_module,

@@ -10,6 +10,7 @@ class AverageConfidencePerUserSelector(TextSelectorBase):
     
     def __init__(self, select_minimal_texts: bool = True, *args, **kwargs) -> None:
         """Selector basing on model's average confidence on text. If there is a conflict, it is resolved based on mode's average confidence on user.
+        
         Args:
             select_minimal_texts (bool, optional): Wheter to choose annotations with minimal (True) or maximal (False) confidence. Defaults to True.
         """
@@ -25,6 +26,7 @@ class AverageConfidencePerUserSelector(TextSelectorBase):
             confidences: np.ndarray,
         ) -> pd.DataFrame:
             """Select annotations using rule, described in __init__()
+
             Args:
                 texts (pd.DataFrame): Dataframe with texts data. It contains (at least)
                 two columns: `text_id` (int) and `text` (str)
@@ -36,6 +38,7 @@ class AverageConfidencePerUserSelector(TextSelectorBase):
                 `amount` of rows from this dataframe.
                 confidences (np.ndarray): Numpy array of prediction confidences for all annotations
                 in `not_annotated` dataframe. It has length equal to length of `not_annotated` dataframe.
+
             Returns:
                 pd.DataFrame: Dataframe with subset of rows of `not_annotated` dataframe with length equal to
                 `amount`.
@@ -52,4 +55,5 @@ class AverageConfidencePerUserSelector(TextSelectorBase):
                 
                 return return_df
             warnings.warn(f'There is no confidences, sampled {amount} of samples from not annotated data.')
+
             return not_annotated.sample(n=amount)
