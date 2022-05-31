@@ -2,6 +2,7 @@ from typing import Any
 import pytorch_lightning as pl
 import torch
 import torch.nn as nn
+import numpy as np
 from torchmetrics.classification.f_beta import F1Score
 from torchmetrics.classification.accuracy import Accuracy
 from personalized_nlp.utils.metrics import F1Class, PrecisionClass, RecallClass
@@ -142,5 +143,12 @@ class Classifier(pl.LightningModule):
                     )
 
                     log_dict[metric_key] = self.metrics[metric_key]
+
+                if split == "valid" and metric_type == "macro_f1":
+                    f1_macros = [
+                        log_dict[metric_key].compute() for metric_key in metric_keys
+                    ]
+
+                    log_dict["valid_macro_f1_mean"] = np.mean(f1_macros)
 
             self.log_dict(log_dict, on_step=on_step, on_epoch=on_epoch, prog_bar=True)

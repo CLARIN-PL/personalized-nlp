@@ -10,9 +10,9 @@ class AverageConfidencePerUserSelector(TextSelectorBase):
     
     def __init__(self, select_minimal_texts: bool = True, *args, **kwargs) -> None:
         """Selector basing on model's average confidence on text. If there is a conflict, it is resolved based on mode's average confidence on user.
-
+        
         Args:
-            select_minimal_texts (bool, optional): Wheter to choose annotations with minimal/or maximal confidence. Defaults to True.
+            select_minimal_texts (bool, optional): Wheter to choose annotations with minimal (True) or maximal (False) confidence. Defaults to True.
         """
         super(AverageConfidencePerUserSelector, self).__init__()
         self.select_minimal_texts: bool = select_minimal_texts
@@ -55,4 +55,5 @@ class AverageConfidencePerUserSelector(TextSelectorBase):
                 
                 return return_df
             warnings.warn(f'There is no confidences, sampled {amount} of samples from not annotated data.')
+
             return not_annotated.sample(n=amount)
