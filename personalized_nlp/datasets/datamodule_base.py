@@ -52,6 +52,7 @@ class BaseDataModule(LightningDataModule):
         folds_num: int = 10,
         past_annotations_limit: int = None,
         is_averaged: bool = False,
+        texts_num_in_annotator_past_emb: int = 4,
         **kwargs
     ):
 
@@ -68,7 +69,7 @@ class BaseDataModule(LightningDataModule):
         self.folds_num = folds_num
         self.past_annotations_limit = past_annotations_limit
         self.is_averaged = is_averaged
-
+        self.texts_num_in_annotator_past_emb = texts_num_in_annotator_past_emb
 
     def _create_embeddings(self, use_cuda: Optional[bool] = None) -> None:
         texts = self.texts_clean
@@ -122,7 +123,7 @@ class BaseDataModule(LightningDataModule):
     def setup(self, stage: Optional[str] = None) -> None:
         data = self.data
         annotations = self.annotations
-            
+
         if self.major_voting:
             self.compute_major_votes(True, True)
 
@@ -156,6 +157,7 @@ class BaseDataModule(LightningDataModule):
         if self.past_annotations_limit is not None:
             self.limit_past_annotations(self.past_annotations_limit)
 
+        self.compute_annotator_past_emb()
         self._assign_folds()
         self.compute_word_stats()
 
@@ -191,6 +193,47 @@ class BaseDataModule(LightningDataModule):
         self.annotator_biases = (
             annotator_biases.set_index("annotator_id").sort_index().fillna(0)
         )
+        self.personal_df = personal_df
+
+    def compute_annotator_past_emb(self):
+        if self.past_annotations_limit is not None:
+            self.limit_past_annotations(self.past_annotations_limit)
+
+        annotator_id_df = pd.DataFrame(
+            self.annotations.annotator_id.unique(), columns=["annotator_id"]
+        )
+
+        past_embeddings = self.get_past_embeddings()
+        past_embeddings = annotator_id_df.merge(
+            past_embeddings, how="left"
+        )
+        self.annotator_past_emb = past_embeddings.set_index("annotator_id").sort_index().fillna(0)
+
+    def get_past_embeddings(self):
+        annotation_columns = self.annotation_column
+        if isinstance(self.annotation_column, str):
+            annotation_columns = [annotation_columns]
+
+        past_embeddings = []
+        grouped_df = self.personal_df.groupby('annotator_id')
+        for a_id, a_df in grouped_df:
+            a_df = a_df.sample(n=self.texts_num_in_annotator_past_emb, random_state=a_id, replace=True)
+            a_df["text_id"] = a_df["text_id"].apply(lambda r_id: self.text_id_idx_dict[r_id])
+
+            past_embedding_components = [[a_id]]
+            for i, row in a_df.iterrows():
+                text_id = row['text_id']
+                emb = self.text_embeddings[text_id]
+                past_embedding_components.append(emb.numpy())
+                past_embedding_components.append(row[annotation_columns].values.astype(float))
+
+            past_embedding = np.hstack(past_embedding_components)
+            past_embeddings.append(past_embedding)
+        past_embeddings = np.array(past_embeddings)
+        past_embeddings = pd.DataFrame(past_embeddings)
+        past_embeddings = past_embeddings.rename(columns={past_embeddings.columns[0]: 'annotator_id'}, inplace=False)
+        past_embeddings['annotator_id'] = past_embeddings['annotator_id'].astype(np.int64)
+        return past_embeddings
 
     def train_dataloader(
         self, test_fold: int = None, shuffle: bool = True
@@ -333,7 +376,10 @@ class BaseDataModule(LightningDataModule):
         :return: dictionary of annotator features
         :rtype: Dict[str, Any]
         """
-        return {"annotator_biases": self.annotator_biases.values.astype(float)}
+        return {
+            "annotator_biases": self.annotator_biases.values.astype(float),
+            "annotator_past_emb": self.annotator_past_emb.values.astype(float)
+        }
 
     def _assign_folds(self):
         """Randomly assign fold to each annotation."""
