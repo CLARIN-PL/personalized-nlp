@@ -1,5 +1,3 @@
-Project: nlperspectives
-
 ## Download data
 
 To download data, enter personalized_nlp folder and type in:
@@ -14,14 +12,21 @@ To download data, enter personalized_nlp folder and type in:
 
 Copy one of existings dataset classes (personalized_nlp/datasets/) and modify paths and settings. Next, copy one of the experiments (personalized_nlp/experiments/) and customize the settings.
 
-## Important files for nlperspectives, method: USER_ID
+## NLPerspectives Workshop
 
-- `personalized_nlp/models/user_id.py`	: Code for the 'userid' method (add the annotator_id as a special token on the embeddings without modifying the raw_texts or annotations)
+The branch contains methods for paper _StudEmo: A Non-aggregated Review Dataset for Personalized Emotion Recognition_ 
+presented during [NLPerspectives](https://nlperspectives.di.unito.it/) -- 1st Workshop 
+on Perspectivist Approaches to NLP during [LREC 2022](https://lrec2022.lrec-conf.org/en/).
 
-- `personalized_nlp/experiments/emopers_userid_notune.py`	: The experiment on StudEmo with User-ID without fine-tuning
+The used methods:
+- AVG-ANN  -- using the baseline model implemented in `personalized_nlp/models/baseline.py`
+- SINGLE-ANN  -- using the baseline model implemented in `personalized_nlp/models/user_id.py`
+- USER_ID -- implemented in `personalized_nlp/models/user_id.py`
+- Past Embeddings  -- implemented in `personalized_nlp/models/past_embeddings.py`
+- HuBi Medium  -- implemented in `personalized_nlp/models/hubi_med_finetune.py`
 
-- `personalized_nlp/experiments/emopers_userid_tune.py`	: The experiment on StudEmo with User-ID with fine-tuning
-
-- `personalized_nlp/experiments/goemo_userid_notune.py`	: The experiment on GoEmo with User-ID without fine-tuning
-
-- `personalized_nlp/experiments/goemo_userid_tune.py.py`	: The experiment on GoEmo with User-ID with fine-tuning
+The experiments are located in `personalized_nlp/experiments`, e.g,:
+- `personalized_nlp/experiments/emopers_userid_notune.py` -- the experiment on StudEmo with User-ID without fine-tuning
+- `personalized_nlp/experiments/emopers_userid_tune.py`	-- the experiment on StudEmo with User-ID with fine-tuning
+- `personalized_nlp/experiments/goemo_userid_notune.py`	-- the experiment on GoEmo with User-ID without fine-tuning
+- `personalized_nlp/experiments/goemo_userid_tune.py.py` -- the experiment on GoEmo with User-ID with fine-tuning
