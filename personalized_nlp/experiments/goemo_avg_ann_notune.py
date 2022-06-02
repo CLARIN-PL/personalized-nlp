@@ -102,7 +102,7 @@ if __name__ == "__main__":
                 regression=regression,
                 use_cuda=use_cuda,
                 logger=logger,
-                test_fold=fold_nums,
+                test_fold=fold_num,
                 nr_frozen_epochs=nr_frozen_epochs,
             )
 
