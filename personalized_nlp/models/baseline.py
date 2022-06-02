@@ -42,5 +42,10 @@ class Net(nn.Module):
 
         x = emb
         x = x.view(-1, self.text_embedding_dim)
-        x = self.fc1(torch.cat([x], dim=1))
+
+        if not self.frozen:
+            x = self.fc1(x)
+        else: 
+            x = self.fc1(torch.cat([x], dim=1))
+
         return x
