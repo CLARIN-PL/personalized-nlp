@@ -118,11 +118,10 @@ if __name__ == "__main__":
                        hparams=hparams,
                        logger=logger,
                        output_dir="./results",
-                       per_device_train_batch_size=batch_size,
-                       per_device_eval_batch_size=batch_size,
                        evaluation_strategy=eval_strat,
                        nr_frozen_epochs=nr_frozen_epochs,
                        weight_decay=weight_decay,
+                        test_fold=fold_num,
                        custom_callbacks=custom_callbacks)
 
             logger.experiment.finish()
