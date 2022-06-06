@@ -18,6 +18,7 @@ colorama==0.4.4
 commonmark==0.9.1
 configobj==5.0.6
 cryptography==36.0.0
+cycler==0.11.0
 dictdiffer==0.9.0
 diskcache==5.2.1
 distro==1.6.0
@@ -30,6 +31,7 @@ filelock==3.7.0
 flatbuffers==1.12
 flatten-dict==0.4.2
 flufl.lock==6.0
+fonttools==4.33.3
 frozenlist==1.2.0
 fsspec==2021.11.0
 ftfy==6.0.3
@@ -56,9 +58,11 @@ importlib-resources==5.4.0
 joblib==1.1.0
 keras==2.9.0
 Keras-Preprocessing==1.1.2
+kiwisolver==1.4.2
 libclang==14.0.1
 mailchecker==4.1.0
 Markdown==3.3.7
+matplotlib==3.5.2
 multidict==5.2.0
 nanotime==0.5.2
 networkx==2.6.3
@@ -105,6 +109,7 @@ ruamel.yaml==0.17.17
 ruamel.yaml.clib==0.2.6
 scikit-learn==1.0.2
 scipy==1.7.3
+seaborn==0.11.2
 sentence-transformers==2.2.0
 sentencepiece==0.1.96
 sentry-sdk==1.5.12
@@ -131,7 +136,7 @@ torchmetrics==0.7.3
 torchvision==0.8.2+cu110
 tqdm==4.62.3
 transformers==4.19.2
-typing_extensions==4.0.0
+typing-extensions==4.0.0
 uritemplate==4.1.1
 urllib3==1.26.7
 voluptuous==0.12.2
