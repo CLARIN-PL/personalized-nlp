@@ -15,7 +15,7 @@ os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 os.environ["WANDB_START_METHOD"] = "thread"
 
 if __name__ == "__main__":
-    wandb_project_name = "Wiki_new_test"
+    wandb_project_name = "Kartografia"
     datamodule_cls = AggressionDataModule
 
     datamodule_kwargs_list = product_kwargs(
@@ -25,11 +25,11 @@ if __name__ == "__main__":
                 :1
             ],
             "limit_past_annotations_list": [None],
-            "stratify_folds_by": ["users", "texts"],
+            "stratify_folds_by": ["users", "texts"][1:],
             "fold_nums": [10],
             "batch_size": [3000],
             "fold_num": list(range(10))[:1],
-            "use_finetuned_embeddings": [True],
+            "use_finetuned_embeddings": [False],
             "major_voting": [False],
         }
     )
@@ -48,7 +48,7 @@ if __name__ == "__main__":
             "regression": [False],
             "use_cuda": [False],
             # "model_type": ["baseline", "onehot", "peb", "bias", "embedding"],
-            "model_type": ["baseline", "onehot", "peb", "bias"],
+            "model_type": ["baseline", "onehot", "peb", "bias"][:2],
         }
     )
 
@@ -80,11 +80,9 @@ if __name__ == "__main__":
                 logger=logger,
                 **trainer_kwargs,
                 custom_callbacks=[
-                    callbacks.SaveOutputsLocal(
-                        save_dir=f"lrec_{type(data_module).__name__}_{trainer_kwargs.get(model_type)}",
-                        save_text=True,
-                        **hparams,
-                    ),
+                    callbacks.CartographySaveCallback(
+                        dir_name=f'cartography_wiki_agr_fold={datamodule_kwargs.fold_nums}_model={model_kwargs.model_type}'
+                        ),
                     EarlyStopping(monitor="valid_loss", mode="min", patience=3),
                 ],
             )

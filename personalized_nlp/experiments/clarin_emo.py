@@ -2,7 +2,7 @@ import os
 from itertools import product
 from pytorch_lightning.callbacks import EarlyStopping
 
-from personalized_nlp.datasets.clarin_emo_sent.clarin_emo_sent import ClarinEmoSentDataModule
+from personalized_nlp.datasets.clarin_emo_sent import ClarinEmoSentDataModule
 
 from personalized_nlp.learning.train import train_test
 from personalized_nlp.settings import LOGS_DIR
@@ -81,7 +81,7 @@ if __name__ == "__main__":
                 **trainer_kwargs,
                 custom_callbacks=[
                     callbacks.CartographySaveCallback(
-                        cartography_dir='clarin_emo_cartography'
+                        dir_name='clarin_emo_cartography'
                     ),
                     EarlyStopping(monitor="valid_loss", mode="min", patience=3),
                 ],

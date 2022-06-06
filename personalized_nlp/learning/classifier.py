@@ -9,8 +9,15 @@ from personalized_nlp.utils.metrics import F1Class, PrecisionClass, RecallClass
 
 
 class Classifier(pl.LightningModule):
-    def __init__(self, model, class_dims, lr, class_names=None):
-        super().__init__()
+    def __init__(
+        self, 
+        model, 
+        class_dims, 
+        lr: float, 
+        class_names=None,
+        ) -> None:
+        
+        super(Classifier, self).__init__()
         self.model = model
         self.lr = lr
 
@@ -78,13 +85,11 @@ class Classifier(pl.LightningModule):
         return {
             "loss": loss,
             "output": output,
+            "preds": preds,
             "y": y,
             "x": x,
-            "preds": preds,
-            "is_regression": False,
-            "class_names": self.class_names,
+            "class_names": self.class_names
         }
-
 
     def validation_step(self, batch, batch_idx):
         x, y = batch
