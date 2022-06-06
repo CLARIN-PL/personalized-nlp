@@ -1,3 +1,4 @@
 from personalized_nlp.utils.callbacks.time import TimingCallback
 from personalized_nlp.utils.callbacks.finetuned_embeddings import SaveEmbeddingCallback
 from personalized_nlp.utils.callbacks.outputs import SaveOutputsLocal, SaveOutputsWandb
+from personalized_nlp.utils.callbacks.cartography_callback import CartographySaveCallback

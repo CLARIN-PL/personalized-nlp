@@ -4,7 +4,11 @@ PROJECT_DIR = Path(__file__).parent.resolve()
 STORAGE_DIR = PROJECT_DIR / 'storage'
 LOGS_DIR = STORAGE_DIR / 'logs'
 CHECKPOINTS_DIR = STORAGE_DIR / 'checkpoints'
-OUTPUTS_DIR_NAME = 'outputs'
+
+# path for all outputs ex. Cartography outputs, save predictions outputs etc.
+OUTPUTS_DIR_NAME =  STORAGE_DIR / 'outputs'
+CARTOGRAPHY_OUTPUTS_DIR_NAME = OUTPUTS_DIR_NAME / 'cartography_outputs'
+SAVE_PREDICTIONS_DIR_NAME = OUTPUTS_DIR_NAME / 'predictions'
 
 EMOTIONS_DATA = STORAGE_DIR / 'emotions_data'
 EMOTIONS_SIMPLE_DATA = STORAGE_DIR / 'emotions_simple_data'

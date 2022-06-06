@@ -146,7 +146,7 @@ class Classifier(pl.LightningModule):
 
                 if split == "valid" and metric_type == "macro_f1":
                     f1_macros = [
-                        log_dict[metric_key].compute() for metric_key in metric_keys
+                        log_dict[metric_key].compute().cpu() for metric_key in metric_keys
                     ]
 
                     log_dict["valid_macro_f1_mean"] = np.mean(f1_macros)
