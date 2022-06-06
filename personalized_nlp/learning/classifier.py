@@ -75,7 +75,16 @@ class Classifier(pl.LightningModule):
         self.log("train_loss", loss, on_epoch=True, prog_bar=True)
         preds = torch.argmax(output, dim=1)
 
-        return {"loss": loss, "preds": preds, "output": output}
+        return {
+            "loss": loss,
+            "output": output,
+            "y": y,
+            "x": x,
+            "preds": preds,
+            "is_regression": False,
+            "class_names": self.class_names,
+        }
+
 
     def validation_step(self, batch, batch_idx):
         x, y = batch
