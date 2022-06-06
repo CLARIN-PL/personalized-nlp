@@ -91,10 +91,17 @@ class ActiveLearningModule:
         else:
             train_kwargs["custom_callbacks"] = [confidences_callback]
 
+        annotations = self.datamodule.annotations
+        annotated_annotations = annotations[annotations.split.isin(["train", "val"])]
+        annotated_texts_number = annotated_annotations.text_id.nunique()
+        annotator_number = annotated_annotations.annotator_id.nunique()
+
         hparams = {
             "dataset": type(datamodule).__name__,
             "annotation_amount": self.annotated_amount,
             "text_selector": type(self.text_selector).__name__,
+            "unique_texts_number": annotated_texts_number,
+            "unique_annotator_number": annotator_number,
             **datamodule_kwargs,
             **model_kwargs,
             **train_kwargs,
@@ -104,7 +111,7 @@ class ActiveLearningModule:
             save_dir=str(LOGS_DIR),
             config=hparams,
             project=self.wandb_project_name,
-            log_model=False
+            log_model=False,
         )
 
         trainer = train_test(
