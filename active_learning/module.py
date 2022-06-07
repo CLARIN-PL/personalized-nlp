@@ -123,13 +123,22 @@ class ActiveLearningModule:
 
         logger.experiment.finish()
 
-        # gather confidence levels
-        not_annotated_dataloader = datamodule.custom_dataloader("none", shuffle=False)
-        trainer.predict(dataloaders=not_annotated_dataloader)
+        if any(datamodule.annotations.split == "none"):
+            # gather confidence levels
+            not_annotated_dataloader = datamodule.custom_dataloader(
+                "none", shuffle=False
+            )
+            trainer.predict(dataloaders=not_annotated_dataloader)
 
-        self.confidences = confidences_callback.predict_outputs
+            self.confidences = confidences_callback.predict_outputs
 
     def experiment(self, max_amount: int, step_size: int, **kwargs):
         while self.annotated_amount < max_amount:
             self.add_annotations(step_size)
+            self.train_model()
+
+        # Train at all annotations as baseline
+        not_annotated = (self.datamodule.annotations.split == "none").sum()
+        if not_annotated > 0:
+            self.add_annotations(not_annotated)
             self.train_model()
