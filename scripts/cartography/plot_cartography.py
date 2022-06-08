@@ -2,7 +2,6 @@
 This code is adapted version of: https://github.com/allenai/cartography
 """
 from typing import List
-import os
 from collections import defaultdict
 
 
@@ -96,11 +95,7 @@ def compute_metrics(training_dynamics, num_epochs: int):
             training_accuracy[i] += is_correct
             logits[i].append(epoch_logits)
             targets[i].append(record["gold"])
-
-        # if args.burn_out < num_tot_epochs:
-        #     correctness_trend = correctness_trend[:args.burn_out]
-        #     true_probs_trend = true_probs_trend[:args.burn_out]
-
+            
         correctness_[guid] = compute_correctness(correctness_trend)
         confidence_[guid] = np.mean(true_probs_trend)
         variability_[guid] = variability_func(true_probs_trend)
@@ -128,11 +123,16 @@ def compute_metrics(training_dynamics, num_epochs: int):
     return df
 
 
+def compute_avg_metrics(metrics: List[pd.DataFrame]) -> pd.DataFrame:
+    metrics_cat = pd.concat(metrics, ignore_index=True)
+    metrics_avg = metrics_cat.groupby('guid').mean().reset_index()
+    return metrics_avg
+
+
 def plot_data_map(dataframe: pd.DataFrame,
-                  plot_dir: os.path,
+                  save_path: str, 
                   hue_metric: str = 'correct.',
                   title: str = '',
-                  model: str = 'RoBERTa',
                   show_hist: bool = False,
                   max_instances_to_plot = 55000):
     # Set style.
@@ -196,7 +196,7 @@ def plot_data_map(dataframe: pd.DataFrame,
     plot.set_ylabel('confidence')
 
     if show_hist:
-        plot.set_title(f"{title}-{model} Data Map", fontsize=17)
+        plot.set_title(f"{title} Data Map", fontsize=17)
 
         # Make the histograms.
         ax1 = fig.add_subplot(gs[0, 1])
@@ -221,5 +221,5 @@ def plot_data_map(dataframe: pd.DataFrame,
         plot2.set_ylabel('density')
 
     fig.tight_layout()
-    filename = f'{title}_{model}.pdf' # if show_hist else f'figures/compact_{title}_{model}.pdf'
+    filename = f'{save_path}/{title}.pdf' # if show_hist else f'figures/compact_{title}_{model}.pdf'
     fig.savefig(filename, dpi=300)

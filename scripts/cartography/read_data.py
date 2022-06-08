@@ -10,6 +10,7 @@ def read_data(path: str) -> Tuple[
         Dict[str, Dict[str, Union[int, np.ndarray]]],
         int
     ]:
+    
     files = sorted(
         glob.glob(os.path.join(path, '*.jsonl')),
         key=lambda x: int(x.split('_')[-1].split('.')[0])

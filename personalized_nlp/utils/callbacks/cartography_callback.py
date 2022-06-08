@@ -4,7 +4,7 @@ import json
 import os
 from pytorch_lightning.callbacks import Callback
 
-from settings import CARTOGRAPHY_OUTPUTS_DIR_NAME
+from settings import CARTOGRAPHY_OUTPUTS_DIR_NAME, CARTOGRAPHY_TRAIN_DYNAMICS_DIR_NAME
 
 
 
@@ -27,7 +27,7 @@ class CartographySaveCallback(Callback):
         self.outputs = []
         self.epoch = 0
         
-        self.save_dir = CARTOGRAPHY_OUTPUTS_DIR_NAME / dir_name
+        self.save_dir = CARTOGRAPHY_OUTPUTS_DIR_NAME / dir_name / CARTOGRAPHY_TRAIN_DYNAMICS_DIR_NAME
         self.fold_num = fold_num
         
         if not os.path.exists(self.save_dir):

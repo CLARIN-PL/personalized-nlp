@@ -11,6 +11,10 @@ DATA_DIR = STORAGE_DIR / 'data'
 # path for all outputs ex. Cartography outputs, save predictions outputs etc.
 OUTPUTS_DIR_NAME =  STORAGE_DIR / 'outputs'
 CARTOGRAPHY_OUTPUTS_DIR_NAME = OUTPUTS_DIR_NAME / 'cartography_outputs'
+CARTOGRAPHY_TRAIN_DYNAMICS_DIR_NAME = 'train_dynamics'
+CARTOGRAPHY_PLOTS_DIR_NAME = 'plots'
+CARTOGRAPHY_METRICS_DIR_NAME = 'metrics'
+
 SAVE_PREDICTIONS_DIR_NAME = OUTPUTS_DIR_NAME / 'predictions'
 
 EMOTIONS_DATA = STORAGE_DIR / 'emotions_data'
