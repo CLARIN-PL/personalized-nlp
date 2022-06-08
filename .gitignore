@@ -3,11 +3,13 @@
 **/embeddings/*.p
 .ipynb_checkpoints
 storage/logs
+!.gitkeep
 storage/checkpoints
 storage/results
 storage/emotions_data
 storage/emotions_simple_data/embeddings/
 storage/outputs/*
+!.gitkeep
 
 # VirtualEnv dir
 venv/
