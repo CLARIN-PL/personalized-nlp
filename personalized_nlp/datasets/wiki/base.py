@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from personalized_nlp.settings import STORAGE_DIR
+from settings import DATA_DIR
 from personalized_nlp.utils.data_splitting import split_texts
 from personalized_nlp.datasets.datamodule_base import BaseDataModule
 
@@ -11,7 +11,7 @@ from personalized_nlp.datasets.datamodule_base import BaseDataModule
 class WikiDataModule(BaseDataModule):
     @property
     def data_dir(self) -> Path:
-        return STORAGE_DIR / "wiki_data"
+        return DATA_DIR / "wiki_data"
 
     def __init__(
         self, **kwargs,

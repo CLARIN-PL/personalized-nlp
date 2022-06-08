@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 import torch
 from personalized_nlp.datasets.dataset import BatchIndexedDataset
-from personalized_nlp.settings import EMBEDDINGS_SIZES, TRANSFORMER_MODEL_STRINGS
+from settings import EMBEDDINGS_SIZES, TRANSFORMER_MODEL_STRINGS
 from personalized_nlp.utils.biases import get_annotator_biases
 from personalized_nlp.utils.controversy import get_conformity
 from personalized_nlp.utils.data_splitting import split_texts

@@ -4,7 +4,7 @@ import pandas as pd
 import os
 from pathlib import Path
 
-from personalized_nlp.settings import STORAGE_DIR
+from settings import DATA_DIR
 from personalized_nlp.datasets.datamodule_base import BaseDataModule
 
 
@@ -15,7 +15,7 @@ class JesterDataModule(BaseDataModule):
 
     @property
     def data_dir(self) -> Path:
-        return STORAGE_DIR / "jester"
+        return DATA_DIR / "jester"
 
     @property
     def annotation_columns(self) -> List[str]:

@@ -2,7 +2,7 @@ import os
 
 import personalized_nlp.utils.callbacks as callbacks
 from personalized_nlp.learning.train import train_test
-from personalized_nlp.settings import TRANSFORMER_MODEL_STRINGS
+from settings import TRANSFORMER_MODEL_STRINGS
 
 
 def finetune_datamodule_embeddings(

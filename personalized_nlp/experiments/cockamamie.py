@@ -5,7 +5,7 @@ from personalized_nlp.datasets.cockamamie_gobbledegook.cockamamie_gobbledegook i
     CockamamieGobbledegookDataModule,
 )
 from personalized_nlp.learning.train import train_test
-from personalized_nlp.settings import LOGS_DIR
+from settings import LOGS_DIR
 from personalized_nlp.utils import seed_everything
 from personalized_nlp.utils.experiments import product_kwargs
 from pytorch_lightning import loggers as pl_loggers

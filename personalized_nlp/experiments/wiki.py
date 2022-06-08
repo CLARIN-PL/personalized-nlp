@@ -5,7 +5,7 @@ from pytorch_lightning.callbacks import EarlyStopping
 from personalized_nlp.datasets.wiki.aggression import AggressionDataModule
 
 from personalized_nlp.learning.train import train_test
-from personalized_nlp.settings import LOGS_DIR
+from settings import LOGS_DIR
 from personalized_nlp.utils import seed_everything
 import personalized_nlp.utils.callbacks as callbacks
 from personalized_nlp.utils.experiments import product_kwargs
@@ -48,7 +48,7 @@ if __name__ == "__main__":
             "regression": [False],
             "use_cuda": [False],
             # "model_type": ["baseline", "onehot", "peb", "bias", "embedding"],
-            "model_type": ["baseline", "onehot", "peb", "bias"][:2],
+            "model_type": ["baseline", "onehot"][:2],
         }
     )
 
@@ -68,7 +68,7 @@ if __name__ == "__main__":
             }
 
             logger = pl_loggers.WandbLogger(
-                save_dir=LOGS_DIR,
+                save_dir=str(LOGS_DIR),
                 config=hparams,
                 project=wandb_project_name,
                 log_model=False,
@@ -81,7 +81,7 @@ if __name__ == "__main__":
                 **trainer_kwargs,
                 custom_callbacks=[
                     callbacks.CartographySaveCallback(
-                        dir_name=f'cartography_wiki_agr_fold={datamodule_kwargs.fold_nums}_model={model_kwargs.model_type}'
+                        dir_name=f'cartography_wiki_agr_model={trainer_kwargs["model_type"]}'
                         ),
                     EarlyStopping(monitor="valid_loss", mode="min", patience=3),
                 ],

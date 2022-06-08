@@ -1,7 +1,7 @@
 import numpy as np
 from personalized_nlp.datasets.datamodule_base import BaseDataModule
 from personalized_nlp.learning.train import train_test
-from personalized_nlp.settings import LOGS_DIR
+from settings import LOGS_DIR
 from pytorch_lightning import loggers as pl_loggers
 
 from active_learning.algorithms.base import TextSelectorBase

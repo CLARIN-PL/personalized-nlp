@@ -4,7 +4,7 @@ import pandas as pd
 import os
 from pathlib import Path
 
-from personalized_nlp.settings import STORAGE_DIR
+from settings import DATA_DIR
 from personalized_nlp.utils.data_splitting import split_texts
 from personalized_nlp.datasets.datamodule_base import BaseDataModule
 
@@ -16,7 +16,7 @@ class HumorDataModule(BaseDataModule):
 
     @property
     def data_dir(self) -> Path:
-        return STORAGE_DIR / "humor"
+        return DATA_DIR / "humor"
 
     @property
     def annotation_columns(self) -> List[str]:

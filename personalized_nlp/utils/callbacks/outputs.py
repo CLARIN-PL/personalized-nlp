@@ -8,7 +8,7 @@ import pandas as pd
 import numpy as np
 from pytorch_lightning.callbacks import Callback
 
-from personalized_nlp.settings import STORAGE_DIR, OUTPUTS_DIR_NAME
+from settings import STORAGE_DIR, OUTPUTS_DIR_NAME
 
 
 class AbstractSaveOutputsCallback(Callback):

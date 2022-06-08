@@ -1,9 +1,12 @@
 from pathlib import Path
 
-PROJECT_DIR = Path(__file__).parent.resolve()
+PROJECT_DIR = Path(__file__).parent.parent.resolve()
 STORAGE_DIR = PROJECT_DIR / 'storage'
 LOGS_DIR = STORAGE_DIR / 'logs'
 CHECKPOINTS_DIR = STORAGE_DIR / 'checkpoints'
+
+# path for all data ex. Wikidata, Unhealthy Conversations data etc
+DATA_DIR = STORAGE_DIR / 'data'
 
 # path for all outputs ex. Cartography outputs, save predictions outputs etc.
 OUTPUTS_DIR_NAME =  STORAGE_DIR / 'outputs'

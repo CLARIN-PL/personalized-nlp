@@ -4,7 +4,7 @@ import json
 import os
 from pytorch_lightning.callbacks import Callback
 
-from personalized_nlp.settings import CARTOGRAPHY_OUTPUTS_DIR_NAME
+from settings import CARTOGRAPHY_OUTPUTS_DIR_NAME
 
 
 

@@ -1,7 +1,15 @@
 import torch.utils.data
 
 class BatchIndexedDataset(torch.utils.data.Dataset):
-    def __init__(self, X, y, text_features=None, annotator_features=None):
+    
+    def __init__(
+            self, 
+            X, 
+            y, 
+            text_features=None, 
+            annotator_features=None
+        ) -> None:
+        
         self.X = X
         self.y = y
 
@@ -15,7 +23,11 @@ class BatchIndexedDataset(torch.utils.data.Dataset):
         else:
             self.annotator_features = {}
 
-    def __getitem__(self, index):
+    def __getitem__(
+            self, 
+            index: int
+        ):
+        
         text_ids = self.X[index, 0]
         annotator_ids = self.X[index, 1]
 
@@ -34,5 +46,5 @@ class BatchIndexedDataset(torch.utils.data.Dataset):
 
         return batch_data, batch_y
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.y)

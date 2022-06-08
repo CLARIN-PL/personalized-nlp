@@ -8,7 +8,7 @@ import pickle
 import os
 import fasttext
 import numpy as np
-from personalized_nlp.settings import CBOW_EMBEDDINGS_PATH, SKIPGRAM_EMBEDDINGS_PATH
+from settings import CBOW_EMBEDDINGS_PATH, SKIPGRAM_EMBEDDINGS_PATH
 
 
 def _get_embeddings(texts, tokenizer, model, max_seq_len=256, use_cuda=False):

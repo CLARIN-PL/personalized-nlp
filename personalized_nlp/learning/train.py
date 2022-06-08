@@ -3,7 +3,7 @@ import torch
 from personalized_nlp.learning.classifier import Classifier
 from personalized_nlp.learning.regressor import Regressor
 from personalized_nlp.models import models as models_dict
-from personalized_nlp.settings import CHECKPOINTS_DIR, LOGS_DIR
+from settings import CHECKPOINTS_DIR, LOGS_DIR
 from pytorch_lightning import loggers as pl_loggers
 from pytorch_lightning.callbacks import ModelCheckpoint, TQDMProgressBar
 

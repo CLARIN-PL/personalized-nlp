@@ -5,7 +5,7 @@ from typing import List
 
 import pandas as pd
 
-from personalized_nlp.settings import STORAGE_DIR
+from settings import DATA_DIR
 from personalized_nlp.utils.data_splitting import split_texts
 from personalized_nlp.datasets.datamodule_base import BaseDataModule
 
@@ -14,7 +14,7 @@ class ClarinEmoTextDataModule(BaseDataModule):
 
     @property
     def data_dir(self) -> Path:
-        return STORAGE_DIR / "clarin_emo_text"
+        return DATA_DIR / "clarin_emo_text"
 
     def __init__(
         self,

@@ -5,7 +5,7 @@ from typing import List
 
 import pandas as pd
 
-from personalized_nlp.settings import STORAGE_DIR
+from settings import DATA_DIR
 from personalized_nlp.utils.data_splitting import split_texts
 from personalized_nlp.datasets.datamodule_base import BaseDataModule
 
@@ -14,7 +14,7 @@ class MeasuringHateSpeechDataModule(BaseDataModule):
 
     @property
     def data_dir(self) -> Path:
-        return STORAGE_DIR / "measuring_hate_speech"
+        return DATA_DIR / "measuring_hate_speech"
 
     def __init__(
         self,

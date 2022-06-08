@@ -2,10 +2,10 @@ import os
 from itertools import product
 from pytorch_lightning.callbacks import EarlyStopping
 
-from personalized_nlp.datasets.clarin_emo_sent import ClarinEmoSentDataModule
+from personalized_nlp.datasets.clarin_emo_sent import ClarinEmoSentNoNoiseDataModule
 
 from personalized_nlp.learning.train import train_test
-from personalized_nlp.settings import LOGS_DIR
+from settings import LOGS_DIR
 from personalized_nlp.utils import seed_everything
 import personalized_nlp.utils.callbacks as callbacks
 from personalized_nlp.utils.experiments import product_kwargs
@@ -16,7 +16,7 @@ os.environ["WANDB_START_METHOD"] = "thread"
 
 if __name__ == "__main__":
     wandb_project_name = "Kartografia"
-    datamodule_cls = ClarinEmoSentDataModule
+    datamodule_cls = ClarinEmoSentNoNoiseDataModule
 
     datamodule_kwargs_list = product_kwargs(
         {

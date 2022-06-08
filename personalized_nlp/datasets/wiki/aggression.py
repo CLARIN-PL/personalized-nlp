@@ -1,5 +1,4 @@
 from personalized_nlp.datasets.wiki.base import WikiDataModule
-from personalized_nlp.settings import PROJECT_DIR, STORAGE_DIR, AGGRESSION_URL
 
 from typing import List
 from pathlib import Path

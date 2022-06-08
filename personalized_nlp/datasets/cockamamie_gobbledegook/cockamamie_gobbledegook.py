@@ -4,7 +4,7 @@ from typing import List
 
 import pandas as pd
 
-from personalized_nlp.settings import STORAGE_DIR
+from settings import DATA_DIR
 from personalized_nlp.datasets.datamodule_base import BaseDataModule
 
 
@@ -15,7 +15,7 @@ class CockamamieGobbledegookDataModule(BaseDataModule):
 
     @property
     def data_dir(self) -> Path:
-        return STORAGE_DIR / "cockamamie_gobbledegook"
+        return DATA_DIR / "cockamamie_gobbledegook"
 
     @property
     def annotation_columns(self) -> List[str]:
