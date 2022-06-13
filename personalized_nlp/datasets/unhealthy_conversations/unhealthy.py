@@ -35,7 +35,8 @@ class UnhealthyDataModule(BaseDataModule):
         return [2] * 8
 
     def __init__(
-        self, **kwargs,
+        self,
+        **kwargs,
     ):
         super().__init__(**kwargs)
 
@@ -54,3 +55,7 @@ class UnhealthyDataModule(BaseDataModule):
             :, ["_unit_id", "_worker_id"] + self.annotation_columns
         ]
         self.annotations.columns = ["text_id", "annotator_id"] + self.annotation_columns
+
+        self.annotations = self.annotations.drop_duplicates(
+            subset=["text_id", "annotator_id"]
+        )

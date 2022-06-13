@@ -24,6 +24,8 @@ class PersonalizedMetricsCallback(Callback):
 
         self.log_all_metrics(annotator_ids, y_pred, y_true, pl_module)
 
+        self._outputs: list[dict[str, Any]] = []
+
     def log_all_metrics(self, annotator_ids, output, y, pl_module):
         class_dims = pl_module.class_dims
         class_names = pl_module.class_names

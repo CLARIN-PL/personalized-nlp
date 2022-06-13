@@ -1,4 +1,5 @@
 import numpy as np
+import pandas as pd
 from personalized_nlp.datasets.datamodule_base import BaseDataModule
 from personalized_nlp.learning.train import train_test
 from settings import LOGS_DIR
@@ -48,7 +49,9 @@ class ActiveLearningModule:
         not_annotated = annotations.loc[
             annotations["split"] == "none", ["text_id", "annotator_id"]
         ]
+
         not_annotated["original_index"] = not_annotated.index.values
+        annotated["original_index"] = annotated.index.values
 
         selected = self.text_selector.select_annotations(
             texts, amount, annotated, not_annotated, self.confidences
@@ -56,28 +59,34 @@ class ActiveLearningModule:
 
         assert len(selected.index) <= amount
 
-        self._assign_train_val_splits(selected)
+        self._assign_train_val_splits(annotated, selected)
 
-    def _assign_train_val_splits(self, selected_annotations):
+    def _assign_train_val_splits(self, old_annotations, selected_annotations):
         annotations = self.datamodule.annotations
 
-        selected_texts = selected_annotations["text_id"].unique()
-        np.random.shuffle(selected_texts)
+        old_annotations = old_annotations.loc[:, ["text_id", "annotator_id"]]
+        selected_annotations = selected_annotations.loc[:, ["text_id", "annotator_id"]]
+        current_annotations = pd.concat([old_annotations, selected_annotations])
 
-        train_amount = int(len(selected_texts) * (1 - self.validation_ratio))
+        text_ids = current_annotations["text_id"].unique().tolist()
+        np.random.shuffle(text_ids)
 
-        train_texts_ids = selected_texts[:train_amount]
-        val_texts_ids = selected_texts[train_amount:]
+        train_amount = int(len(text_ids) * (1 - self.validation_ratio))
 
-        train_annotations = selected_annotations[
-            selected_annotations.text_id.isin(train_texts_ids)
-        ]
-        val_annotations = selected_annotations[
-            selected_annotations.text_id.isin(val_texts_ids)
-        ]
+        train_texts_ids = text_ids[:train_amount]
 
-        annotations.loc[train_annotations["original_index"], "split"] = "train"
-        annotations.loc[val_annotations["original_index"], "split"] = "val"
+        current_annotations["new_split"] = "val"
+        current_annotations.loc[
+            current_annotations.text_id.isin(train_texts_ids), "new_split"
+        ] = "train"
+
+        annotations = annotations.merge(current_annotations, how="left")
+
+        annotations.loc[
+            ~annotations.new_split.isna(), "split"
+        ] = annotations.new_split.dropna()
+
+        self.datamodule.annotations = annotations.drop(["new_split"], axis=1)
 
     def train_model(self):
         datamodule = self.datamodule
@@ -91,10 +100,17 @@ class ActiveLearningModule:
         else:
             train_kwargs["custom_callbacks"] = [confidences_callback]
 
+        annotations = self.datamodule.annotations
+        annotated_annotations = annotations[annotations.split.isin(["train", "val"])]
+        annotated_texts_number = annotated_annotations.text_id.nunique()
+        annotator_number = annotated_annotations.annotator_id.nunique()
+
         hparams = {
             "dataset": type(datamodule).__name__,
             "annotation_amount": self.annotated_amount,
             "text_selector": type(self.text_selector).__name__,
+            "unique_texts_number": annotated_texts_number,
+            "unique_annotator_number": annotator_number,
             **datamodule_kwargs,
             **model_kwargs,
             **train_kwargs,
@@ -104,7 +120,7 @@ class ActiveLearningModule:
             save_dir=str(LOGS_DIR),
             config=hparams,
             project=self.wandb_project_name,
-            log_model=False
+            log_model=False,
         )
 
         trainer = train_test(
@@ -116,13 +132,22 @@ class ActiveLearningModule:
 
         logger.experiment.finish()
 
-        # gather confidence levels
-        not_annotated_dataloader = datamodule.custom_dataloader("none", shuffle=False)
-        trainer.predict(dataloaders=not_annotated_dataloader)
+        if any(datamodule.annotations.split == "none"):
+            # gather confidence levels
+            not_annotated_dataloader = datamodule.custom_dataloader(
+                "none", shuffle=False
+            )
+            trainer.predict(dataloaders=not_annotated_dataloader)
 
-        self.confidences = confidences_callback.predict_outputs
+            self.confidences = confidences_callback.predict_outputs
 
     def experiment(self, max_amount: int, step_size: int, **kwargs):
         while self.annotated_amount < max_amount:
             self.add_annotations(step_size)
+            self.train_model()
+
+        # Train at all annotations as baseline
+        not_annotated = (self.datamodule.annotations.split == "none").sum()
+        if not_annotated > 0:
+            self.add_annotations(not_annotated)
             self.train_model()
