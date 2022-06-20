@@ -99,7 +99,6 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         **kwargs,
     ):
         """_summary_
-
         Args:
             batch_size (int, optional): Batch size for data loaders. Defaults to 3000.
             embeddings_type (str, optional): string identifier of embedding. Defaults to "bert".
@@ -350,7 +349,6 @@ class BaseDataModule(LightningDataModule, abc.ABC):
 
     def train_dataloader(self, shuffle: bool = True) -> DataLoader:
         """Returns dataloader for train part of the dataset.
-
         :param shuffle: if true, shuffles data during training, defaults to True
         :type shuffle: bool, optional
         :return: train dataloader for the dataset
@@ -360,7 +358,6 @@ class BaseDataModule(LightningDataModule, abc.ABC):
 
     def val_dataloader(self) -> DataLoader:
         """Returns dataloader for validation part of the dataset.
-
         :type test_fold: int, optional
         :return: validation dataloader for the dataset
         :rtype: DataLoader
@@ -369,7 +366,6 @@ class BaseDataModule(LightningDataModule, abc.ABC):
 
     def test_dataloader(self) -> DataLoader:
         """Returns dataloader for test part of the dataset.
-
         :return: validation dataloader for the dataset
         :rtype: DataLoader
         """
@@ -413,8 +409,6 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         Each feature should be a numpy array of whatever dtype, with length
         equal to number of texts in the dataset. Features can be used by
         models during training.
-
-
         :return: dictionary of text features
         :rtype: Dict[str, Any]
         """
@@ -428,8 +422,6 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         Each feature should be a numpy array of whatever dtype, with length
         equal to number of annotators in the dataset. Features can be used by
         models during training.
-
-
         :return: dictionary of annotator features
         :rtype: Dict[str, Any]
         """
@@ -440,7 +432,6 @@ class BaseDataModule(LightningDataModule, abc.ABC):
     ) -> Tuple[np.ndarray, np.ndarray]:
         """Returns annotations (coded indices of annotators and texts), and
         their labels in the dataset for given splits. Used during training.
-
         :param annotations: DataFrame of annotations from which the data will
         be extracted.
         :type annotations: pd.DataFrame
@@ -471,7 +462,6 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         """Returns full dataset as X, y, where X is numpy array of embeddings,
         and y is numpy array of the labels. Can be easily used in some baseline
         models like sklearn logistic regression.
-
         :return: Tuple (X, y), where X is numpy array of embeddings,
         and y is numpy array of the labels
         :rtype: Tuple[np.ndarray, np.ndarray]
