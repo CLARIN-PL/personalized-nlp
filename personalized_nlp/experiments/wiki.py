@@ -48,7 +48,7 @@ if __name__ == "__main__":
             "regression": [False],
             "use_cuda": [False],
             # "model_type": ["baseline", "onehot", "peb", "bias", "embedding"],
-            "model_type": ["baseline", "onehot"][:2],
+            "model_type": ["onehot"],
         }
     )
 

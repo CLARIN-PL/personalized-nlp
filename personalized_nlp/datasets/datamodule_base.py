@@ -95,6 +95,7 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         test_fold: Optional[int] = None,
         min_annotations_per_user_in_fold: Optional[int] = None,
         seed: int = 22,
+        filtered_annotations: Optional[str] = None,
         **kwargs,
     ):
         """_summary_
@@ -108,6 +109,7 @@ class BaseDataModule(LightningDataModule, abc.ABC):
             past_annotations_limit (Optional[int], optional): Maximum number of annotations in past dataset part. Defaults to None.
             stratify_folds_by (str, optional): How to stratify annotations: 'texts' or 'users'. Defaults to 'texts'.
             use_finetuned_embeddings (bool, optional): if true, use finetuned embeddings. Defaults to False.
+            filtered_annotations (str, optional): path to dataframe for filter annotations (for example choose only user=1, text=1,2,4 etc). Defaults to None.
         """
 
         super().__init__(
@@ -131,6 +133,7 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         self._test_fold = test_fold if test_fold is not None else 0
         self.use_finetuned_embeddings = use_finetuned_embeddings
         self.min_annotations_per_user_in_fold = min_annotations_per_user_in_fold
+        self.filtered_annotations = filtered_annotations
 
         self.split_sizes = (
             split_sizes if split_sizes is not None else [0.55, 0.15, 0.15, 0.15]
@@ -142,7 +145,13 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         seed_everything(seed)
 
         self.prepare_data()
+        self._maybe_filter_data()
         self.setup()
+        
+        
+    def _maybe_filter_data(self) -> None:
+        if self.filtered_annotations is not None:
+            pass
 
     def _create_embeddings(self, use_cuda: Optional[bool] = None) -> None:
         texts = self.data["text"].tolist()

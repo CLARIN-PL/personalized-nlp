@@ -1,1 +1,1 @@
-from personalized_nlp.datasets.clarin_emo_text.clarin_emo_text import ClarinEmoTextDataModule
+from personalized_nlp.datasets.clarin_emo_text.clarin_emo_text import ClarinEmoTextDataModule, ClainEmoTextNoNoiseDataModule

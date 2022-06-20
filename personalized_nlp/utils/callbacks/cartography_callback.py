@@ -57,7 +57,7 @@ class CartographySaveCallback(Callback):
                     suboutput['y'],
                 ): 
                     to_save = {
-                        'guid': f'text={text_id}_user={user_id}',
+                        'guid': f'{text_id}_{user_id}',
                         f'logits_epoch_{self.epoch}': logits.tolist(),
                         'gold': y_true.int().tolist(),
                         'class_names': suboutput['class_names']

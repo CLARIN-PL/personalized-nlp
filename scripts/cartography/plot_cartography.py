@@ -119,8 +119,14 @@ def compute_metrics(training_dynamics, num_epochs: int):
                         correctness_[guid],
                         forgetfulness_[guid],
                         ] for i, guid in enumerate(correctness_)], columns=column_names)
+    
+    df_train = pd.DataFrame([[i,
+                                loss(torch.Tensor(logits[i]), torch.LongTensor(targets[i])).item() / len(training_dynamics),
+                                training_accuracy[i] / len(training_dynamics)
+                                ] for i in range(num_epochs)],
+                            columns=['epoch', 'loss', 'train_acc'])
 
-    return df
+    return df, df_train
 
 
 def compute_avg_metrics(metrics: List[pd.DataFrame]) -> pd.DataFrame:
@@ -128,6 +134,24 @@ def compute_avg_metrics(metrics: List[pd.DataFrame]) -> pd.DataFrame:
     metrics_avg = metrics_cat.groupby('guid').mean().reset_index()
     return metrics_avg
 
+
+def write_filtered_data(metrics: pd.DataFrame, save_path: str, sorted_by: str = 'variability', take_size: float = 0.3):
+    """Create filter dataframe for data
+
+    Args:
+        metrics (pd.DataFrame): _description_
+        first_group (str, optional): _description_. Defaults to 'ambigous'.
+        take_size (float, optional): _description_. Defaults to 0.3.
+    """
+    sorted_scores = metrics.sort_values(by=[sorted_by], ascending=False)
+    
+    selected = sorted_scores.head(n=int(len(sorted_scores) * take_size))
+    
+    selected[['text_id', 'annotator_id']] = selected['guid'].str.split('_', expand=True)
+    
+    selected[['text_id', 'annotator_id']].to_csv(save_path, index=False)
+    
+    
 
 def plot_data_map(dataframe: pd.DataFrame,
                   save_path: str, 
