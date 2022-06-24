@@ -1,0 +1,121 @@
+import pathlib
+import argparse
+
+import pandas as pd
+
+from scripts.process_dataframe.assign_folds import assign_folds
+from scripts.process_dataframe.reset_indexes import reindex_texts_and_annotations
+
+
+def parse_args() -> argparse.Namespace:
+    """Parse arguments for script.
+
+    Returns:
+        argparse.Namespace: Parsed arguments.
+    """
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        '--annotations_df_path',
+        '-ap',
+        type=str,
+        dest='annotations_df_path',
+        required=True,
+        help='Path to annotations csv/tsv.'        
+    )
+    parser.add_argument(
+        '--texts_df_path',
+        '-tp',
+        type=str,
+        dest='texts_df_path',
+        required=True,
+        help='Path to annotations csv/tsv.'   
+    )
+    parser.add_argument(
+        '--text_col',
+        '-tc',
+        type=str,
+        required=True,
+        help='Name of text idx column.'
+    )
+    parser.add_argument(
+        '--annotator_col',
+        '-ac',
+        type=str,
+        required=True,
+        help='Name of annotator idx column.'
+    )
+    parser.add_argument(
+        '--num_folds',
+        '-nf',
+        type=int,
+        default=10,
+        help='Number of folds to create.'
+    )
+    return parser.parse_args()
+    
+    
+def create_path(old_path: str, extra: str = '') -> pathlib.PosixPath:
+    """Creates a path for new file
+
+    Args:
+        old_path (str): Old file's path.
+        extra (str, optional): Extra word to add. Defaults to ''.
+
+    Returns:
+        str: New file's path.
+    """
+    extra = extra if extra == '' else f'_{extra}'
+    base_filename = f'{pathlib.Path(old_path).stem}{extra}.csv'
+    new_path = pathlib.Path(old_path).parents[0] / (base_filename)
+    print(new_path)
+    return new_path
+
+
+def main():
+    args = parse_args()
+    annotations_df = pd.read_csv(args.annotations_df_path, sep='\t' if args.annotations_df_path.endswith('.tsv') else ',')
+    texts_df = pd.read_csv(args.texts_df_path, sep='\t' if args.annotations_df_path.endswith('.tsv') else ',')
+    
+    annotations_df_reindex, texts_df_reindex = reindex_texts_and_annotations(
+        annotations_df=annotations_df,
+        texts_df=texts_df,
+        text_col=args.text_col,
+        annotator_col=args.annotator_col
+    )
+    
+    annotations_text_folds = assign_folds(
+        annotations_df=annotations_df_reindex.copy(),
+        stratify_by=args.text_col,
+        num_folds=args.num_folds
+    )
+    annotations_user_folds = assign_folds(
+        annotations_df=annotations_df_reindex.copy(),
+        stratify_by=args.annotator_col,
+        num_folds=args.num_folds
+    )
+    
+    annotations_text_folds.to_csv(
+        create_path(
+            args.annotations_df_path, 
+            extra='processed_text_folds'
+        ), 
+        index=False
+    )
+    annotations_user_folds.to_csv(
+        create_path(
+            args.annotations_df_path, 
+            extra='processed_user_folds'
+        ), 
+        index=False
+    )
+    texts_df_reindex.to_csv(
+        create_path(
+            args.texts_df_path, 
+            extra='processed'
+        ), 
+        index=False
+    )
+    
+
+if __name__ == '__main__':
+    main()
