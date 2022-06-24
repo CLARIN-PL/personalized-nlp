@@ -41,6 +41,7 @@ def train_test(
     train_loader = datamodule.train_dataloader()
     val_loader = datamodule.val_dataloader()
     test_loader = datamodule.test_dataloader()
+    
 
     if regression:
         class_names = datamodule.annotation_columns

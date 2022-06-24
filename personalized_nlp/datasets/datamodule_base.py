@@ -58,6 +58,10 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         exclude_folds = [self.val_fold, self.test_fold]
 
         return [fold for fold in all_folds if fold not in exclude_folds]
+    
+    @property
+    def num_annotations(self) -> int:
+        return len(self.annotations)
 
     @property
     def val_fold(self) -> int:

@@ -2,7 +2,7 @@ import os
 from itertools import product
 from pytorch_lightning.callbacks import EarlyStopping
 
-from personalized_nlp.datasets.wiki.aggression import AggressionDataModule
+from personalized_nlp.datasets.unhealthy_conversations import UnhealthyDataModule
 
 from personalized_nlp.learning.train import train_test
 from settings import LOGS_DIR
@@ -15,20 +15,21 @@ os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 os.environ["WANDB_START_METHOD"] = "thread"
 
 if __name__ == "__main__":
-    wandb_project_name = "TestAgresji"
-    datamodule_cls = AggressionDataModule
+    wandb_project_name = "NiezdroweKonwersacje"
+    datamodule_cls = UnhealthyDataModule #ClarinEmoSentNoNoiseDataModule
 
     datamodule_kwargs_list = product_kwargs(
         {
             "regression": [False],
-            "embedding_types": ["labse", "mpnet", "xlmr", "random", "skipgram", "cbow"][
-                :1
-            ],
+            # "embedding_types": ["labse", "mpnet", "xlmr", "random", "skipgram", "cbow"][
+            #     :1
+            # ],
+            "embedding_types": ["xlmr"],
             "limit_past_annotations_list": [None],
-            "stratify_folds_by": ["users", "texts"][:1],
+            "stratify_folds_by": ["users", "texts"][1:],
             "fold_nums": [10],
             "batch_size": [3000],
-            "fold_num": list(range(10)),
+            "fold_num": list(range(10))[:1],
             "use_finetuned_embeddings": [False],
             "major_voting": [False],
         }
@@ -43,12 +44,12 @@ if __name__ == "__main__":
     )
     trainer_kwargs_list = product_kwargs(
         {
-            "epochs": [20],
+            "epochs": [500],
             "lr_rate": [0.008],
             "regression": [False],
             "use_cuda": [False],
             # "model_type": ["baseline", "onehot", "peb", "bias", "embedding"],
-            "model_type": ["onehot"],
+            "model_type": ["embedding"],
         }
     )
 
@@ -68,7 +69,7 @@ if __name__ == "__main__":
             }
 
             logger = pl_loggers.WandbLogger(
-                save_dir=str(LOGS_DIR),
+                save_dir=LOGS_DIR,
                 config=hparams,
                 project=wandb_project_name,
                 log_model=False,
@@ -79,12 +80,12 @@ if __name__ == "__main__":
                 model_kwargs=model_kwargs,
                 logger=logger,
                 **trainer_kwargs,
-                custom_callbacks=[
-                    # callbacks.CartographySaveCallback(
-                    #     dir_name=f'cartography_wiki_agr_model={trainer_kwargs["model_type"]}'
-                    #     ),
-                    EarlyStopping(monitor="valid_loss", mode="min", patience=3),
-                ],
+                # custom_callbacks=[
+                #     # callbacks.CartographySaveCallback(
+                #     #     dir_name=f'clarin_emo_texts_cartography_{trainer_kwargs["model_type"]}_500epochs'
+                #     # ),
+                #     #EarlyStopping(monitor="valid_loss", mode="min", patience=3),
+                # ],
             )
 
             logger.experiment.finish()
