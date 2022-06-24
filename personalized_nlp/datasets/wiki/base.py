@@ -27,19 +27,17 @@ class WikiDataModule(BaseDataModule):
 
     def prepare_data(self) -> None:
         self.data = pd.read_csv(
-            self.data_dir / (self.annotation_columns[0] + "_annotated_comments.tsv"),
-            sep="\t",
+            self.data_dir / (self.annotation_columns[0] + "_annotated_comments_processed.csv")
         )
         self.data = self._remap_column_names(self.data)
         self.data["text"] = self.data["text"].str.replace("NEWLINE_TOKEN", "  ")
 
         self.annotators = pd.read_csv(
-            self.data_dir / (self.annotation_columns[0] + "_worker_demographics.tsv"),
-            sep="\t",
+            self.data_dir / (self.annotation_columns[0] + "_worker_demographics.tsv"), sep='\t'
         )
         self.annotators = self._remap_column_names(self.annotators)
 
         self.annotations = pd.read_csv(
-            self.data_dir / (self.annotation_columns[0] + "_annotations.tsv"), sep="\t"
+            self.data_dir / (self.annotation_columns[0] + f"_annotations_{self.stratify_folds_by}_folds.csv")
         )
         self.annotations = self._remap_column_names(self.annotations)

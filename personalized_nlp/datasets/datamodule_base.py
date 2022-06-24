@@ -4,9 +4,10 @@ import pickle
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
+import torch
 import numpy as np
 import pandas as pd
-import torch
+
 from personalized_nlp.datasets.dataset import BatchIndexedDataset
 from settings import EMBEDDINGS_SIZES, TRANSFORMER_MODEL_STRINGS
 from personalized_nlp.utils.biases import get_annotator_biases
@@ -37,7 +38,7 @@ class BaseDataModule(LightningDataModule, abc.ABC):
 
     @property
     def annotators_number(self) -> int:
-        return max(self.annotator_id_idx_dict.values()) + 1
+        return max(self.annotations['annotator_id']) + 1
 
     @property
     def train_text_split_names(self) -> List[str]:
@@ -95,7 +96,6 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         test_fold: Optional[int] = None,
         min_annotations_per_user_in_fold: Optional[int] = None,
         seed: int = 22,
-        filtered_annotations: Optional[str] = None,
         **kwargs,
     ):
         """_summary_
@@ -132,7 +132,6 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         self._test_fold = test_fold if test_fold is not None else 0
         self.use_finetuned_embeddings = use_finetuned_embeddings
         self.min_annotations_per_user_in_fold = min_annotations_per_user_in_fold
-        self.filtered_annotations = filtered_annotations
 
         self.split_sizes = (
             split_sizes if split_sizes is not None else [0.55, 0.15, 0.15, 0.15]
@@ -144,13 +143,8 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         seed_everything(seed)
 
         self.prepare_data()
-        self._maybe_filter_data()
         self.setup()
         
-        
-    def _maybe_filter_data(self) -> None:
-        if self.filtered_annotations is not None:
-            pass
 
     def _create_embeddings(self, use_cuda: Optional[bool] = None) -> None:
         texts = self.data["text"].tolist()
@@ -173,7 +167,7 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         annotations = self.annotations
         self._original_annotations = annotations.copy()
 
-        self._assign_folds()
+        # self._assign_folds()
         self._assign_splits()
 
         if self.past_annotations_limit is not None:
@@ -214,17 +208,17 @@ class BaseDataModule(LightningDataModule, abc.ABC):
 
         self.text_embeddings = torch.tensor(embeddings)
 
-        self.text_id_idx_dict = (
-            data.loc[:, ["text_id"]]
-            .reset_index()
-            .set_index("text_id")
-            .to_dict()["index"]
-        )
+        # self.text_id_idx_dict = (
+        #     data.loc[:, ["text_id"]]
+        #     .reset_index()
+        #     .set_index("text_id")
+        #     .to_dict()["index"]
+        # )
 
-        annotator_id_category = annotations["annotator_id"].astype("category")
-        self.annotator_id_idx_dict = {
-            a_id: idx for idx, a_id in enumerate(annotator_id_category.cat.categories)
-        }
+        # annotator_id_category = annotations["annotator_id"].astype("category")
+        # self.annotator_id_idx_dict = {
+        #     a_id: idx for idx, a_id in enumerate(annotator_id_category.cat.categories)
+        # }
 
     def _assign_splits(self):
         if self.stratify_folds_by == "texts":
@@ -262,24 +256,24 @@ class BaseDataModule(LightningDataModule, abc.ABC):
                 _get_annotation_split
             )
 
-    def _assign_folds(self):
-        """Randomly assign fold to each annotation."""
-        if self.stratify_folds_by == "texts":
-            stratify_column = "text_id"
-        else:
-            stratify_column = "annotator_id"
+    # def _assign_folds(self):
+    #     """Randomly assign fold to each annotation."""
+    #     if self.stratify_folds_by == "texts":
+    #         stratify_column = "text_id"
+    #     else:
+    #         stratify_column = "annotator_id"
 
-        annotations = self.annotations
-        ids = annotations[stratify_column].unique()
-        np.random.shuffle(ids)
+    #     annotations = self.annotations
+    #     ids = annotations[stratify_column].unique()
+    #     np.random.shuffle(ids)
 
-        folded_ids = np.array_split(ids, self.folds_num)
+    #     folded_ids = np.array_split(ids, self.folds_num)
 
-        annotations["fold"] = 0
-        for i in range(self.folds_num):
-            annotations.loc[
-                annotations[stratify_column].isin(folded_ids[i]), "fold"
-            ] = i
+    #     annotations["fold"] = 0
+    #     for i in range(self.folds_num):
+    #         annotations.loc[
+    #             annotations[stratify_column].isin(folded_ids[i]), "fold"
+    #         ] = i
 
     def _normalize_labels(self):
         annotation_columns = self.annotation_columns
@@ -446,10 +440,10 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         X = df.loc[:, ["text_id", "annotator_id"]]
         y = df[self.annotation_columns]
 
-        X["text_id"] = X["text_id"].apply(lambda r_id: self.text_id_idx_dict[r_id])
-        X["annotator_id"] = X["annotator_id"].apply(
-            lambda w_id: self.annotator_id_idx_dict[w_id]
-        )
+        # X["text_id"] = X["text_id"].apply(lambda r_id: self.text_id_idx_dict[r_id])
+        # X["annotator_id"] = X["annotator_id"].apply(
+        #     lambda w_id: self.annotator_id_idx_dict[w_id]
+        # )
 
         X, y = X.values, y.values
 
@@ -470,12 +464,12 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         annotations = annotations.merge(self.data)
         embeddings = self.text_embeddings.to("cpu").numpy()
 
-        annotations["text_idx"] = annotations["text_id"].apply(
-            lambda r_id: self.text_id_idx_dict[r_id]
-        )
-        annotations["annotator_idx"] = annotations["annotator_id"].apply(
-            lambda w_id: self.annotator_id_idx_dict[w_id]
-        )
+        # annotations["text_idx"] = annotations["text_id"].apply(
+        #     lambda r_id: self.text_id_idx_dict[r_id]
+        # )
+        # annotations["annotator_idx"] = annotations["annotator_id"].apply(
+        #     lambda w_id: self.annotator_id_idx_dict[w_id]
+        # )
 
         X = np.vstack([embeddings[i] for i in annotations["text_idx"].values])
         y = annotations[self.annotation_columns].values
