@@ -66,7 +66,7 @@ def reindex_texts_and_annotations(
     annotator_id_map = get_annotator_id_map(annotations_df, annotator_col)
     text_id_map = get_text_id_map(texts_df, text_col)
     
-    texts_df[text_col] = texts_df[text_col].map(text_id_map)
+    texts_df[text_col] = texts_df[text_col].replace(text_id_map)
     annotations_df[annotator_col] = annotations_df[annotator_col].replace(annotator_id_map)
     annotations_df[text_col] = annotations_df[text_col].replace(text_id_map)
     

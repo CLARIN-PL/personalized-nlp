@@ -27,8 +27,9 @@ def parse_args() -> argparse.Namespace:
         '-tp',
         type=str,
         dest='texts_df_path',
-        required=True,
-        help='Path to annotations csv/tsv.'   
+        required=False,
+        default='',
+        help='Path to texts csv/tsv. If not specified, enter single-file scenario.'   
     )
     parser.add_argument(
         '--text_col',

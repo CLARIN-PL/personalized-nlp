@@ -20,7 +20,6 @@ def assign_folds(
     ids = annotations_df[stratify_by].unique()
     np.random.shuffle(ids)
 
-    print(ids, num_folds)
     folded_ids = np.array_split(ids, num_folds)
 
     annotations_df["fold"] = 0
