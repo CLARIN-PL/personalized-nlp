@@ -67,7 +67,6 @@ def create_path(old_path: str, extra: str = '') -> pathlib.PosixPath:
     extra = extra if extra == '' else f'_{extra}'
     base_filename = f'{pathlib.Path(old_path).stem}{extra}.csv'
     new_path = pathlib.Path(old_path).parents[0] / (base_filename)
-    print(new_path)
     return new_path
 
 
@@ -97,14 +96,14 @@ def main():
     annotations_text_folds.to_csv(
         create_path(
             args.annotations_df_path, 
-            extra='processed_text_folds'
+            extra='texts_folds'
         ), 
         index=False
     )
     annotations_user_folds.to_csv(
         create_path(
             args.annotations_df_path, 
-            extra='processed_user_folds'
+            extra='users_folds'
         ), 
         index=False
     )
