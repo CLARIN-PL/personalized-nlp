@@ -84,7 +84,7 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         test_transforms=None,
         dims=None,
         batch_size: int = 3000,
-        embeddings_type: str = "bert",
+        embeddings_type: str = "labse",
         major_voting: bool = False,
         folds_num: int = 10,
         regression: bool = False,

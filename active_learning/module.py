@@ -143,6 +143,9 @@ class ActiveLearningModule:
 
     def experiment(self, max_amount: int, step_size: int, **kwargs):
         while self.annotated_amount < max_amount:
+            not_annotated = (self.datamodule.annotations.split == "none").sum()
+            if not_annotated == 0:
+                break
             self.add_annotations(step_size)
             self.train_model()
 
