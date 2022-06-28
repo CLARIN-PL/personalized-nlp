@@ -25,7 +25,7 @@ if __name__ == "__main__":
                 :1
             ],
             "limit_past_annotations_list": [None],
-            "stratify_folds_by": ["users", "texts"][:1],
+            "stratify_folds_by": ["users", "texts"][1:],
             "fold_nums": [10],
             "batch_size": [3000],
             "fold_num": list(range(10)),
@@ -80,9 +80,11 @@ if __name__ == "__main__":
                 logger=logger,
                 **trainer_kwargs,
                 custom_callbacks=[
-                    # callbacks.CartographySaveCallback(
-                    #     dir_name=f'cartography_wiki_agr_model={trainer_kwargs["model_type"]}'
-                    #     ),
+                    callbacks.CartographySaveCallback(
+                        dir_name=f'cartography_wiki_agr_model={trainer_kwargs["model_type"]}',
+                        fold_num=datamodule_kwargs["fold_num"],
+                        fold_nums=datamodule_kwargs["fold_nums"]
+                        ),
                     EarlyStopping(monitor="valid_loss", mode="min", patience=3),
                 ],
             )

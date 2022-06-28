@@ -36,7 +36,8 @@ class ClarinEmoTextDataModule(BaseDataModule):
         )
         self.data = self._remap_column_names(self.data)
 
-        self.annotations = pd.read_csv(self.data_dir / "annotations.tsv",
+        self.annotations = pd.read_csv(self.data_dir / "annotations.tsv"
+                                       ,
                                        sep="\t")
         self.annotations = self._remap_column_names(self.annotations)
 

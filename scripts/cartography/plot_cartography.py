@@ -156,9 +156,9 @@ def write_filtered_data(metrics: pd.DataFrame, save_path: str, sorted_by: str = 
 def plot_data_map(dataframe: pd.DataFrame,
                   save_path: str, 
                   hue_metric: str = 'correct.',
-                  title: str = '',
+                  save_name: str = '',
                   show_hist: bool = False,
-                  max_instances_to_plot = 55000):
+                  max_instances_to_plot = 55000) -> None:
     # Set style.
     sns.set(style='whitegrid', font_scale=1.6, font='Georgia', context='paper')
     
@@ -220,7 +220,7 @@ def plot_data_map(dataframe: pd.DataFrame,
     plot.set_ylabel('confidence')
 
     if show_hist:
-        plot.set_title(f"{title} Data Map", fontsize=17)
+        plot.set_title(f"{save_name} Data Map", fontsize=17)
 
         # Make the histograms.
         ax1 = fig.add_subplot(gs[0, 1])
@@ -245,5 +245,5 @@ def plot_data_map(dataframe: pd.DataFrame,
         plot2.set_ylabel('density')
 
     fig.tight_layout()
-    filename = f'{save_path}/{title}.pdf' # if show_hist else f'figures/compact_{title}_{model}.pdf'
+    filename = f'{save_path}/{save_name}.pdf' # if show_hist else f'figures/compact_{title}_{model}.pdf'
     fig.savefig(filename, dpi=300)

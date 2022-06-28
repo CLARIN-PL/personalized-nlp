@@ -1,8 +1,11 @@
 import abc
+from logging import warning
 import os
 import pickle
+import re
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
+import glob
 
 import torch
 import numpy as np
@@ -100,6 +103,7 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         test_fold: Optional[int] = None,
         min_annotations_per_user_in_fold: Optional[int] = None,
         seed: int = 22,
+        filter_train_annotations_path: Optional[str] = None,
         **kwargs,
     ):
         """_summary_
@@ -133,6 +137,9 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         self.regression = regression
         self.past_annotations_limit = past_annotations_limit
         self.stratify_folds_by = stratify_folds_by
+        if stratify_folds_by == 'users':
+            raise Exception('User folds scenario is not supported yet!')
+
         self._test_fold = test_fold if test_fold is not None else 0
         self.use_finetuned_embeddings = use_finetuned_embeddings
         self.min_annotations_per_user_in_fold = min_annotations_per_user_in_fold
@@ -148,6 +155,16 @@ class BaseDataModule(LightningDataModule, abc.ABC):
 
         self.prepare_data()
         self.setup()
+        self.filter_train_dict = self._setup_filter_train_annotations(filter_train_annotations_path)        
+        
+    def _setup_filter_train_annotations(self, filter_annotations_path: str) -> Optional[Dict]:
+        if filter_annotations_path is None:
+            return None
+        filter_dict = {}
+        for file in glob.glob(os.path.join(filter_annotations_path, '*')):
+            fold = int(re.search("(?<=fold_)([0-9]+)(?=\_)", file).group())
+            filter_dict[fold] = file
+        return filter_dict
         
 
     def _create_embeddings(self, use_cuda: Optional[bool] = None) -> None:
@@ -224,7 +241,7 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         #     a_id: idx for idx, a_id in enumerate(annotator_id_category.cat.categories)
         # }
 
-    def _assign_splits(self):
+    def _assign_splits(self) -> None:
         if self.stratify_folds_by == "texts":
             val_fold = self.val_fold
             test_fold = self.test_fold
@@ -236,6 +253,7 @@ class BaseDataModule(LightningDataModule, abc.ABC):
             self.data = split_texts(self.data, self.split_sizes)
 
             text_id_to_text_split = self.data.set_index("text_id")["text_split"]
+            # raise Exception(text_id_to_text_split)
             text_id_to_text_split = text_id_to_text_split.to_dict()
 
             text_id_to_fold = self.annotations.set_index("text_id")["fold"]
@@ -253,31 +271,30 @@ class BaseDataModule(LightningDataModule, abc.ABC):
                     return "val"
                 if text_split == "future2" and text_fold == self.test_fold:
                     return "test"
-
                 return "none"
 
             self.annotations["split"] = self.annotations["text_id"].apply(
                 _get_annotation_split
             )
 
-    # def _assign_folds(self):
-    #     """Randomly assign fold to each annotation."""
-    #     if self.stratify_folds_by == "texts":
-    #         stratify_column = "text_id"
-    #     else:
-    #         stratify_column = "annotator_id"
+    def _assign_folds(self):
+        """Randomly assign fold to each annotation."""
+        if self.stratify_folds_by == "texts":
+            stratify_column = "text_id"
+        else:
+            stratify_column = "annotator_id"
 
-    #     annotations = self.annotations
-    #     ids = annotations[stratify_column].unique()
-    #     np.random.shuffle(ids)
+        annotations = self.annotations
+        ids = annotations[stratify_column].unique()
+        np.random.shuffle(ids)
 
-    #     folded_ids = np.array_split(ids, self.folds_num)
+        folded_ids = np.array_split(ids, self.folds_num)
 
-    #     annotations["fold"] = 0
-    #     for i in range(self.folds_num):
-    #         annotations.loc[
-    #             annotations[stratify_column].isin(folded_ids[i]), "fold"
-    #         ] = i
+        annotations["fold"] = 0
+        for i in range(self.folds_num):
+            annotations.loc[
+                annotations[stratify_column].isin(folded_ids[i]), "fold"
+            ] = i
 
     def _normalize_labels(self):
         annotation_columns = self.annotation_columns
@@ -345,10 +362,9 @@ class BaseDataModule(LightningDataModule, abc.ABC):
             annotator_biases.set_index("annotator_id").sort_index().fillna(0)
         )
 
-    def train_dataloader(self, shuffle: bool = True) -> DataLoader:
+    def train_dataloader(self) -> DataLoader:
         """Returns dataloader for train part of the dataset.
         :param shuffle: if true, shuffles data during training, defaults to True
-        :type shuffle: bool, optional
         :return: train dataloader for the dataset
         :rtype: DataLoader
         """
@@ -369,16 +385,21 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         """
         return self._get_dataloader("test", False)
 
-    def custom_dataloader(self, split_name="none", shuffle=False):
+    def custom_dataloader(self, split_name: str="none", shuffle: bool=False) -> DataLoader:
         return self._get_dataloader(split_name, shuffle)
 
-    def _get_dataloader(self, split, shuffle) -> DataLoader:
+    def _get_dataloader(self, split: str, shuffle: bool) -> DataLoader:
         annotations = self.annotations
         annotations = annotations.loc[annotations.split == split]
+        
+        if split == 'train' and self.filter_train_dict is not None:
+            filter_csv = pd.read_csv(self.filter_train_dict[self.test_fold])
+            annotations = annotations.query('')
 
         X, y = self._get_data_by_split(annotations)
         text_features = self._get_text_features()
         annotator_features = self._get_annotator_features()
+
 
         dataset = BatchIndexedDataset(
             X,
@@ -507,7 +528,7 @@ class BaseDataModule(LightningDataModule, abc.ABC):
 
         self.annotations = pd.concat([non_past_annotations, controversial_annotations])
 
-    def filter_annotators(self):
+    def filter_annotators(self) -> None:
         """Filters annotators with less than `min_annotations_per_user_in_fold` annotations
         in each fold and with less than one annotations per each (class_dim, fold) pair.
         """

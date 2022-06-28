@@ -1,4 +1,4 @@
-from typing import Dict, Union, Tuple, List
+from typing import Dict, Union, Tuple
 import os
 import glob
 import json
@@ -25,18 +25,21 @@ def read_data(path: str) -> Tuple[
         train_dynamics[class_name] = {}
  
     for epoch, file in tqdm.tqdm(enumerate(files)):
-        with open(file, 'r') as f:
-            for line in f:
-                record = json.loads(line.strip())
-                # decode important messages
-                guid = record['guid']
-                class_names = record['class_names']
-                predictions = record[f'logits_epoch_{epoch}']
-                golds = record['gold']
-                for class_name, gold, logits in zip(class_names, golds, np.split(np.array(predictions), len(class_names))):
-                    if guid not in train_dynamics[class_name]:
-                        assert epoch == 0
-                        train_dynamics[class_name][guid] = {"gold": gold, "logits": []}
-                    train_dynamics[class_name][guid]["logits"].append(logits)
+        try:
+            with open(file, 'r') as f:
+                for line in f:
+                    record = json.loads(line.strip())
                     
+                    # decode important messages
+                    guid = record['guid']
+                    class_names = record['class_names']
+                    predictions = record[f'logits_epoch_{epoch}']
+                    golds = record['gold']
+                    for class_name, gold, logits in zip(class_names, golds, np.split(np.array(predictions), len(class_names))):
+                        if guid not in train_dynamics[class_name]:
+                            assert epoch == 0
+                            train_dynamics[class_name][guid] = {"gold": gold, "logits": []}
+                        train_dynamics[class_name][guid]["logits"].append(logits)
+        except UnicodeDecodeError:
+            raise UnicodeDecodeError(f"Error while loading file: {file}")
     return train_dynamics, len(files)
