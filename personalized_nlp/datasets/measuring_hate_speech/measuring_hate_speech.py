@@ -15,6 +15,14 @@ class MeasuringHateSpeechDataModule(BaseDataModule):
     @property
     def data_dir(self) -> Path:
         return DATA_DIR / "measuring_hate_speech"
+    
+    @property
+    def annotations_file(self) -> str:
+        return f"uc_annotations_{self.stratify_folds_by}_folds.csv"
+    
+    @property
+    def data_file(self) -> str:
+        return 'uc_texts_processed.csv'
 
     def __init__(
         self,

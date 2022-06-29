@@ -9,6 +9,16 @@ from personalized_nlp.datasets.datamodule_base import BaseDataModule
 
 
 class UnhealthyDataModule(BaseDataModule):
+    
+    
+    @property
+    def annotations_file(self) -> str:
+        return f"uc_annotations_{self.stratify_folds_by}_folds.csv"
+    
+    @property
+    def data_file(self) -> str:
+        return 'uc_texts_processed.csv'
+    
     @property
     def embeddings_path(self) -> Path:
         return self.data_dir / f"embeddings/text_id_to_emb_{self.embeddings_type}.p"
@@ -43,8 +53,8 @@ class UnhealthyDataModule(BaseDataModule):
 
     def prepare_data(self) -> None:
         columns_map = {'comment': 'text'}
-        self.data = pd.read_csv(self.data_dir / "uc_texts_processed.csv").dropna() 
+        self.data = pd.read_csv(self.data_dir / self.data_file).dropna() 
         self.data = self.data.rename(columns=columns_map)
 
-        self.annotations = pd.read_csv(self.data_dir / f"uc_annotations_{self.stratify_folds_by}_folds.csv")
+        self.annotations = pd.read_csv(self.data_dir / self.annotations_file)
         

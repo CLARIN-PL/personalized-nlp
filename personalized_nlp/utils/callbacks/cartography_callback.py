@@ -1,8 +1,10 @@
-from typing import Any, Optional
+from typing import Any, Dict
+import os
+import json
 import warnings
 from pathlib import PosixPath
-import json
-import os
+
+import pytorch_lightning as pl
 from pytorch_lightning.callbacks import Callback
 
 from settings import CARTOGRAPHY_OUTPUTS_DIR_NAME, CARTOGRAPHY_TRAIN_DYNAMICS_DIR_NAME, CARTOGRAPHY_PLOTS_DIR_NAME, CARTOGRAPHY_METRICS_DIR_NAME, CARTOGRAPHY_FILTER_DIR_NAME
@@ -10,20 +12,19 @@ from settings import CARTOGRAPHY_OUTPUTS_DIR_NAME, CARTOGRAPHY_TRAIN_DYNAMICS_DI
 
 
 class CartographySaveCallback(Callback):
-    
+
     def __init__(
             self, 
             dir_name: str,
             fold_num: int,
             fold_nums: int
         ) -> None:
-        """Callback for generating training dynamics. At this moment support ONLY:
-        - CLASSIFICATION
-        - MULTILABEL 
+        """Callback to save training dynamics used by cartography datamodule
 
         Args:
-            dir_name (str, optional): 
-                Name for dir with training dynamics.
+            dir_name (str): name of directory with the cartography project. The path will become outputs/$CARTOGRAPHY_OUTPUTS_DIR_NAME/$dir_name.
+            fold_num (int): current fold (every fold is stored in separate dir inside $dir_name).
+            fold_nums (int): total number of folds.
         """
         super(CartographySaveCallback, self).__init__()
         self.outputs = []
@@ -52,21 +53,27 @@ class CartographySaveCallback(Callback):
             
             
     def _write_meta(self) -> None:
+        """Writes metadata about the project to the meta.json file.
+        """
         with open(self.meta_path, 'w') as f:
             f.write(json.dumps(self.meta_dict))
 
     
     def on_train_batch_end(self, 
-                           trainer: "pl.Trainer", 
-                           pl_module: "pl.LightningModule", 
-                           outputs: dict, 
+                           trainer: pl.Trainer, 
+                           pl_module: pl.LightningModule, 
+                           outputs: Dict[Any, Any], 
                            batch: int, 
                            batch_idx: int, 
                            unused: int = 0
         ) -> None:
+        """Append output at the end of train batch
+        """
         self.outputs.append(outputs)
         
     def on_train_epoch_end(self, *args, **kwargs) -> None:
+        """Creates training dynamics file after every training epochs.
+        """
         json_path = os.path.join(self.save_dir, f'dynamics_epoch_{self.epoch}.jsonl')
         lines = []
         for suboutput in self.outputs:

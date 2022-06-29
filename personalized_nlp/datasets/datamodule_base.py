@@ -1,28 +1,30 @@
-import abc
-from logging import warning
-import os
-import pickle
-import re
-from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
-import glob
+import os
+import abc
+import pickle
+from pathlib import Path
+
 
 import torch
 import numpy as np
 import pandas as pd
+from torch.utils.data import DataLoader
+from pytorch_lightning import LightningDataModule, seed_everything
 
-from personalized_nlp.datasets.dataset import BatchIndexedDataset
 from settings import EMBEDDINGS_SIZES, TRANSFORMER_MODEL_STRINGS
+from personalized_nlp.datasets.dataset import BatchIndexedDataset
 from personalized_nlp.utils.biases import get_annotator_biases
 from personalized_nlp.utils.controversy import get_conformity
 from personalized_nlp.utils.data_splitting import split_texts
 from personalized_nlp.utils.embeddings import create_embeddings
 from personalized_nlp.utils.finetune import finetune_datamodule_embeddings
-from pytorch_lightning import LightningDataModule, seed_everything
-from torch.utils.data import DataLoader
 
 
+
+# TODO specify types! 
+# TODO add docstring!
 class BaseDataModule(LightningDataModule, abc.ABC):
+    
     @abc.abstractproperty
     def class_dims(self) -> List[int]:
         raise NotImplementedError()
@@ -33,6 +35,14 @@ class BaseDataModule(LightningDataModule, abc.ABC):
 
     @abc.abstractproperty
     def embeddings_path(self) -> Path:
+        raise NotImplementedError()
+    
+    @abc.abstractproperty
+    def annotations_file(self) -> str:
+        raise NotImplementedError()
+    
+    @abc.abstractproperty
+    def data_file(self) -> str:
         raise NotImplementedError()
 
     @abc.abstractproperty
@@ -155,16 +165,16 @@ class BaseDataModule(LightningDataModule, abc.ABC):
 
         self.prepare_data()
         self.setup()
-        self.filter_train_dict = self._setup_filter_train_annotations(filter_train_annotations_path)        
+    #     self.filter_train_dict = self._setup_filter_train_annotations(filter_train_annotations_path)        
         
-    def _setup_filter_train_annotations(self, filter_annotations_path: str) -> Optional[Dict]:
-        if filter_annotations_path is None:
-            return None
-        filter_dict = {}
-        for file in glob.glob(os.path.join(filter_annotations_path, '*')):
-            fold = int(re.search("(?<=fold_)([0-9]+)(?=\_)", file).group())
-            filter_dict[fold] = file
-        return filter_dict
+    # def _setup_filter_train_annotations(self, filter_annotations_path: str) -> Optional[Dict]:
+    #     if filter_annotations_path is None:
+    #         return None
+    #     filter_dict = {}
+    #     for file in glob.glob(os.path.join(filter_annotations_path, '*')):
+    #         fold = int(re.search("(?<=fold_)([0-9]+)(?=\_)", file).group())
+    #         filter_dict[fold] = file
+    #     return filter_dict
         
 
     def _create_embeddings(self, use_cuda: Optional[bool] = None) -> None:
@@ -309,7 +319,8 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         df.loc[:, annotation_columns] = df.loc[:, annotation_columns].fillna(0)
 
     def compute_major_votes(self) -> None:
-        """Computes mean votes for texts in train folds."""
+        """Computes mean votes for texts in train folds.
+        """
         annotations = self.annotations
         annotation_columns = self.annotation_columns
 
@@ -363,25 +374,26 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         )
 
     def train_dataloader(self) -> DataLoader:
-        """Returns dataloader for train part of the dataset.
-        :param shuffle: if true, shuffles data during training, defaults to True
-        :return: train dataloader for the dataset
-        :rtype: DataLoader
-        """
+        """Returns dataloader for training part of the dataset.
+
+        Returns:
+            DataLoader: training dataloader for the dataset.
+        """        
         return self._get_dataloader("train", True)
 
     def val_dataloader(self) -> DataLoader:
         """Returns dataloader for validation part of the dataset.
-        :type test_fold: int, optional
-        :return: validation dataloader for the dataset
-        :rtype: DataLoader
+
+        Returns:
+            DataLoader: validation dataloader for the dataset.
         """
         return self._get_dataloader("val", False)
 
     def test_dataloader(self) -> DataLoader:
-        """Returns dataloader for test part of the dataset.
-        :return: validation dataloader for the dataset
-        :rtype: DataLoader
+        """Returns dataloader for testing part of the dataset.
+
+        Returns:
+            DataLoader: testing dataloader for the dataset.
         """
         return self._get_dataloader("test", False)
 
@@ -391,10 +403,6 @@ class BaseDataModule(LightningDataModule, abc.ABC):
     def _get_dataloader(self, split: str, shuffle: bool) -> DataLoader:
         annotations = self.annotations
         annotations = annotations.loc[annotations.split == split]
-        
-        if split == 'train' and self.filter_train_dict is not None:
-            filter_csv = pd.read_csv(self.filter_train_dict[self.test_fold])
-            annotations = annotations.query('')
 
         X, y = self._get_data_by_split(annotations)
         text_features = self._get_text_features()
