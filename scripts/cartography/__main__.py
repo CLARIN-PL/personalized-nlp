@@ -3,7 +3,6 @@ import os
 import argparse
 
 import json
-import pandas as pd
 
 from scripts.cartography.read_data import read_data
 from scripts.cartography.plot_cartography import plot_data_map, compute_metrics, compute_avg_metrics, write_filtered_data
@@ -56,12 +55,25 @@ def parse_args() -> argparse.Namespace:
 
 
 def read_meta(path: str) -> Dict[str, Union[float, str]]:
+    """Reads the meta.json file.
+
+    Args:
+        path (str): path to meta.json.
+
+    Returns:
+        Dict[str, Union[float, str]]: meta data stored as dictionary.
+    """
     with open(path, 'r') as f:
         meta_dir = json.loads(f.read())
     return meta_dir
 
 
 def create_all_paths(paths: Iterable[str]) -> None:
+    """Creates all directories from path.
+
+    Args:
+        paths (Iterable[str]): iterable of paths (str).
+    """
     for path in paths:
         if not os.path.exists(path):
             os.makedirs(path)
@@ -93,10 +105,9 @@ def main() -> None:
                 )
             )
         
-            
             train_dynamics_cls = train_dynamics[class_name]
             
-            cls_metrics, df_train = compute_metrics(train_dynamics_cls, num_epochs=num_epochs)
+            cls_metrics = compute_metrics(train_dynamics_cls, num_epochs=num_epochs)
             
             metrics.append(cls_metrics)
             plot_data_map(
@@ -110,7 +121,6 @@ def main() -> None:
                 index=False
             )
             
-            
             write_filtered_data(
                 cls_metrics, 
                 save_path=os.path.join(filter_dir, f'{class_name}_{args.sorted_by}_fold_{fold}_filtered.csv'), 
@@ -120,12 +130,25 @@ def main() -> None:
             
         # if list of metrics contains multiple elements, create data map using average metrics
         if len(metrics) > 1:
-            avg_metrics, df_train = compute_avg_metrics(metrics)
-            plot_data_map(avg_metrics, meta_dir["plots_dir"], title=f'fold_{fold}_average')
-            avg_metrics.to_csv(os.path.join(meta_dir["metrics_dir"], f'fold_{fold}_average_metrics.csv'), index=False)
+            plots_avg_dir = os.path.join(meta_dir["plots_dir"], 'average')
+            metrics_avg_dir = os.path.join(meta_dir["metrics_dir"], 'average')
+            filter_avg_dir = os.path.join(meta_dir["filter_dir"], 'average')
+            create_all_paths(
+                (plots_avg_dir, metrics_avg_dir, filter_avg_dir)
+            )
+            avg_metrics = compute_avg_metrics(metrics)
+            plot_data_map(
+                avg_metrics, 
+                plots_avg_dir, 
+                title=f'fold_{fold}_average'
+            )
+            avg_metrics.to_csv(
+                os.path.join(metrics_avg_dir, f'fold_{fold}_average_metrics.csv'), 
+                index=False
+            )
             write_filtered_data(
                 avg_metrics, 
-                save_path=os.path.join(meta_dir["filter_dir"], f'fold_{fold}_average_{args.sorted_by}_filtered.csv'), 
+                save_path=os.path.join(filter_avg_dir, f'fold_{fold}_average_{args.sorted_by}_filtered.csv'), 
                 sorted_by=args.sorted_by, 
                 take_size=args.take_size
             )

@@ -1,5 +1,5 @@
 """
-This code is adapted version of: https://github.com/allenai/cartography
+This code is adapted version of the original Cartography Code: https://github.com/allenai/cartography
 """
 from typing import List
 from collections import defaultdict
@@ -38,15 +38,19 @@ def compute_forgetfulness(correctness_trend: List[float]) -> int:
 
 
 def compute_correctness(trend: List[float]) -> float:
-    """
-    Aggregate #times an example is predicted correctly during all training epochs.
+    """Aggregate #times an example is predicted correctly during all training epochs
+
+    Args:
+        trend (List[float]): TODO
+
+    Returns:
+        float: TODO
     """
     return sum(trend)
 
 
-def compute_metrics(training_dynamics, num_epochs: int):
-    """
-    Given the training dynamics (logits for each training instance across epochs), compute metrics
+def compute_metrics(training_dynamics, num_epochs: int) -> pd.DataFrame:
+    """Given the training dynamics (logits for each training instance across epochs), compute metrics
     based on it, for data map coorodinates.
     Computed metrics are: confidence, variability, correctness, forgetfulness, threshold_closeness---
     the last two being baselines from prior work
@@ -70,9 +74,6 @@ def compute_metrics(training_dynamics, num_epochs: int):
 
     loss = torch.nn.CrossEntropyLoss()
 
-    # print(list(training_dynamics.values())[0]["logits"])
-    # raise None
-    # print(num_tot_epochs)
 
     logits = {i: [] for i in range(num_epochs)}
     targets = {i: [] for i in range(num_epochs)}

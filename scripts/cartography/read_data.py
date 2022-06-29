@@ -10,6 +10,17 @@ def read_data(path: str) -> Tuple[
         Dict[str, Dict[str, Union[int, np.ndarray]]],
         int
     ]:
+    """Reads training dynamics from specified path.
+
+    Args:
+        path (str): path to training dynamics directory.
+
+    Raises:
+        UnicodeDecodeError: when file cannot be read.
+
+    Returns:
+        Tuple[ Dict[str, Dict[str, Union[int, np.ndarray]]], int ]: train dynamics stored as a dictionary and number of epochs (files).
+    """
     
     files = sorted(
         glob.glob(os.path.join(path, '*.jsonl')),
