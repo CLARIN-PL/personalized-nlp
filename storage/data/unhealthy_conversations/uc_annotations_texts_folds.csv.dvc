@@ -1,0 +1,4 @@
+outs:
+- md5: d19fb749464672fb574fb6fca142f9ed
+  size: 12749431
+  path: uc_annotations_texts_folds.csv
