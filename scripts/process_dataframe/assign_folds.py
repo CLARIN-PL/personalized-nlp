@@ -8,12 +8,10 @@ def assign_folds(
     num_folds: int = 10
     ) -> pd.DataFrame:
     """Assign folds stratified by specified columns
-
     Args:
         annotations_df (pd.DataFrame): dataframe with annotations
         stratify_by (str): column to stratify
         num_folds (int, optional): number of folds to create. Defaults to 10.
-
     Returns:
         pd.DataFrame: _description_
     """
