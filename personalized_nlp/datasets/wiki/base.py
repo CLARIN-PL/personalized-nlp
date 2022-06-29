@@ -15,7 +15,7 @@ class WikiDataModule(BaseDataModule):
     
     @property
     def worker_demographics_file(self) -> str:
-        return f'{self.annotation_columns[0]}_worker_demographics.csv'
+        return f'{self.annotation_columns[0]}_worker_demographics.tsv'
     
     @property 
     def annotations_file(self) -> str:

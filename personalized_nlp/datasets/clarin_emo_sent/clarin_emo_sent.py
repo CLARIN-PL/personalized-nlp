@@ -17,6 +17,13 @@ class ClarinEmoSentDataModule(BaseDataModule):
     This is the version with multiple user-text annotations
 
     """
+    @property 
+    def annotations_file(self) -> str:
+        return f'annotations_{self.stratify_folds_by}_folds.csv'
+    
+    @property 
+    def data_file(self) -> str:
+        return f'data_processed.csv'
 
     @property
     def data_dir(self) -> Path:
@@ -36,14 +43,10 @@ class ClarinEmoSentDataModule(BaseDataModule):
         return df
 
     def prepare_data(self) -> None:
-        self.data = pd.read_csv(
-            self.data_dir / "data.tsv",
-            sep="\t",
-        )
+        self.data = pd.read_csv(self.data_dir / self.data_file)
         self.data = self._remap_column_names(self.data)
 
-        self.annotations = pd.read_csv(self.data_dir / "annotations.tsv",
-                                       sep="\t")
+        self.annotations = pd.read_csv(self.data_dir / self.annotations_file)
         self.annotations = self._remap_column_names(self.annotations)
 
     @property
