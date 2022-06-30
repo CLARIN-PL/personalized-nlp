@@ -3,7 +3,7 @@ from itertools import product
 
 from active_learning.module import ActiveLearningModule
 import active_learning.algorithms as algorithms
-from personalized_nlp.datasets.wiki.aggression import AggressionDataModule
+from personalized_nlp.datasets.clarin_emo_text import ClarinEmoTextDataModule
 
 from personalized_nlp.utils import seed_everything
 from personalized_nlp.utils.experiments import product_kwargs
@@ -11,25 +11,25 @@ from personalized_nlp.utils.callbacks.personal_metrics import (
     PersonalizedMetricsCallback,
 )
 
-os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+os.environ["CUDA_VISIBLE_DEVICES"] = "10"
 os.environ["WANDB_START_METHOD"] = "thread"
 
 if __name__ == "__main__":
-    wandb_project_name = "AL_repeat"
-    datamodule_cls = AggressionDataModule
+    wandb_project_name = "AL_Clarin_Emo"
+    datamodule_cls = ClarinEmoTextDataModule
 
     activelearning_kwargs_list = product_kwargs(
         {
             "text_selector_cls": [
-                # algorithms.TextAnnotationDiversitySelector,
-                # algorithms.RandomSelector,
-                # algorithms.ConfidenceSelector,
-                # algorithms.AverageConfidencePerUserSelector,
-                algorithms.ConfidenceAllDimsSelector,
+                algorithms.TextAnnotationDiversitySelector,
+                algorithms.RandomSelector,
+                algorithms.ConfidenceSelector,
+                algorithms.AverageConfidencePerUserSelector,
                 algorithms.MaxPositiveClassSelector,
+                algorithms.ConfidenceAllDimsSelector,
             ],
-            "max_amount": [100_000],
-            "step_size": [5_000],
+            "max_amount": [6_000],
+            "step_size": [200],
         }
     )
     datamodule_kwargs_list = product_kwargs(

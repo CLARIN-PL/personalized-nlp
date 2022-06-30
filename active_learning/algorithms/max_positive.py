@@ -1,9 +1,10 @@
 import pandas as pd
 import numpy as np
 from active_learning.algorithms.base import TextSelectorBase
+from scipy.spatial.distance import cosine
 
 
-class ConfidenceSelector(TextSelectorBase):
+class MaxPositiveClassSelector(TextSelectorBase):
     def select_annotations(
         self,
         texts: pd.DataFrame,
@@ -13,8 +14,11 @@ class ConfidenceSelector(TextSelectorBase):
         confidences: np.ndarray,
     ):
         if confidences is not None:
-            confidences = confidences.max(axis=1)
-            sorted_index = np.argsort(confidences)
+            dims = confidences.shape[1]
+            confidences = confidences.reshape(-1, int(dims / 2), 2)[:, :, 1]
+            confidences = confidences.mean(axis=1)
+
+            sorted_index = np.argsort(confidences)[::-1]
 
             return not_annotated.iloc[sorted_index[:amount]]
 

@@ -232,20 +232,20 @@ class BaseDataModule(LightningDataModule, abc.ABC):
             text_id_to_text_split = self.data.set_index("text_id")["text_split"]
             text_id_to_text_split = text_id_to_text_split.to_dict()
 
-            text_id_to_fold = self.annotations.set_index("text_id")["fold"]
-            text_id_to_fold = text_id_to_fold.to_dict()
+            annotator_id_to_fold = self.annotations.set_index("annotator_id")["fold"]
+            annotator_id_to_fold = annotator_id_to_fold.to_dict()
 
-            def _get_annotation_split(text_id):
+            def _get_annotation_split(text_id, annotator_id):
                 text_split = text_id_to_text_split[text_id]
-                text_fold = text_id_to_fold[text_id]
+                annotator_fold = annotator_id_to_fold[annotator_id]
 
                 if text_split == "past":
                     return "train"
-                if text_split == "present" and text_fold in self.train_folds:
+                if text_split == "present" and annotator_fold in self.train_folds:
                     return "train"
-                if text_split == "future1" and text_fold == self.val_fold:
+                if text_split == "future1" and annotator_fold == self.val_fold:
                     return "val"
-                if text_split == "future2" and text_fold == self.test_fold:
+                if text_split == "future2" and annotator_fold == self.test_fold:
                     return "test"
 
                 return "none"
