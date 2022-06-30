@@ -1,5 +1,5 @@
 """
-This code is adapted version of: https://github.com/allenai/cartography
+This code is adapted version of the original Cartography Code: https://github.com/allenai/cartography
 """
 from typing import List
 from collections import defaultdict
@@ -38,15 +38,19 @@ def compute_forgetfulness(correctness_trend: List[float]) -> int:
 
 
 def compute_correctness(trend: List[float]) -> float:
-    """
-    Aggregate #times an example is predicted correctly during all training epochs.
+    """Aggregate #times an example is predicted correctly during all training epochs
+
+    Args:
+        trend (List[float]): TODO
+
+    Returns:
+        float: TODO
     """
     return sum(trend)
 
 
-def compute_metrics(training_dynamics, num_epochs: int):
-    """
-    Given the training dynamics (logits for each training instance across epochs), compute metrics
+def compute_metrics(training_dynamics, num_epochs: int) -> pd.DataFrame:
+    """Given the training dynamics (logits for each training instance across epochs), compute metrics
     based on it, for data map coorodinates.
     Computed metrics are: confidence, variability, correctness, forgetfulness, threshold_closeness---
     the last two being baselines from prior work
@@ -70,9 +74,6 @@ def compute_metrics(training_dynamics, num_epochs: int):
 
     loss = torch.nn.CrossEntropyLoss()
 
-    # print(list(training_dynamics.values())[0]["logits"])
-    # raise None
-    # print(num_tot_epochs)
 
     logits = {i: [] for i in range(num_epochs)}
     targets = {i: [] for i in range(num_epochs)}
@@ -119,8 +120,14 @@ def compute_metrics(training_dynamics, num_epochs: int):
                         correctness_[guid],
                         forgetfulness_[guid],
                         ] for i, guid in enumerate(correctness_)], columns=column_names)
+    
+    df_train = pd.DataFrame([[i,
+                                loss(torch.Tensor(logits[i]), torch.LongTensor(targets[i])).item() / len(training_dynamics),
+                                training_accuracy[i] / len(training_dynamics)
+                                ] for i in range(num_epochs)],
+                            columns=['epoch', 'loss', 'train_acc'])
 
-    return df
+    return df, df_train
 
 
 def compute_avg_metrics(metrics: List[pd.DataFrame]) -> pd.DataFrame:
@@ -129,12 +136,30 @@ def compute_avg_metrics(metrics: List[pd.DataFrame]) -> pd.DataFrame:
     return metrics_avg
 
 
+def write_filtered_data(metrics: pd.DataFrame, save_path: str, sorted_by: str = 'variability', take_size: float = 0.3):
+    """Create filter dataframe for data
+
+    Args:
+        metrics (pd.DataFrame): _description_
+        first_group (str, optional): _description_. Defaults to 'ambigous'.
+        take_size (float, optional): _description_. Defaults to 0.3.
+    """
+    sorted_scores = metrics.sort_values(by=[sorted_by], ascending=False)
+    
+    selected = sorted_scores.head(n=int(len(sorted_scores) * take_size))
+    
+    selected[['text_id', 'annotator_id']] = selected['guid'].str.split('_', expand=True)
+    
+    selected[['text_id', 'annotator_id']].to_csv(save_path, index=False)
+    
+    
+
 def plot_data_map(dataframe: pd.DataFrame,
                   save_path: str, 
                   hue_metric: str = 'correct.',
-                  title: str = '',
+                  save_name: str = '',
                   show_hist: bool = False,
-                  max_instances_to_plot = 55000):
+                  max_instances_to_plot = 55000) -> None:
     # Set style.
     sns.set(style='whitegrid', font_scale=1.6, font='Georgia', context='paper')
     
@@ -196,7 +221,7 @@ def plot_data_map(dataframe: pd.DataFrame,
     plot.set_ylabel('confidence')
 
     if show_hist:
-        plot.set_title(f"{title} Data Map", fontsize=17)
+        plot.set_title(f"{save_name} Data Map", fontsize=17)
 
         # Make the histograms.
         ax1 = fig.add_subplot(gs[0, 1])
@@ -221,5 +246,5 @@ def plot_data_map(dataframe: pd.DataFrame,
         plot2.set_ylabel('density')
 
     fig.tight_layout()
-    filename = f'{save_path}/{title}.pdf' # if show_hist else f'figures/compact_{title}_{model}.pdf'
+    filename = f'{save_path}/{save_name}.pdf' # if show_hist else f'figures/compact_{title}_{model}.pdf'
     fig.savefig(filename, dpi=300)

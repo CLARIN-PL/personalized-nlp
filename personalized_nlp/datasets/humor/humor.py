@@ -10,6 +10,15 @@ from personalized_nlp.datasets.datamodule_base import BaseDataModule
 
 
 class HumorDataModule(BaseDataModule):
+    
+    @property 
+    def annotations_file(self) -> str:
+        return f'annotations_{self.stratify_folds_by}_folds.csv'
+    
+    @property 
+    def data_file(self) -> str:
+        return f'data_processed.csv'
+    
     @property
     def embeddings_path(self) -> Path:
         return self.data_dir / f"embeddings/text_id_to_emb_{self.embeddings_type}.p"
@@ -36,10 +45,10 @@ class HumorDataModule(BaseDataModule):
         os.makedirs(self.data_dir / "embeddings", exist_ok=True)
 
     def prepare_data(self) -> None:
-        self.data = pd.read_csv(self.data_dir / "texts" / "data.csv")
+        self.data = pd.read_csv(self.data_dir / "texts" / self.data_file)
 
         self.annotations = pd.read_csv(
-            self.data_dir / "texts" / "annotations.csv"
+            self.data_dir / "texts" / self.annotations_file
         ).dropna()
 
         if self.min_annotations_per_text is not None:

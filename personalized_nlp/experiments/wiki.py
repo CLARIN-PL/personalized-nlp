@@ -15,7 +15,7 @@ os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 os.environ["WANDB_START_METHOD"] = "thread"
 
 if __name__ == "__main__":
-    wandb_project_name = "Kartografia"
+    wandb_project_name = "TestAgresji"
     datamodule_cls = AggressionDataModule
 
     datamodule_kwargs_list = product_kwargs(
@@ -28,7 +28,7 @@ if __name__ == "__main__":
             "stratify_folds_by": ["users", "texts"][1:],
             "fold_nums": [10],
             "batch_size": [3000],
-            "fold_num": list(range(10))[:1],
+            "fold_num": list(range(10)),
             "use_finetuned_embeddings": [False],
             "major_voting": [False],
         }
@@ -48,7 +48,7 @@ if __name__ == "__main__":
             "regression": [False],
             "use_cuda": [False],
             # "model_type": ["baseline", "onehot", "peb", "bias", "embedding"],
-            "model_type": ["baseline", "onehot"][:2],
+            "model_type": ["onehot"],
         }
     )
 
@@ -81,7 +81,9 @@ if __name__ == "__main__":
                 **trainer_kwargs,
                 custom_callbacks=[
                     callbacks.CartographySaveCallback(
-                        dir_name=f'cartography_wiki_agr_model={trainer_kwargs["model_type"]}'
+                        dir_name=f'cartography_wiki_agr_model={trainer_kwargs["model_type"]}',
+                        fold_num=datamodule_kwargs["fold_num"],
+                        fold_nums=datamodule_kwargs["fold_nums"]
                         ),
                     EarlyStopping(monitor="valid_loss", mode="min", patience=3),
                 ],

@@ -1,3 +1,6 @@
 /annotations.tsv
 /data.tsv
 /worker_demographics.tsv
+/annotations_texts_folds.csv
+/annotations_users_folds.csv
+/data_processed.csv

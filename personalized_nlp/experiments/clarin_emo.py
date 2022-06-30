@@ -3,6 +3,7 @@ from itertools import product
 from pytorch_lightning.callbacks import EarlyStopping
 
 from personalized_nlp.datasets.clarin_emo_sent import ClarinEmoSentNoNoiseDataModule
+from personalized_nlp.datasets.clarin_emo_text import ClarinEmoTextDataModule
 
 from personalized_nlp.learning.train import train_test
 from settings import LOGS_DIR
@@ -16,14 +17,15 @@ os.environ["WANDB_START_METHOD"] = "thread"
 
 if __name__ == "__main__":
     wandb_project_name = "Kartografia"
-    datamodule_cls = ClarinEmoSentNoNoiseDataModule
+    datamodule_cls = ClarinEmoTextDataModule #ClarinEmoSentNoNoiseDataModule
 
     datamodule_kwargs_list = product_kwargs(
         {
             "regression": [False],
-            "embedding_types": ["labse", "mpnet", "xlmr", "random", "skipgram", "cbow"][
-                :1
-            ],
+            # "embedding_types": ["labse", "mpnet", "xlmr", "random", "skipgram", "cbow"][
+            #     :1
+            # ],
+            "embedding_types": ["xlmr"],
             "limit_past_annotations_list": [None],
             "stratify_folds_by": ["users", "texts"][1:],
             "fold_nums": [10],
@@ -43,12 +45,12 @@ if __name__ == "__main__":
     )
     trainer_kwargs_list = product_kwargs(
         {
-            "epochs": [20],
+            "epochs": [500],
             "lr_rate": [0.008],
             "regression": [False],
             "use_cuda": [False],
             # "model_type": ["baseline", "onehot", "peb", "bias", "embedding"],
-            "model_type": ["baseline"],
+            "model_type": ["embedding"],
         }
     )
 
@@ -81,9 +83,9 @@ if __name__ == "__main__":
                 **trainer_kwargs,
                 custom_callbacks=[
                     callbacks.CartographySaveCallback(
-                        dir_name='clarin_emo_cartography'
+                        dir_name=f'clarin_emo_texts_cartography_{trainer_kwargs["model_type"]}_500epochs'
                     ),
-                    EarlyStopping(monitor="valid_loss", mode="min", patience=3),
+                    #EarlyStopping(monitor="valid_loss", mode="min", patience=3),
                 ],
             )
 

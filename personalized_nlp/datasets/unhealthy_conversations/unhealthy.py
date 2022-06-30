@@ -9,6 +9,16 @@ from personalized_nlp.datasets.datamodule_base import BaseDataModule
 
 
 class UnhealthyDataModule(BaseDataModule):
+    
+    
+    @property
+    def annotations_file(self) -> str:
+        return f"uc_annotations_{self.stratify_folds_by}_folds.csv"
+    
+    @property
+    def data_file(self) -> str:
+        return 'uc_texts_processed.csv'
+    
     @property
     def embeddings_path(self) -> Path:
         return self.data_dir / f"embeddings/text_id_to_emb_{self.embeddings_type}.p"
@@ -43,19 +53,9 @@ class UnhealthyDataModule(BaseDataModule):
         os.makedirs(self.data_dir / "embeddings", exist_ok=True)
 
     def prepare_data(self) -> None:
-        full_data = pd.read_csv(self.data_dir / "unhealthy_full.csv").dropna()
-        self.data = (
-            full_data.loc[:, ["_unit_id", "comment"]]
-            .drop_duplicates()
-            .reset_index(drop=True)
-        )
-        self.data.columns = ["text_id", "text"]
+        columns_map = {'comment': 'text'}
+        self.data = pd.read_csv(self.data_dir / self.data_file).dropna() 
+        self.data = self.data.rename(columns=columns_map)
 
-        self.annotations = full_data.loc[
-            :, ["_unit_id", "_worker_id"] + self.annotation_columns
-        ]
-        self.annotations.columns = ["text_id", "annotator_id"] + self.annotation_columns
-
-        self.annotations = self.annotations.drop_duplicates(
-            subset=["text_id", "annotator_id"]
-        )
+        self.annotations = pd.read_csv(self.data_dir / self.annotations_file)
+        

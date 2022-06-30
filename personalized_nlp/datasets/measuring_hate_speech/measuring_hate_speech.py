@@ -12,9 +12,25 @@ from personalized_nlp.datasets.datamodule_base import BaseDataModule
 
 class MeasuringHateSpeechDataModule(BaseDataModule):
 
+    @property 
+    def annotations_file(self) -> str:
+        return f'annotations_{self.stratify_folds_by}_folds.csv'
+    
+    @property 
+    def data_file(self) -> str:
+        return f'data_processed.csv'
+
     @property
     def data_dir(self) -> Path:
         return DATA_DIR / "measuring_hate_speech"
+    
+    @property
+    def annotations_file(self) -> str:
+        return f"uc_annotations_{self.stratify_folds_by}_folds.csv"
+    
+    @property
+    def data_file(self) -> str:
+        return 'uc_texts_processed.csv'
 
     def __init__(
         self,
@@ -25,18 +41,14 @@ class MeasuringHateSpeechDataModule(BaseDataModule):
         os.makedirs(self.data_dir / "embeddings", exist_ok=True)
 
     def prepare_data(self) -> None:
-        self.data = pd.read_csv(
-            self.data_dir / "data.tsv",
-            sep="\t",
-        )
+        self.data = pd.read_csv(self.data_dir / self.data_file)
 
         self.annotators = pd.read_csv(
             self.data_dir / "worker_demographics.tsv",
             sep="\t",
         )
 
-        self.annotations = pd.read_csv(self.data_dir / "annotations.tsv",
-                                       sep="\t")
+        self.annotations = pd.read_csv(self.data_dir / self.annotations_file)
 
     @property
     def class_dims(self) -> List[int]:

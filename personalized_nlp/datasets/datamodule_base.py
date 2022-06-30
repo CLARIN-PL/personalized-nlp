@@ -1,24 +1,30 @@
-import abc
+from typing import Any, Dict, List, Optional, Tuple
 import os
+import abc
 import pickle
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
 
+
+import torch
 import numpy as np
 import pandas as pd
-import torch
-from personalized_nlp.datasets.dataset import BatchIndexedDataset
+from torch.utils.data import DataLoader
+from pytorch_lightning import LightningDataModule, seed_everything
+
 from settings import EMBEDDINGS_SIZES, TRANSFORMER_MODEL_STRINGS
+from personalized_nlp.datasets.dataset import BatchIndexedDataset
 from personalized_nlp.utils.biases import get_annotator_biases
 from personalized_nlp.utils.controversy import get_conformity
 from personalized_nlp.utils.data_splitting import split_texts
 from personalized_nlp.utils.embeddings import create_embeddings
 from personalized_nlp.utils.finetune import finetune_datamodule_embeddings
-from pytorch_lightning import LightningDataModule, seed_everything
-from torch.utils.data import DataLoader
 
 
+
+# TODO specify types! 
+# TODO add docstring!
 class BaseDataModule(LightningDataModule, abc.ABC):
+    
     @abc.abstractproperty
     def class_dims(self) -> List[int]:
         raise NotImplementedError()
@@ -30,6 +36,14 @@ class BaseDataModule(LightningDataModule, abc.ABC):
     @abc.abstractproperty
     def embeddings_path(self) -> Path:
         raise NotImplementedError()
+    
+    @abc.abstractproperty
+    def annotations_file(self) -> str:
+        raise NotImplementedError()
+    
+    @abc.abstractproperty
+    def data_file(self) -> str:
+        raise NotImplementedError()
 
     @abc.abstractproperty
     def data_dir(self) -> Path:
@@ -37,7 +51,7 @@ class BaseDataModule(LightningDataModule, abc.ABC):
 
     @property
     def annotators_number(self) -> int:
-        return max(self.annotator_id_idx_dict.values()) + 1
+        return max(self.annotations['annotator_id']) + 1
 
     @property
     def train_text_split_names(self) -> List[str]:
@@ -57,6 +71,10 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         exclude_folds = [self.val_fold, self.test_fold]
 
         return [fold for fold in all_folds if fold not in exclude_folds]
+    
+    @property
+    def num_annotations(self) -> int:
+        return len(self.annotations)
 
     @property
     def val_fold(self) -> int:
@@ -95,10 +113,10 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         test_fold: Optional[int] = None,
         min_annotations_per_user_in_fold: Optional[int] = None,
         seed: int = 22,
+        filter_train_annotations_path: Optional[str] = None,
         **kwargs,
     ):
         """_summary_
-
         Args:
             batch_size (int, optional): Batch size for data loaders. Defaults to 3000.
             embeddings_type (str, optional): string identifier of embedding. Defaults to "bert".
@@ -108,6 +126,7 @@ class BaseDataModule(LightningDataModule, abc.ABC):
             past_annotations_limit (Optional[int], optional): Maximum number of annotations in past dataset part. Defaults to None.
             stratify_folds_by (str, optional): How to stratify annotations: 'texts' or 'users'. Defaults to 'texts'.
             use_finetuned_embeddings (bool, optional): if true, use finetuned embeddings. Defaults to False.
+            filtered_annotations (str, optional): path to dataframe for filter annotations (for example choose only user=1, text=1,2,4 etc). Defaults to None.
         """
 
         super().__init__(
@@ -128,6 +147,9 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         self.regression = regression
         self.past_annotations_limit = past_annotations_limit
         self.stratify_folds_by = stratify_folds_by
+        if stratify_folds_by == 'users':
+            raise Exception('User folds scenario is not supported yet!')
+
         self._test_fold = test_fold if test_fold is not None else 0
         self.use_finetuned_embeddings = use_finetuned_embeddings
         self.min_annotations_per_user_in_fold = min_annotations_per_user_in_fold
@@ -143,6 +165,17 @@ class BaseDataModule(LightningDataModule, abc.ABC):
 
         self.prepare_data()
         self.setup()
+    #     self.filter_train_dict = self._setup_filter_train_annotations(filter_train_annotations_path)        
+        
+    # def _setup_filter_train_annotations(self, filter_annotations_path: str) -> Optional[Dict]:
+    #     if filter_annotations_path is None:
+    #         return None
+    #     filter_dict = {}
+    #     for file in glob.glob(os.path.join(filter_annotations_path, '*')):
+    #         fold = int(re.search("(?<=fold_)([0-9]+)(?=\_)", file).group())
+    #         filter_dict[fold] = file
+    #     return filter_dict
+        
 
     def _create_embeddings(self, use_cuda: Optional[bool] = None) -> None:
         texts = self.data["text"].tolist()
@@ -165,7 +198,7 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         annotations = self.annotations
         self._original_annotations = annotations.copy()
 
-        self._assign_folds()
+        # self._assign_folds()
         self._assign_splits()
 
         if self.past_annotations_limit is not None:
@@ -206,19 +239,19 @@ class BaseDataModule(LightningDataModule, abc.ABC):
 
         self.text_embeddings = torch.tensor(embeddings)
 
-        self.text_id_idx_dict = (
-            data.loc[:, ["text_id"]]
-            .reset_index()
-            .set_index("text_id")
-            .to_dict()["index"]
-        )
+        # self.text_id_idx_dict = (
+        #     data.loc[:, ["text_id"]]
+        #     .reset_index()
+        #     .set_index("text_id")
+        #     .to_dict()["index"]
+        # )
 
-        annotator_id_category = annotations["annotator_id"].astype("category")
-        self.annotator_id_idx_dict = {
-            a_id: idx for idx, a_id in enumerate(annotator_id_category.cat.categories)
-        }
+        # annotator_id_category = annotations["annotator_id"].astype("category")
+        # self.annotator_id_idx_dict = {
+        #     a_id: idx for idx, a_id in enumerate(annotator_id_category.cat.categories)
+        # }
 
-    def _assign_splits(self):
+    def _assign_splits(self) -> None:
         if self.stratify_folds_by == "texts":
             val_fold = self.val_fold
             test_fold = self.test_fold
@@ -230,6 +263,7 @@ class BaseDataModule(LightningDataModule, abc.ABC):
             self.data = split_texts(self.data, self.split_sizes)
 
             text_id_to_text_split = self.data.set_index("text_id")["text_split"]
+            # raise Exception(text_id_to_text_split)
             text_id_to_text_split = text_id_to_text_split.to_dict()
 
             annotator_id_to_fold = self.annotations.set_index("annotator_id")["fold"]
@@ -247,7 +281,6 @@ class BaseDataModule(LightningDataModule, abc.ABC):
                     return "val"
                 if text_split == "future2" and annotator_fold == self.test_fold:
                     return "test"
-
                 return "none"
 
             self.annotations["split"] = self.annotations["text_id"].apply(
@@ -286,7 +319,8 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         df.loc[:, annotation_columns] = df.loc[:, annotation_columns].fillna(0)
 
     def compute_major_votes(self) -> None:
-        """Computes mean votes for texts in train folds."""
+        """Computes mean votes for texts in train folds.
+        """
         annotations = self.annotations
         annotation_columns = self.annotation_columns
 
@@ -339,43 +373,41 @@ class BaseDataModule(LightningDataModule, abc.ABC):
             annotator_biases.set_index("annotator_id").sort_index().fillna(0)
         )
 
-    def train_dataloader(self, shuffle: bool = True) -> DataLoader:
-        """Returns dataloader for train part of the dataset.
+    def train_dataloader(self) -> DataLoader:
+        """Returns dataloader for training part of the dataset.
 
-        :param shuffle: if true, shuffles data during training, defaults to True
-        :type shuffle: bool, optional
-        :return: train dataloader for the dataset
-        :rtype: DataLoader
-        """
+        Returns:
+            DataLoader: training dataloader for the dataset.
+        """        
         return self._get_dataloader("train", True)
 
     def val_dataloader(self) -> DataLoader:
         """Returns dataloader for validation part of the dataset.
 
-        :type test_fold: int, optional
-        :return: validation dataloader for the dataset
-        :rtype: DataLoader
+        Returns:
+            DataLoader: validation dataloader for the dataset.
         """
         return self._get_dataloader("val", False)
 
     def test_dataloader(self) -> DataLoader:
-        """Returns dataloader for test part of the dataset.
+        """Returns dataloader for testing part of the dataset.
 
-        :return: validation dataloader for the dataset
-        :rtype: DataLoader
+        Returns:
+            DataLoader: testing dataloader for the dataset.
         """
         return self._get_dataloader("test", False)
 
-    def custom_dataloader(self, split_name="none", shuffle=False):
+    def custom_dataloader(self, split_name: str="none", shuffle: bool=False) -> DataLoader:
         return self._get_dataloader(split_name, shuffle)
 
-    def _get_dataloader(self, split, shuffle) -> DataLoader:
+    def _get_dataloader(self, split: str, shuffle: bool) -> DataLoader:
         annotations = self.annotations
         annotations = annotations.loc[annotations.split == split]
 
         X, y = self._get_data_by_split(annotations)
         text_features = self._get_text_features()
         annotator_features = self._get_annotator_features()
+
 
         dataset = BatchIndexedDataset(
             X,
@@ -404,8 +436,6 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         Each feature should be a numpy array of whatever dtype, with length
         equal to number of texts in the dataset. Features can be used by
         models during training.
-
-
         :return: dictionary of text features
         :rtype: Dict[str, Any]
         """
@@ -419,8 +449,6 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         Each feature should be a numpy array of whatever dtype, with length
         equal to number of annotators in the dataset. Features can be used by
         models during training.
-
-
         :return: dictionary of annotator features
         :rtype: Dict[str, Any]
         """
@@ -431,7 +459,6 @@ class BaseDataModule(LightningDataModule, abc.ABC):
     ) -> Tuple[np.ndarray, np.ndarray]:
         """Returns annotations (coded indices of annotators and texts), and
         their labels in the dataset for given splits. Used during training.
-
         :param annotations: DataFrame of annotations from which the data will
         be extracted.
         :type annotations: pd.DataFrame
@@ -446,10 +473,10 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         X = df.loc[:, ["text_id", "annotator_id"]]
         y = df[self.annotation_columns]
 
-        X["text_id"] = X["text_id"].apply(lambda r_id: self.text_id_idx_dict[r_id])
-        X["annotator_id"] = X["annotator_id"].apply(
-            lambda w_id: self.annotator_id_idx_dict[w_id]
-        )
+        # X["text_id"] = X["text_id"].apply(lambda r_id: self.text_id_idx_dict[r_id])
+        # X["annotator_id"] = X["annotator_id"].apply(
+        #     lambda w_id: self.annotator_id_idx_dict[w_id]
+        # )
 
         X, y = X.values, y.values
 
@@ -462,7 +489,6 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         """Returns full dataset as X, y, where X is numpy array of embeddings,
         and y is numpy array of the labels. Can be easily used in some baseline
         models like sklearn logistic regression.
-
         :return: Tuple (X, y), where X is numpy array of embeddings,
         and y is numpy array of the labels
         :rtype: Tuple[np.ndarray, np.ndarray]
@@ -471,12 +497,12 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         annotations = annotations.merge(self.data)
         embeddings = self.text_embeddings.to("cpu").numpy()
 
-        annotations["text_idx"] = annotations["text_id"].apply(
-            lambda r_id: self.text_id_idx_dict[r_id]
-        )
-        annotations["annotator_idx"] = annotations["annotator_id"].apply(
-            lambda w_id: self.annotator_id_idx_dict[w_id]
-        )
+        # annotations["text_idx"] = annotations["text_id"].apply(
+        #     lambda r_id: self.text_id_idx_dict[r_id]
+        # )
+        # annotations["annotator_idx"] = annotations["annotator_id"].apply(
+        #     lambda w_id: self.annotator_id_idx_dict[w_id]
+        # )
 
         X = np.vstack([embeddings[i] for i in annotations["text_idx"].values])
         y = annotations[self.annotation_columns].values
@@ -510,7 +536,7 @@ class BaseDataModule(LightningDataModule, abc.ABC):
 
         self.annotations = pd.concat([non_past_annotations, controversial_annotations])
 
-    def filter_annotators(self):
+    def filter_annotators(self) -> None:
         """Filters annotators with less than `min_annotations_per_user_in_fold` annotations
         in each fold and with less than one annotations per each (class_dim, fold) pair.
         """
