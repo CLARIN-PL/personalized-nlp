@@ -5,27 +5,29 @@ import torch
 from itertools import product
 
 from active_learning.module import ActiveLearningModule
-from active_learning.algorithms import RandomSelector, ConfidenceSelector, AverageConfidencePerUserSelector
+from active_learning.algorithms import (RandomSelector, ConfidenceSelector,
+                                        AverageConfidencePerUserSelector)
 from personalized_nlp.datasets.clarin_emo_sent.clarin_emo_sent import ClarinEmoSentDataModule
 
 from personalized_nlp.utils import seed_everything
 from personalized_nlp.utils.experiments import product_kwargs
 from personalized_nlp.utils.callbacks.personal_metrics import (
-    PersonalizedMetricsCallback, 
-)
+    PersonalizedMetricsCallback, )
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 os.environ["WANDB_START_METHOD"] = "thread"
 
 if __name__ == "__main__":
     torch.multiprocessing.set_sharing_strategy('file_system')
-    wandb_project_name = "ClarinEmoSent_ActiveLearning_5foldNewMetric"
+    wandb_project_name = "ClarinEmoSent_ActiveLearning_5foldNewStep"
     datamodule_cls = ClarinEmoSentDataModule
 
     activelearning_kwargs_list = product_kwargs({
-        "text_selector_cls": [RandomSelector, ConfidenceSelector],
-        "max_amount": [35_000],
-        "step_size": [5000],
+        "text_selector_cls":
+        [RandomSelector, ConfidenceSelector,
+         AverageConfidencePerUserSelector][-1:],
+        "max_amount": [42_000],
+        "step_size": [3000],
     })
     datamodule_kwargs_list = product_kwargs({
         "regression": [False],

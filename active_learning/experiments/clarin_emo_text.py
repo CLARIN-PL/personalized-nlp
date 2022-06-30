@@ -5,7 +5,8 @@ import torch
 from itertools import product
 
 from active_learning.module import ActiveLearningModule
-from active_learning.algorithms import RandomSelector, ConfidenceSelector, AverageConfidencePerUserSelector
+from active_learning.algorithms import (RandomSelector, ConfidenceSelector,
+                                        AverageConfidencePerUserSelector)
 from personalized_nlp.datasets.clarin_emo_text.clarin_emo_text import ClarinEmoTextDataModule
 
 from personalized_nlp.utils import seed_everything
@@ -18,12 +19,14 @@ os.environ["WANDB_START_METHOD"] = "thread"
 
 if __name__ == "__main__":
     torch.multiprocessing.set_sharing_strategy('file_system')
-    wandb_project_name = "ClarinEmoText_ActiveLearning_5foldNewMetric"
+    wandb_project_name = "ClarinEmoText_ActiveLearning_5foldNewStep"
     datamodule_cls = ClarinEmoTextDataModule
 
     activelearning_kwargs_list = product_kwargs({
-        "text_selector_cls": [RandomSelector, ConfidenceSelector],
-        "max_amount": [4_000],
+        "text_selector_cls":
+        [RandomSelector, ConfidenceSelector,
+         AverageConfidencePerUserSelector][-1:],
+        "max_amount": [5_000],
         "step_size": [500],
     })
     datamodule_kwargs_list = product_kwargs({
