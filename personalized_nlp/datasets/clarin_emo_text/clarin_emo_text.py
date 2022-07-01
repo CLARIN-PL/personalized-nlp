@@ -12,6 +12,14 @@ from personalized_nlp.datasets.datamodule_base import BaseDataModule
 
 class ClarinEmoTextDataModule(BaseDataModule):
     @property
+    def annotations_file(self) -> str:
+        return f"annotations_{self.stratify_folds_by}_folds.csv"
+
+    @property
+    def data_file(self) -> str:
+        return f"data_processed.csv"
+
+    @property
     def data_dir(self) -> Path:
         return DATA_DIR / "clarin_emo_text"
 
