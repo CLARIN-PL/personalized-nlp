@@ -17,7 +17,7 @@ os.environ["WANDB_START_METHOD"] = "thread"
 
 if __name__ == "__main__":
     wandb_project_name = "Kartografia"
-    datamodule_cls = ClarinEmoTextDataModule #ClarinEmoSentNoNoiseDataModule
+    datamodule_cls = ClarinEmoTextDataModule  # ClarinEmoSentNoNoiseDataModule
 
     datamodule_kwargs_list = product_kwargs(
         {
@@ -25,12 +25,12 @@ if __name__ == "__main__":
             # "embedding_types": ["labse", "mpnet", "xlmr", "random", "skipgram", "cbow"][
             #     :1
             # ],
-            "embedding_types": ["xlmr"],
+            "embeddings_type": ["xlmr"],
             "limit_past_annotations_list": [None],
             "stratify_folds_by": ["users", "texts"][1:],
             "fold_nums": [10],
             "batch_size": [3000],
-            "fold_num": list(range(10))[:1],
+            "test_fold": list(range(10))[:1],
             "use_finetuned_embeddings": [False],
             "major_voting": [False],
         }
@@ -85,7 +85,7 @@ if __name__ == "__main__":
                     callbacks.CartographySaveCallback(
                         dir_name=f'clarin_emo_texts_cartography_{trainer_kwargs["model_type"]}_500epochs'
                     ),
-                    #EarlyStopping(monitor="valid_loss", mode="min", patience=3),
+                    # EarlyStopping(monitor="valid_loss", mode="min", patience=3),
                 ],
             )
 

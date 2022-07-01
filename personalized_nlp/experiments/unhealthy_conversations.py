@@ -24,12 +24,12 @@ if __name__ == "__main__":
             # "embedding_types": ["labse", "mpnet", "xlmr", "random", "skipgram", "cbow"][
             #     :1
             # ],
-            "embedding_types": ["xlmr"],
+            "embeddings_type": ["xlmr"],
             "limit_past_annotations_list": [None],
             "stratify_folds_by": ["users", "texts"][1:],
             "fold_nums": [10],
             "batch_size": [3000],
-            "fold_num": list(range(10))[:1],
+            "test_fold": list(range(10))[:1],
             "use_finetuned_embeddings": [False],
             "major_voting": [False],
         }
