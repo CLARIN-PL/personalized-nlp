@@ -1,17 +1,10 @@
 import os
-
-import torch
-
 from itertools import product
 
 from active_learning.module import ActiveLearningModule
-from active_learning.algorithms import (
-    RandomSelector,
-    ConfidenceSelector,
-    AverageConfidencePerUserSelector,
-)
-from personalized_nlp.datasets.clarin_emo_sent.clarin_emo_sent import (
-    ClarinEmoSentDataModule,
+import active_learning.algorithms as algorithms
+from personalized_nlp.datasets.unhealthy_conversations.unhealthy import (
+    UnhealthyDataModule,
 )
 
 from personalized_nlp.utils import seed_everything
@@ -19,20 +12,28 @@ from personalized_nlp.utils.experiments import product_kwargs
 from personalized_nlp.utils.callbacks.personal_metrics import (
     PersonalizedMetricsCallback,
 )
+from personalized_nlp.utils.callbacks import SaveOutputsLocal
 
-os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+
+os.environ["CUDA_VISIBLE_DEVICES"] = "10"
 os.environ["WANDB_START_METHOD"] = "thread"
 
 if __name__ == "__main__":
-    torch.multiprocessing.set_sharing_strategy("file_system")
-    wandb_project_name = "ClarinEmoSent_ActiveLearning_5foldNewMetric"
-    datamodule_cls = ClarinEmoSentDataModule
+    wandb_project_name = "AL_repeat"
+    datamodule_cls = UnhealthyDataModule
 
     activelearning_kwargs_list = product_kwargs(
         {
-            "text_selector_cls": [RandomSelector, ConfidenceSelector],
-            "max_amount": [35_000],
-            "step_size": [5000],
+            "text_selector_cls": [
+                # algorithms.TextAnnotationDiversitySelector,
+                # algorithms.RandomSelector,
+                # algorithms.ConfidenceSelector,
+                # algorithms.AverageConfidencePerUserSelector,
+                algorithms.ConfidenceAllDimsSelector,
+                algorithms.MaxPositiveClassSelector,
+            ],
+            "max_amount": [100_000],
+            "step_size": [5_000],
         }
     )
     datamodule_kwargs_list = product_kwargs(
@@ -43,11 +44,12 @@ if __name__ == "__main__":
             ],
             "limit_past_annotations_list": [None],
             "stratify_folds_by": ["users", "texts"][1:],
-            "fold_nums": [5],
-            "batch_size": [1500],
+            "folds_num": [5],
+            "batch_size": [3000],
             "test_fold": list(range(5)),
             "use_finetuned_embeddings": [False],
             "major_voting": [False],
+            "min_annotations_per_user_in_fold": [10],
         }
     )
     model_kwargs_list = product_kwargs(
@@ -64,7 +66,7 @@ if __name__ == "__main__":
             "lr_rate": [0.008],
             "regression": [False],
             "use_cuda": [False],
-            "model_type": ["baseline", "onehot", "embedding"],
+            "model_type": ["baseline", "bias", "embedding"],
             "monitor_metric": ["valid_macro_f1_mean"],
             "monitor_mode": ["max"],
         }
@@ -88,7 +90,9 @@ if __name__ == "__main__":
         text_selector = text_selector_cls(class_dims=data_module.class_dims)
         activelearning_kwargs["text_selector"] = text_selector
 
-        trainer_kwargs["custom_callbacks"] = [PersonalizedMetricsCallback()]
+        trainer_kwargs["custom_callbacks"] = [
+            PersonalizedMetricsCallback(),
+        ]
 
         module = ActiveLearningModule(
             datamodule=data_module,

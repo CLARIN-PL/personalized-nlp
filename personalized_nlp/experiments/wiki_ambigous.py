@@ -21,17 +21,19 @@ if __name__ == "__main__":
     datamodule_kwargs_list = product_kwargs(
         {
             "regression": [False],
-            "embedding_types": ["labse", "mpnet", "xlmr", "random", "skipgram", "cbow"][
+            "embeddings_type": ["labse", "mpnet", "xlmr", "random", "skipgram", "cbow"][
                 :1
             ],
             "limit_past_annotations_list": [None],
             "stratify_folds_by": ["users", "texts"][1:],
             "fold_nums": [10],
             "batch_size": [3000],
-            "fold_num": list(range(10)),
+            "test_fold": list(range(10)),
             "use_finetuned_embeddings": [False],
             "major_voting": [False],
-            "filter_annotations_path": ["/home/konradkaranowski/storage/personalized-nlp/storage/outputs/cartography_outputs/cartography_wiki_agr_model=onehot/filtered/class_aggression"]
+            "filter_annotations_path": [
+                "/home/konradkaranowski/storage/personalized-nlp/storage/outputs/cartography_outputs/cartography_wiki_agr_model=onehot/filtered/class_aggression"
+            ],
         }
     )
     model_kwargs_list = product_kwargs(

@@ -20,11 +20,9 @@ from personalized_nlp.utils.embeddings import create_embeddings
 from personalized_nlp.utils.finetune import finetune_datamodule_embeddings
 
 
-
-# TODO specify types! 
+# TODO specify types!
 # TODO add docstring!
 class BaseDataModule(LightningDataModule, abc.ABC):
-    
     @abc.abstractproperty
     def class_dims(self) -> List[int]:
         raise NotImplementedError()
@@ -36,11 +34,11 @@ class BaseDataModule(LightningDataModule, abc.ABC):
     @abc.abstractproperty
     def embeddings_path(self) -> Path:
         raise NotImplementedError()
-    
+
     @abc.abstractproperty
     def annotations_file(self) -> str:
         raise NotImplementedError()
-    
+
     @abc.abstractproperty
     def data_file(self) -> str:
         raise NotImplementedError()
@@ -51,7 +49,7 @@ class BaseDataModule(LightningDataModule, abc.ABC):
 
     @property
     def annotators_number(self) -> int:
-        return max(self.annotations['annotator_id']) + 1
+        return max(self.annotations["annotator_id"]) + 1
 
     @property
     def train_text_split_names(self) -> List[str]:
@@ -71,7 +69,7 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         exclude_folds = [self.val_fold, self.test_fold]
 
         return [fold for fold in all_folds if fold not in exclude_folds]
-    
+
     @property
     def num_annotations(self) -> int:
         return len(self.annotations)
@@ -102,7 +100,7 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         test_transforms=None,
         dims=None,
         batch_size: int = 3000,
-        embeddings_type: str = "bert",
+        embeddings_type: str = "labse",
         major_voting: bool = False,
         folds_num: int = 10,
         regression: bool = False,
@@ -147,8 +145,6 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         self.regression = regression
         self.past_annotations_limit = past_annotations_limit
         self.stratify_folds_by = stratify_folds_by
-        if stratify_folds_by == 'users':
-            raise Exception('User folds scenario is not supported yet!')
 
         self._test_fold = test_fold if test_fold is not None else 0
         self.use_finetuned_embeddings = use_finetuned_embeddings
@@ -165,8 +161,9 @@ class BaseDataModule(LightningDataModule, abc.ABC):
 
         self.prepare_data()
         self.setup()
-    #     self.filter_train_dict = self._setup_filter_train_annotations(filter_train_annotations_path)        
-        
+
+    #     self.filter_train_dict = self._setup_filter_train_annotations(filter_train_annotations_path)
+
     # def _setup_filter_train_annotations(self, filter_annotations_path: str) -> Optional[Dict]:
     #     if filter_annotations_path is None:
     #         return None
@@ -175,7 +172,6 @@ class BaseDataModule(LightningDataModule, abc.ABC):
     #         fold = int(re.search("(?<=fold_)([0-9]+)(?=\_)", file).group())
     #         filter_dict[fold] = file
     #     return filter_dict
-        
 
     def _create_embeddings(self, use_cuda: Optional[bool] = None) -> None:
         texts = self.data["text"].tolist()
@@ -263,29 +259,31 @@ class BaseDataModule(LightningDataModule, abc.ABC):
             self.data = split_texts(self.data, self.split_sizes)
 
             text_id_to_text_split = self.data.set_index("text_id")["text_split"]
-            # raise Exception(text_id_to_text_split)
             text_id_to_text_split = text_id_to_text_split.to_dict()
 
-            text_id_to_fold = self.annotations.set_index("text_id")["fold"]
-            text_id_to_fold = text_id_to_fold.to_dict()
+            annotator_id_to_fold = self.annotations.set_index("annotator_id")["fold"]
+            annotator_id_to_fold = annotator_id_to_fold.to_dict()
 
-            def _get_annotation_split(text_id):
+            def _get_annotation_split(row):
+                text_id, annotator_id = row["text_id"], row["annotator_id"]
                 text_split = text_id_to_text_split[text_id]
-                text_fold = text_id_to_fold[text_id]
+                annotator_fold = annotator_id_to_fold[annotator_id]
 
                 if text_split == "past":
                     return "train"
-                if text_split == "present" and text_fold in self.train_folds:
+                if text_split == "present" and annotator_fold in self.train_folds:
                     return "train"
-                if text_split == "future1" and text_fold == self.val_fold:
+                if text_split == "future1" and annotator_fold == self.val_fold:
                     return "val"
-                if text_split == "future2" and text_fold == self.test_fold:
+                if text_split == "future2" and annotator_fold == self.test_fold:
                     return "test"
+
                 return "none"
 
-            self.annotations["split"] = self.annotations["text_id"].apply(
-                _get_annotation_split
-            )
+            self.annotations["split"] = "none"
+            self.annotations["split"] = self.annotations[
+                ["text_id", "annotator_id"]
+            ].apply(_get_annotation_split, axis=1)
 
     def _assign_folds(self):
         """Randomly assign fold to each annotation."""
@@ -319,8 +317,7 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         df.loc[:, annotation_columns] = df.loc[:, annotation_columns].fillna(0)
 
     def compute_major_votes(self) -> None:
-        """Computes mean votes for texts in train folds.
-        """
+        """Computes mean votes for texts in train folds."""
         annotations = self.annotations
         annotation_columns = self.annotation_columns
 
@@ -378,7 +375,7 @@ class BaseDataModule(LightningDataModule, abc.ABC):
 
         Returns:
             DataLoader: training dataloader for the dataset.
-        """        
+        """
         return self._get_dataloader("train", True)
 
     def val_dataloader(self) -> DataLoader:
@@ -397,7 +394,9 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         """
         return self._get_dataloader("test", False)
 
-    def custom_dataloader(self, split_name: str="none", shuffle: bool=False) -> DataLoader:
+    def custom_dataloader(
+        self, split_name: str = "none", shuffle: bool = False
+    ) -> DataLoader:
         return self._get_dataloader(split_name, shuffle)
 
     def _get_dataloader(self, split: str, shuffle: bool) -> DataLoader:
@@ -407,7 +406,6 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         X, y = self._get_data_by_split(annotations)
         text_features = self._get_text_features()
         annotator_features = self._get_annotator_features()
-
 
         dataset = BatchIndexedDataset(
             X,
@@ -540,6 +538,11 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         """Filters annotators with less than `min_annotations_per_user_in_fold` annotations
         in each fold and with less than one annotations per each (class_dim, fold) pair.
         """
+        if self.stratify_folds_by == "users":
+            raise Exception(
+                "Cannot use user folds with min_annotations_per_user_in_fold"
+            )
+
         min_annotations = self.min_annotations_per_user_in_fold
 
         annotation_counts = self.annotations.loc[

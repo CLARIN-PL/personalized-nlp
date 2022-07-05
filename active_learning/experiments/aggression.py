@@ -2,7 +2,7 @@ import os
 from itertools import product
 
 from active_learning.module import ActiveLearningModule
-from active_learning.algorithms import RandomSelector, ConfidenceSelector, AverageConfidencePerUserSelector
+import active_learning.algorithms as algorithms
 from personalized_nlp.datasets.wiki.aggression import AggressionDataModule
 
 from personalized_nlp.utils import seed_everything
@@ -10,36 +10,42 @@ from personalized_nlp.utils.experiments import product_kwargs
 from personalized_nlp.utils.callbacks.personal_metrics import (
     PersonalizedMetricsCallback,
 )
-from personalized_nlp.utils.callbacks import SaveOutputsLocal
-
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 os.environ["WANDB_START_METHOD"] = "thread"
 
 if __name__ == "__main__":
-    wandb_project_name = "AL_Aggression_Ablation_Study"
+    wandb_project_name = "AL_repeat"
     datamodule_cls = AggressionDataModule
 
     activelearning_kwargs_list = product_kwargs(
         {
-            "text_selector_cls": [ConfidenceSelector], #[RandomSelector, ConfidenceSelector, AverageConfidencePerUserSelector],
+            "text_selector_cls": [
+                # algorithms.TextAnnotationDiversitySelector,
+                # algorithms.RandomSelector,
+                # algorithms.ConfidenceSelector,
+                # algorithms.AverageConfidencePerUserSelector,
+                algorithms.ConfidenceAllDimsSelector,
+                algorithms.MaxPositiveClassSelector,
+            ],
             "max_amount": [100_000],
-            "step_size": [5000],
+            "step_size": [5_000],
         }
     )
     datamodule_kwargs_list = product_kwargs(
         {
             "regression": [False],
-            "embedding_types": ["labse", "mpnet", "xlmr", "random", "skipgram", "cbow"][
+            "embeddings_type": ["labse", "mpnet", "xlmr", "random", "skipgram", "cbow"][
                 :1
             ],
             "limit_past_annotations_list": [None],
             "stratify_folds_by": ["users", "texts"][1:],
-            "fold_nums": [10],
+            "folds_num": [5],
             "batch_size": [3000],
-            "fold_num": list(range(10)),
+            "test_fold": list(range(5)),
             "use_finetuned_embeddings": [False],
             "major_voting": [False],
+            "min_annotations_per_user_in_fold": [10],
         }
     )
     model_kwargs_list = product_kwargs(
@@ -56,8 +62,8 @@ if __name__ == "__main__":
             "lr_rate": [0.008],
             "regression": [False],
             "use_cuda": [False],
-            "model_type": ["baseline", "onehot", "embedding"],
-            "monitor_metric": ["valid_f1_aggression_1"],
+            "model_type": ["baseline", "bias", "embedding"],
+            "monitor_metric": ["valid_macro_f1_mean"],
             "monitor_mode": ["max"],
         }
     )
@@ -81,15 +87,7 @@ if __name__ == "__main__":
         activelearning_kwargs["text_selector"] = text_selector
 
         trainer_kwargs["custom_callbacks"] = [
-            #PersonalizedMetricsCallback(),
-            SaveOutputsLocal(
-                save_dir='wiki_agr_active_learning_ablation_study',
-                save_text=True,
-                sep='_',
-                text_selector=type(activelearning_kwargs["text_selector"]).__name__,
-                model=trainer_kwargs["model_type"],
-                fold_num=datamodule_kwargs["fold_num"]
-            )
+            PersonalizedMetricsCallback(),
         ]
 
         module = ActiveLearningModule(

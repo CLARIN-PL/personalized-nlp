@@ -19,12 +19,12 @@ if __name__ == "__main__":
     datamodule_kwargs_list = product_kwargs(
         {
             "regression": [False],
-            "embedding_types": ["labse", "mpnet", "xlmr", "random", "skipgram", "cbow"],
+            "embeddings_type": ["labse", "mpnet", "xlmr", "random", "skipgram", "cbow"],
             "limit_past_annotations_list": [None],
             "stratify_folds_by": ["users"],
             "fold_nums": [10],
             "batch_size": [3000],
-            "fold_num": list(range(10))[:1],
+            "test_fold": list(range(10))[:1],
         }
     )
     model_kwargs_list = product_kwargs(

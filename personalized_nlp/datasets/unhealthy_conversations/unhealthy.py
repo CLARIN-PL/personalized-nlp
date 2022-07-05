@@ -45,7 +45,8 @@ class UnhealthyDataModule(BaseDataModule):
         return [2] * 8
 
     def __init__(
-        self, **kwargs,
+        self,
+        **kwargs,
     ):
         super().__init__(**kwargs)
 
