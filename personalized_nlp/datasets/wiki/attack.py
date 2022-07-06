@@ -1,17 +1,19 @@
 from personalized_nlp.datasets.wiki.base import WikiDataModule
-from personalized_nlp.settings import STORAGE_DIR, ATTACK_URL
+from typing import List
+from pathlib import Path
 
 
 class AttackDataModule(WikiDataModule):
-    def __init__(
-            self,
-            **kwargs,
-    ):
-        super().__init__(**kwargs)
+    @property
+    def class_dims(self) -> List[int]:
+        return [2]
 
-        self.data_path = self.data_dir / 'attack_annotations.tsv'
-        self.data_url = ATTACK_URL
+    @property
+    def annotation_columns(self) -> List[str]:
+        return ["attack"]
 
-        self.annotation_column = 'attack'
-        self.embeddings_path = STORAGE_DIR / \
-            f'wiki_data/embeddings/rev_id_to_emb_{self.embeddings_type}_attack.p'
+    @property
+    def embeddings_path(self) -> Path:
+        return (
+            self.data_dir / f"embeddings/rev_id_to_emb_{self.embeddings_type}_attack.p"
+        )

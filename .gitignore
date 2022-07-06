@@ -1,12 +1,15 @@
+.pytest_cache
 *.pyc
 **/embeddings/*.p
 .ipynb_checkpoints
-personalized_nlp/storage/logs
-personalized_nlp/storage/checkpoints
-personalized_nlp/storage/results
-personalized_nlp/storage/emotions_data
-personalized_nlp/storage/emotions_simple_data/embeddings/
-personalized_nlp/storage/outputs/*
+storage/logs
+!.gitkeep
+storage/checkpoints
+storage/results
+storage/emotions_data
+storage/emotions_simple_data/embeddings/
+storage/outputs/*
+!.gitkeep
 
 # VirtualEnv dir
 venv/

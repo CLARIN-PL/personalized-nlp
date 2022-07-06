@@ -1,0 +1,4 @@
+outs:
+- md5: 29c16dd3c19c0f4d36cd370cc1e9fee4
+  size: 8724926
+  path: annotations_texts_folds.csv

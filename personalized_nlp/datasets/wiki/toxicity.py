@@ -1,16 +1,19 @@
 from personalized_nlp.datasets.wiki.base import WikiDataModule
-from personalized_nlp.settings import STORAGE_DIR, TOXICITY_URL
+from typing import List
+from pathlib import Path
 
 
 class ToxicityDataModule(WikiDataModule):
-    def __init__(
-            self,
-            **kwargs,
-    ):
-        super().__init__(**kwargs)
+    @property
+    def class_dims(self) -> List[int]:
+        return [2]
 
-        self.data_url = TOXICITY_URL
+    @property
+    def annotation_columns(self) -> List[str]:
+        return ["toxicity"]
 
-        self.annotation_column = 'toxicity'
-        self.embeddings_path = STORAGE_DIR / \
-            f'wiki_data/embeddings/rev_id_to_emb_{self.embeddings_type}_toxic.p'
+    @property
+    def embeddings_path(self) -> Path:
+        return (
+            self.data_dir / f"embeddings/rev_id_to_emb_{self.embeddings_type}_toxic.p"
+        )

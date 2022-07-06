@@ -2,24 +2,34 @@ from typing import List
 
 import pandas as pd
 import os
+from pathlib import Path
 
-from personalized_nlp.settings import STORAGE_DIR
-from personalized_nlp.utils.data_splitting import split_texts
+from settings import DATA_DIR
 from personalized_nlp.datasets.datamodule_base import BaseDataModule
 
 
 class UnhealthyDataModule(BaseDataModule):
-    def __init__(
-        self,
-        split_sizes: List[float] = [0.55, 0.15, 0.15, 0.15],
-        **kwargs,
-    ):
-        super().__init__(**kwargs)
+    
+    
+    @property
+    def annotations_file(self) -> str:
+        return f"uc_annotations_{self.stratify_folds_by}_folds.csv"
+    
+    @property
+    def data_file(self) -> str:
+        return 'uc_texts_processed.csv'
+    
+    @property
+    def embeddings_path(self) -> Path:
+        return self.data_dir / f"embeddings/text_id_to_emb_{self.embeddings_type}.p"
 
-        self.folds_num = 10
-        self.data_dir = STORAGE_DIR / "unhealthy_conversations/"
-        self.split_sizes = split_sizes
-        self.annotation_column = [
+    @property
+    def data_dir(self) -> Path:
+        return DATA_DIR / "unhealthy_conversations"
+
+    @property
+    def annotation_columns(self) -> List[str]:
+        return [
             "antagonize",
             "condescending",
             "dismissive",
@@ -29,49 +39,23 @@ class UnhealthyDataModule(BaseDataModule):
             "hostile",
             "sarcastic",
         ]
-        self.text_column = "text"
-
-        self.word_stats_annotation_column = "healthy"
-        self.embeddings_path = (
-            STORAGE_DIR
-            / f"unhealthy_conversations/embeddings/text_id_to_emb_{self.embeddings_type}.p"
-        )
-
-        self.train_split_names = ["present", "past"]
-        self.val_split_names = ["future1"]
-        self.test_split_names = ["future2"]
-
-        os.makedirs(self.data_dir / 'embeddings', exist_ok=True)
-
 
     @property
     def class_dims(self):
         return [2] * 8
 
-    @property
-    def texts_clean(self):
-        return self.data[self.text_column].to_list()
+    def __init__(
+        self,
+        **kwargs,
+    ):
+        super().__init__(**kwargs)
+
+        os.makedirs(self.data_dir / "embeddings", exist_ok=True)
 
     def prepare_data(self) -> None:
-        full_data = pd.read_csv(self.data_dir / "unhealthy_full.csv").dropna()
-        self.data = (
-            full_data.loc[:, ["_unit_id", "comment"]]
-            .drop_duplicates()
-            .reset_index(drop=True)
-        )
-        self.data.columns = ["text_id", "text"]
+        columns_map = {'comment': 'text'}
+        self.data = pd.read_csv(self.data_dir / self.data_file).dropna() 
+        self.data = self.data.rename(columns=columns_map)
 
-        self.annotations = full_data.loc[
-            :, ["_unit_id", "_worker_id"] + self.annotation_column
-        ]
-        self.annotations.columns = ["text_id", "annotator_id"] + self.annotation_column
-
-        self._assign_splits()
-
-        personal_df = self.annotations_with_data.loc[
-            self.annotations_with_data.split == "past"
-        ]
-        self.compute_annotator_biases(personal_df)
-
-    def _assign_splits(self):
-        self.data = split_texts(self.data, self.split_sizes)
+        self.annotations = pd.read_csv(self.data_dir / self.annotations_file)
+        

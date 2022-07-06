@@ -1,12 +1,21 @@
-from tensorflow.keras.preprocessing.text import Tokenizer
-from tensorflow.keras.preprocessing.sequence import pad_sequences
+from typing import Tuple, List, Sequence, Dict, Any
+
 import numpy as np
 import pandas as pd
 from scipy.stats import entropy
 
+from tensorflow.keras.preprocessing.text import Tokenizer
+from tensorflow.keras.preprocessing.sequence import pad_sequences
 
-def get_tokenized_texts(data):
-    """ Tokenize comments"""
+def get_tokenized_texts(data: pd.DataFrame) -> Tuple[Tokenizer, List[Any], Dict[Any, Any]]:
+    """Tokenize comments
+
+    Args:
+        data (pd.DataFrame): dataframe with comments. Require to have at least coluns ['text']
+
+    Returns:
+        Tuple[Tokenizer, List[Any], Dict[Any, Any]]: tokenizer, tokenized text and dictionary mapping idx to work
+    """
     data = data.copy()
     data['text_clean'] = data['text'].str.replace('NEWLINE_TOKEN', ' ')
 
@@ -15,15 +24,26 @@ def get_tokenized_texts(data):
 
     text_tokenized = tokenizer.texts_to_sequences(data.text_clean.tolist())
     text_tokenized = pad_sequences(
-        text_tokenized, maxlen=256, dtype='int32', padding='post', truncating='post', value=0.0)
+    text_tokenized, maxlen=256, dtype='int32', padding='post', truncating='post', value=0.0)
 
     idx_to_word = {v: k for k, v in tokenizer.word_index.items()}
 
     return tokenizer, text_tokenized, idx_to_word
 
 
-def get_word_stats(texts, annotations, tokenized, idx_to_word, annotation_column):
-    """ Calculate mean and std of scores per word in dataset """
+def get_word_stats(texts, annotations, tokenized, idx_to_word, annotation_column) -> pd.DataFrame:
+    """Calculate mean and std of scores per word in dataset
+
+    Args:
+        texts (_type_): _description_
+        annotations (_type_): _description_
+        tokenized (_type_): _description_
+        idx_to_word (_type_): _description_
+        annotation_column (_type_): _description_
+
+    Returns:
+        _type_: _description_
+    """
     text_stats = annotations.groupby('text_id')[annotation_column].agg([
         'mean', 'std']).reset_index()
 
@@ -53,8 +73,17 @@ def get_word_stats(texts, annotations, tokenized, idx_to_word, annotation_column
     return word_stats
 
 
-def get_tokens_sorted(tokens, tokens_stats, num_tokens=10):
-    """ Sort tokens by mean score and cut number of tokens """
+def get_tokens_sorted(tokens, tokens_stats, num_tokens=10) -> np.ndarray:
+    """Sort tokens by mean score and cut number of tokens
+
+    Args:
+        tokens (_type_): _description_
+        tokens_stats (_type_): _description_
+        num_tokens (int, optional): _description_. Defaults to 10.
+
+    Returns:
+        _type_: _description_
+    """
     tokens_sorted = np.zeros((tokens.shape[0], num_tokens))
     mean_dict = tokens_stats['mean'].to_dict()
 

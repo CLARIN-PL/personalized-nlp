@@ -1,7 +1,21 @@
+from typing import Dict, Optional, Tuple
+
+import numpy as np
 import torch.utils.data
 
+
+# TODO specify types! 
+# TODO add docstring!
 class BatchIndexedDataset(torch.utils.data.Dataset):
-    def __init__(self, X, y, text_features=None, annotator_features=None):
+    
+    def __init__(
+            self, 
+            X: np.ndarray, 
+            y: np.ndarray, 
+            text_features: Optional[Dict] = None, 
+            annotator_features: Optional[Dict]=None
+        ) -> None:
+        
         self.X = X
         self.y = y
 
@@ -15,7 +29,11 @@ class BatchIndexedDataset(torch.utils.data.Dataset):
         else:
             self.annotator_features = {}
 
-    def __getitem__(self, index):
+    def __getitem__(
+            self, 
+            index: int
+        ) -> Tuple[Dict[str, torch.Tensor], torch.Tensor]:
+        
         text_ids = self.X[index, 0]
         annotator_ids = self.X[index, 1]
 
@@ -34,5 +52,5 @@ class BatchIndexedDataset(torch.utils.data.Dataset):
 
         return batch_data, batch_y
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.y)

@@ -8,7 +8,7 @@ import pandas as pd
 import numpy as np
 from pytorch_lightning.callbacks import Callback
 
-from personalized_nlp.settings import STORAGE_DIR, OUTPUTS_DIR_NAME
+from settings import STORAGE_DIR, OUTPUTS_DIR_NAME
 
 
 class AbstractSaveOutputsCallback(Callback):
@@ -17,7 +17,6 @@ class AbstractSaveOutputsCallback(Callback):
         """Saves the predictions to the .csv file. Csv file is stored in:
         ``` logs/wandb/{wandb.run.dir}/files/{save_name}``` 
         Stored attributes: [logit0 ..., logitN-1, y_true0, ... , y_trueK-1, annotator_id, text_id, ?text]
-
         Args:
             save_name (str, optional): Name of csv file. Defaults to 'outputs.csv'.
         """
@@ -109,7 +108,7 @@ class SaveOutputsWandb(AbstractSaveOutputsCallback):
 
 class SaveOutputsLocal(AbstractSaveOutputsCallback):
     
-    def __init__(self, save_dir: str, save_text: bool = True, sep: str = '_', **kwargs) -> None:
+    def __init__(self, save_dir: str, save_text: bool = True, sep: str = '_', strftime='%m-%d-%Y-%h', **kwargs) -> None:
         """Callback for loging outputs in local dir. Outputs in .csv file will be saved in $GLOBAL_OUTPUT_PATH/{save_dir},
         and will be named: $TIME_{kwargs.key[0]}={kwargs.value[0]}_{kwargs.key[1]}={kwargs.value[1]}_..._{kwargs.key[N-1]}={kwargs.value[N-1]}
         
@@ -128,7 +127,7 @@ class SaveOutputsLocal(AbstractSaveOutputsCallback):
             save_dir)
         if not os.path.exists(self.save_dir):
             os.makedirs(self.save_dir)
-        self.save_name = f"{datetime.now().strftime('%m%d%Y_%h%m%s')}" + sep.join(f'{key}={value}' for key, value in kwargs.items()) + ".csv"
+        self.save_name = f"{datetime.now().strftime(strftime)}" + sep.join(f'{key}={value}' for key, value in kwargs.items()) + ".csv"
 
     def on_test_end(self, *args, **kwargs):
         df = self._create_dataframe()
