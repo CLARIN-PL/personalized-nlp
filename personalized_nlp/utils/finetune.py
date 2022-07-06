@@ -6,12 +6,12 @@ from settings import TRANSFORMER_MODEL_STRINGS
 
 
 def finetune_datamodule_embeddings(
-    original_datamodule,
-    batch_size: int = 20,
-    epochs=3,
-    lr_rate=2e-5,
-    use_cuda=True,
-):
+        original_datamodule,
+        batch_size: int = 20,
+        epochs=3,
+        lr_rate=2e-5,
+        use_cuda=True,
+    ):
 
     embeddings_type = original_datamodule.embeddings_type
     stratify_folds_by = original_datamodule.stratify_folds_by

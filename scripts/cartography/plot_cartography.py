@@ -120,14 +120,8 @@ def compute_metrics(training_dynamics, num_epochs: int) -> pd.DataFrame:
                         correctness_[guid],
                         forgetfulness_[guid],
                         ] for i, guid in enumerate(correctness_)], columns=column_names)
-    
-    df_train = pd.DataFrame([[i,
-                                loss(torch.Tensor(logits[i]), torch.LongTensor(targets[i])).item() / len(training_dynamics),
-                                training_accuracy[i] / len(training_dynamics)
-                                ] for i in range(num_epochs)],
-                            columns=['epoch', 'loss', 'train_acc'])
 
-    return df, df_train
+    return df
 
 
 def compute_avg_metrics(metrics: List[pd.DataFrame]) -> pd.DataFrame:
@@ -164,7 +158,7 @@ def plot_data_map(dataframe: pd.DataFrame,
     sns.set(style='whitegrid', font_scale=1.6, font='Georgia', context='paper')
     
     # Subsample data to plot, so the plot is not too busy.
-    dataframe = dataframe.sample(n=max_instances_to_plot if dataframe.shape[0] > max_instances_to_plot else len(dataframe))
+    dataframe = dataframe.sample(n=max_instances_to_plot if len(dataframe) > max_instances_to_plot else len(dataframe))
 
     # Normalize correctness to a value between 0 and 1.
     dataframe = dataframe.assign(corr_frac = lambda d: d.correctness / d.correctness.max())

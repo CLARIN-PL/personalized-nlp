@@ -15,7 +15,7 @@ os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 os.environ["WANDB_START_METHOD"] = "thread"
 
 if __name__ == "__main__":
-    wandb_project_name = "TestAgresji"
+    wandb_project_name = "WikiAgressionCartography"
     datamodule_cls = AggressionDataModule
 
     datamodule_kwargs_list = product_kwargs(
@@ -82,10 +82,10 @@ if __name__ == "__main__":
                 custom_callbacks=[
                     callbacks.CartographySaveCallback(
                         dir_name=f'cartography_wiki_agr_model={trainer_kwargs["model_type"]}',
-                        fold_num=datamodule_kwargs["fold_num"],
+                        fold_num=datamodule_kwargs["test_fold"],
                         fold_nums=datamodule_kwargs["fold_nums"],
                     ),
-                    EarlyStopping(monitor="valid_loss", mode="min", patience=3),
+                    EarlyStopping(monitor="valid_loss", mode="min", patience=3)
                 ],
             )
 

@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, Callable
 import os
 import abc
 import pickle
@@ -111,7 +111,6 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         test_fold: Optional[int] = None,
         min_annotations_per_user_in_fold: Optional[int] = None,
         seed: int = 22,
-        filter_train_annotations_path: Optional[str] = None,
         **kwargs,
     ):
         """_summary_
@@ -162,16 +161,10 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         self.prepare_data()
         self.setup()
 
-    #     self.filter_train_dict = self._setup_filter_train_annotations(filter_train_annotations_path)
+        self.prune_train_function = None
 
-    # def _setup_filter_train_annotations(self, filter_annotations_path: str) -> Optional[Dict]:
-    #     if filter_annotations_path is None:
-    #         return None
-    #     filter_dict = {}
-    #     for file in glob.glob(os.path.join(filter_annotations_path, '*')):
-    #         fold = int(re.search("(?<=fold_)([0-9]+)(?=\_)", file).group())
-    #         filter_dict[fold] = file
-    #     return filter_dict
+    def set_prune_train_function(self, new):
+        self.prune_train_function = new
 
     def _create_embeddings(self, use_cuda: Optional[bool] = None) -> None:
         texts = self.data["text"].tolist()
@@ -402,6 +395,11 @@ class BaseDataModule(LightningDataModule, abc.ABC):
     def _get_dataloader(self, split: str, shuffle: bool) -> DataLoader:
         annotations = self.annotations
         annotations = annotations.loc[annotations.split == split]
+        if split == 'train' and self.prune_train_function is not None:
+            annotations = self.prune_train_function(
+                original_df=annotations,
+                fold_num=self.test_fold
+            )
 
         X, y = self._get_data_by_split(annotations)
         text_features = self._get_text_features()
