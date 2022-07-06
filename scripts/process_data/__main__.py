@@ -4,8 +4,8 @@ import logging
 
 import pandas as pd
 
-from scripts.process_dataframe.assign_folds import assign_folds
-from scripts.process_dataframe.reset_indexes import reindex_texts_and_annotations
+from scripts.process_data.assign_folds import assign_folds
+from scripts.process_data.reset_indexes import reindex_texts_and_annotations
 
 
 logging.basicConfig(
