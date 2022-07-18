@@ -12,7 +12,7 @@ from active_learning.callbacks.confidences import SaveConfidencesCallback
 class ActiveLearningModule:
     @property
     def annotated_amount(self) -> int:
-        return self.datamodule.annotations.split.isin(["train", "val"]).sum()
+        return self.datamodule.annotations.split.isin(["train"]).sum()
 
     def __init__(
         self,
@@ -23,6 +23,7 @@ class ActiveLearningModule:
         train_kwargs: dict,
         wandb_project_name: str,
         validation_ratio: float = 0.2,
+        train_with_all_annotations=True,
         **kwargs
     ) -> None:
 
@@ -35,9 +36,10 @@ class ActiveLearningModule:
         self.wandb_project_name = wandb_project_name
         self.validation_ratio = validation_ratio
         self.confidences = None
+        self.train_with_all_annotations = train_with_all_annotations
 
         annotations = datamodule.annotations
-        annotations.loc[annotations.split.isin(["train", "val"]), "split"] = "none"
+        annotations.loc[annotations.split.isin(["train"]), "split"] = "none"
 
         self.text_selector = text_selector
 
@@ -45,7 +47,7 @@ class ActiveLearningModule:
         annotations = self.datamodule.annotations
         texts = self.datamodule.data
 
-        annotated = annotations.loc[annotations["split"].isin(["train", "val"])]
+        annotated = annotations.loc[annotations["split"].isin(["train"])]
         not_annotated = annotations.loc[
             annotations["split"] == "none", ["text_id", "annotator_id"]
         ]
@@ -63,30 +65,7 @@ class ActiveLearningModule:
 
     def _assign_train_val_splits(self, old_annotations, selected_annotations):
         annotations = self.datamodule.annotations
-
-        old_annotations = old_annotations.loc[:, ["text_id", "annotator_id"]]
-        selected_annotations = selected_annotations.loc[:, ["text_id", "annotator_id"]]
-        current_annotations = pd.concat([old_annotations, selected_annotations])
-
-        text_ids = current_annotations["text_id"].unique().tolist()
-        np.random.shuffle(text_ids)
-
-        train_amount = int(len(text_ids) * (1 - self.validation_ratio))
-
-        train_texts_ids = text_ids[:train_amount]
-
-        current_annotations["new_split"] = "val"
-        current_annotations.loc[
-            current_annotations.text_id.isin(train_texts_ids), "new_split"
-        ] = "train"
-
-        annotations = annotations.merge(current_annotations, how="left")
-
-        annotations.loc[
-            ~annotations.new_split.isna(), "split"
-        ] = annotations.new_split.dropna()
-
-        self.datamodule.annotations = annotations.drop(["new_split"], axis=1)
+        annotations.loc[selected_annotations.index, "split"] = "train"
 
     def train_model(self):
         datamodule = self.datamodule
@@ -149,8 +128,9 @@ class ActiveLearningModule:
             self.add_annotations(step_size)
             self.train_model()
 
-        # Train at all annotations as baseline
-        not_annotated = (self.datamodule.annotations.split == "none").sum()
-        if not_annotated > 0:
-            self.add_annotations(not_annotated)
-            self.train_model()
+        if self.train_with_all_annotations:
+            # Train at all annotations as baseline
+            not_annotated = (self.datamodule.annotations.split == "none").sum()
+            if not_annotated > 0:
+                self.add_annotations(not_annotated)
+                self.train_model()
