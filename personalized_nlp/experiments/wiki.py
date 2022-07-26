@@ -2,7 +2,7 @@ import os
 from itertools import product
 from pytorch_lightning.callbacks import EarlyStopping
 
-from personalized_nlp.datasets.wiki.aggression import AggressionDataModule
+from personalized_nlp.datasets.wiki.toxicity import ToxicityDataModule
 
 from personalized_nlp.learning.train import train_test
 from settings import LOGS_DIR
@@ -15,17 +15,15 @@ os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 os.environ["WANDB_START_METHOD"] = "thread"
 
 if __name__ == "__main__":
-    wandb_project_name = "WikiAgressionCartography"
-    datamodule_cls = AggressionDataModule
+    wandb_project_name = "WikiToxicityCartographyBalanced"
+    datamodule_cls = ToxicityDataModule
 
     datamodule_kwargs_list = product_kwargs(
         {
             "regression": [False],
-            "embeddings_type": ["labse", "mpnet", "xlmr", "random", "skipgram", "cbow"][
-                :1
-            ],
+            "embeddings_type": ["xlmr"],
             "limit_past_annotations_list": [None],
-            "stratify_folds_by": ["users", "texts"][1:],
+            "stratify_folds_by": ["420balanced"],
             "fold_nums": [10],
             "batch_size": [3000],
             "test_fold": list(range(10)),
@@ -47,8 +45,7 @@ if __name__ == "__main__":
             "lr_rate": [0.008],
             "regression": [False],
             "use_cuda": [False],
-            # "model_type": ["baseline", "onehot", "peb", "bias", "embedding"],
-            "model_type": ["onehot"],
+            "model_type": ["baseline", "peb", "onehot"],
         }
     )
 
@@ -65,6 +62,9 @@ if __name__ == "__main__":
                 **datamodule_kwargs,
                 **model_kwargs,
                 **trainer_kwargs,
+                "train_size": len(data_module.train_dataloader().dataset),
+                "val_size": len(data_module.val_dataloader().dataset),
+                "test_size": len(data_module.test_dataloader().dataset) 
             }
 
             logger = pl_loggers.WandbLogger(
@@ -81,7 +81,7 @@ if __name__ == "__main__":
                 **trainer_kwargs,
                 custom_callbacks=[
                     callbacks.CartographySaveCallback(
-                        dir_name=f'cartography_wiki_agr_model={trainer_kwargs["model_type"]}',
+                        dir_name=f'cartography_wiki_toxicity_model={trainer_kwargs["model_type"]}',
                         fold_num=datamodule_kwargs["test_fold"],
                         fold_nums=datamodule_kwargs["fold_nums"],
                     ),

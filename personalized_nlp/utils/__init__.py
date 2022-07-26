@@ -16,4 +16,4 @@ from personalized_nlp.utils.embeddings import create_embeddings, create_fasttext
 from personalized_nlp.utils.finetune import finetune_datamodule_embeddings
 from personalized_nlp.utils.metrics import F1Class, PrecisionClass, RecallClass
 from personalized_nlp.utils.tokenizer import get_tokenized_texts, get_word_stats, get_tokens_sorted, get_text_data 
-from personalized_nlp.utils.prune_set import create_folds_dict, prune_train_set
+from personalized_nlp.utils.cartography_utils import prune_train_set, create_folds_dict

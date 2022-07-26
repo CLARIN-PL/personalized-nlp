@@ -241,14 +241,7 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         # }
 
     def _assign_splits(self) -> None:
-        if self.stratify_folds_by == "texts":
-            val_fold = self.val_fold
-            test_fold = self.test_fold
-
-            self.annotations["split"] = "train"
-            self.annotations.loc[self.annotations.fold == val_fold, "split"] = "val"
-            self.annotations.loc[self.annotations.fold == test_fold, "split"] = "test"
-        else:
+        if self.stratify_folds_by == "users":
             self.data = split_texts(self.data, self.split_sizes)
 
             text_id_to_text_split = self.data.set_index("text_id")["text_split"]
@@ -277,6 +270,14 @@ class BaseDataModule(LightningDataModule, abc.ABC):
             self.annotations["split"] = self.annotations[
                 ["text_id", "annotator_id"]
             ].apply(_get_annotation_split, axis=1)
+        else:
+            val_fold = self.val_fold
+            test_fold = self.test_fold
+
+            self.annotations["split"] = "train"
+            self.annotations.loc[self.annotations.fold == val_fold, "split"] = "val"
+            self.annotations.loc[self.annotations.fold == test_fold, "split"] = "test"
+            
 
     def _assign_folds(self):
         """Randomly assign fold to each annotation."""
