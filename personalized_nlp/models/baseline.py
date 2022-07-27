@@ -13,5 +13,4 @@ class Baseline(nn.Module):
         x = features["embeddings"]
         x = x.view(-1, self.text_embedding_dim)
         x = self.fc1(x)
-
         return x

@@ -1,2 +1,3 @@
 from personalized_nlp.datasets.emotions.emotions import EmotionsDataModule
 from personalized_nlp.datasets.emotions.emotions_simple import EmotionsSimpleDataModule
+from personalized_nlp.datasets.emotions.emotions_collocations import EmotionsCollocationsDatamodule

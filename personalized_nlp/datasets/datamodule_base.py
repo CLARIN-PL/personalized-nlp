@@ -363,6 +363,12 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         self.annotator_biases = (
             annotator_biases.set_index("annotator_id").sort_index().fillna(0)
         )
+        # a = -1
+        # z =  [b for b in range(self.annotator_biases.index.max())]
+        # x = self.annotator_biases.index
+        # h = [j for j in z if j not in x]
+        # raise Exception(h)
+        
 
     def train_dataloader(self) -> DataLoader:
         """Returns dataloader for training part of the dataset.
