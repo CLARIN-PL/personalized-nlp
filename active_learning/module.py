@@ -1,9 +1,8 @@
-import numpy as np
-import pandas as pd
 from personalized_nlp.datasets.datamodule_base import BaseDataModule
 from personalized_nlp.learning.train import train_test
-from settings import LOGS_DIR
+from personalized_nlp.utils import seed_everything
 from pytorch_lightning import loggers as pl_loggers
+from settings import LOGS_DIR
 
 from active_learning.algorithms.base import TextSelectorBase
 from active_learning.callbacks.confidences import SaveConfidencesCallback
@@ -24,6 +23,7 @@ class ActiveLearningModule:
         wandb_project_name: str,
         validation_ratio: float = 0.2,
         train_with_all_annotations=True,
+        stratify_by_user=False,
         **kwargs
     ) -> None:
 
@@ -37,6 +37,7 @@ class ActiveLearningModule:
         self.validation_ratio = validation_ratio
         self.confidences = None
         self.train_with_all_annotations = train_with_all_annotations
+        self.stratify_by_user = stratify_by_user
 
         annotations = datamodule.annotations
         annotations.loc[annotations.split.isin(["train"]), "split"] = "none"
@@ -59,7 +60,8 @@ class ActiveLearningModule:
             texts, amount, annotated, not_annotated, self.confidences
         )
 
-        assert len(selected.index) <= amount
+        if not self.stratify_by_user:
+            selected = selected.iloc[:amount]
 
         self._assign_train_val_splits(annotated, selected)
 
@@ -102,6 +104,7 @@ class ActiveLearningModule:
             log_model=False,
         )
 
+        seed_everything(24)
         trainer = train_test(
             datamodule,
             model_kwargs=model_kwargs,
