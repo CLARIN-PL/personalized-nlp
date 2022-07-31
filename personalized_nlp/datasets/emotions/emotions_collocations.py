@@ -35,7 +35,7 @@ class EmotionsCollocationsDatamodule(BaseDataModule):
     
     @property 
     def annotations_file(self) -> str:
-        return f'annotations_{self.stratify_folds_by}_folds.csv'
+        return f'cawi1_6000_annotations_normalized_{self.stratify_folds_by}_folds.csv'
     
     @property 
     def data_file(self) -> str:
