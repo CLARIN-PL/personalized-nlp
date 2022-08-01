@@ -1,11 +1,19 @@
 from abc import ABC, abstractmethod
+from typing import List, Optional
 import numpy as np
 import pandas as pd
 
 
 class TextSelectorBase(ABC):
-    def __init__(self, class_dims=None) -> None:
+    def __init__(
+        self,
+        class_dims: Optional[List[int]] = None,
+        annotation_columns: Optional[List[str]] = None,
+        amount_per_user: Optional[int] = None,
+    ) -> None:
         self.class_dims = class_dims
+        self.annotation_columns = annotation_columns
+        self.amount_per_user = amount_per_user
 
     @abstractmethod
     def select_annotations(
