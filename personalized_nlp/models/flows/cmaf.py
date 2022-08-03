@@ -21,7 +21,7 @@ class cMAF(Flow):
             base_distribution=StandardNormal,
             num_layers: int = 2,
             num_blocks_per_layer: int = 2,
-            use_random_permutations: bool = False,
+            use_random_permutations: bool = True,
             use_residual_blocks: bool = False,
             use_random_masks: bool = True,
             activation: Callable[[torch.Tensor], torch.Tensor]=F.relu,

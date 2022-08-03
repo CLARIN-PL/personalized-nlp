@@ -15,7 +15,7 @@ def flow_train_test(
     model_kwargs,
     epochs=6,
     lr=1e-4,
-    use_cuda=False,
+    use_cuda=True,
     logger=None,
     log_model=False,
     custom_callbacks=None,
@@ -34,6 +34,7 @@ def flow_train_test(
         annotator_num=datamodule.annotators_number,
         flow_type=flow_type,
         flow_kwargs=flow_kwargs,
+        bias_vector_length=len(datamodule.class_dims),
         **model_kwargs
     )
 

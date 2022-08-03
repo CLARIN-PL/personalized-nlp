@@ -1,0 +1,4 @@
+outs:
+- md5: bcccb139fe5697c95a0fd404c33d600a
+  size: 22112974
+  path: cawi1_6000_annotations_normalized.csv

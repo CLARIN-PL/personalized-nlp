@@ -22,11 +22,13 @@ class FlowModel(pl.LightningModule):
 
         self.class_dims = class_dims
         self.class_names = class_names
-
         
-    def forward(self, x):
-        x = self.model(x)
-        return x
+    def forward(self, x, y):
+        z = self.flow_model.log_prob(batch=x, y=y)
+        return z
+    
+    def sample(self, x, y, n, bs):
+        return self.flow_model.sample(batch=x, y=y, num_samples=n, batch_size=bs)
 
     def step(self, x, y):
         loss = - self.flow_model.log_prob(batch=x, y=y).mean()
@@ -57,10 +59,12 @@ class FlowModel(pl.LightningModule):
         x, y = batch
 
         loss = self.step(x=x, y=y)
+        #z = self.sample(x, y, y.shape[0], y.shape[0])
+        #raise Exception(z.shape)
 
         self.log("test_loss", loss, prog_bar=True)
 
-        return loss
+        #return {'loss': loss.cpu().numpy(), 'text_ids': x['text_ids'].cpu().numpy(), 'annotator_ids': x['annotator_ids'].cpu().numpy(), 'y': y.cpu().numpy(), 'pz': z.cpu().numpy()}
 
 
     def configure_optimizers(self):

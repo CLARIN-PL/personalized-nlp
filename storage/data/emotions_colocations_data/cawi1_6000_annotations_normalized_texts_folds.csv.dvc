@@ -1,0 +1,4 @@
+outs:
+- md5: 6711fb507b039b1e69b6ba39cf08d22a
+  size: 25729278
+  path: cawi1_6000_annotations_normalized_texts_folds.csv
