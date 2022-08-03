@@ -1,39 +1,44 @@
+from typing import Optional
 import pandas as pd
 import numpy as np
 from active_learning.algorithms.base import TextSelectorBase
-from active_learning.algorithms.utils import (
-    stratify_by_users,
-    stratify_by_users_decorator,
-)
 
 
 class RandomSelector(TextSelectorBase):
-    def select_annotations(
+    def sort_annotations(
         self,
         texts: pd.DataFrame,
-        amount: int,
+        annotated: pd.DataFrame,
+        not_annotated: pd.DataFrame,
+        confidences: Optional[np.ndarray] = None,
+    ) -> pd.DataFrame:
+        return not_annotated.sample(frac=1.0)
+
+
+class RandomImprovedSelector(TextSelectorBase):
+    def sort_annotations(
+        self,
+        texts: pd.DataFrame,
         annotated: pd.DataFrame,
         not_annotated: pd.DataFrame,
         confidences: np.ndarray,
     ):
-        amount = min(amount, len(not_annotated.index))
-        if self.amount_per_user:
-            return stratify_by_users(
-                not_annotated.sample(frac=1.0), amount_per_user=self.amount_per_user
-            )
+        if len(annotated.index) > 15_000:
+            selected_texts = annotated.text_id.unique()
+            not_annotated = not_annotated.loc[
+                not_annotated.text_id.isin(selected_texts)
+            ]
 
-        return not_annotated.sample(n=amount)
+            if len(self.annotation_columns) == 1:
+                col = self.annotation_columns[0]
 
+                counts = annotated.loc[:, ["text_id", col]].value_counts()
 
-class RandomSelectorDecorated(TextSelectorBase):
-    @stratify_by_users_decorator(2)
-    def select_annotations(
-        self,
-        texts: pd.DataFrame,
-        amount: int,
-        annotated: pd.DataFrame,
-        not_annotated: pd.DataFrame,
-        confidences: np.ndarray,
-    ):
-        amount = min(amount, len(not_annotated.index))
-        return not_annotated.sample(n=amount)
+                entropies = counts.reset_index().groupby("text_id")[0].apply(entropy)
+                texts_with_entropy = entropies[entropies > 0.05].index.tolist()
+
+                not_annotated = not_annotated.loc[
+                    not_annotated.text_id.isin(texts_with_entropy)
+                ]
+
+        return not_annotated.sample(frac=1.0)

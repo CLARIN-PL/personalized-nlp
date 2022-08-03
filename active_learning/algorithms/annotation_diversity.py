@@ -1,3 +1,4 @@
+from typing import Optional
 import pandas as pd
 import numpy as np
 from active_learning.algorithms.base import TextSelectorBase
@@ -11,14 +12,13 @@ class TextAnnotationDiversitySelector(TextSelectorBase):
 
         self.text_ids_cycle = None
 
-    def select_annotations(
+    def sort_annotations(
         self,
         texts: pd.DataFrame,
-        amount: int,
         annotated: pd.DataFrame,
         not_annotated: pd.DataFrame,
-        confidences: np.ndarray,
-    ):
+        confidences: Optional[np.ndarray] = None,
+    ) -> pd.DataFrame:
         text_ids_unique = texts.sample(frac=1.0).text_id.drop_duplicates().to_frame()
 
         if self.text_ids_cycle is None:
@@ -38,7 +38,7 @@ class TextAnnotationDiversitySelector(TextSelectorBase):
             added_indexes.append(annotation_index)
 
             added_number = len(added_indexes)
-            if added_number == amount or added_number == len(not_annotated.index):
+            if added_number == len(not_annotated.index):
                 break
 
         return not_annotated.loc[added_indexes].sample(frac=1.0)

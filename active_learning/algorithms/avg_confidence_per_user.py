@@ -1,3 +1,4 @@
+from typing import Optional
 import warnings
 
 import pandas as pd
@@ -16,13 +17,12 @@ class AverageConfidencePerUserSelector(TextSelectorBase):
         super(AverageConfidencePerUserSelector, self).__init__()
         self.select_minimal_texts: bool = select_minimal_texts
 
-    def select_annotations(
+    def sort_annotations(
         self,
         texts: pd.DataFrame,
-        amount: int,
         annotated: pd.DataFrame,
         not_annotated: pd.DataFrame,
-        confidences: np.ndarray,
+        confidences: Optional[np.ndarray] = None,
     ) -> pd.DataFrame:
         """Select annotations using rule, described in __init__()
 
@@ -53,21 +53,17 @@ class AverageConfidencePerUserSelector(TextSelectorBase):
                 view.groupby("annotator_id")["max_confidences"].mean()
             )
 
-            return_df = (
-                view.sort_values(
-                    by=["text_avg", "ann_avg"], ascending=self.select_minimal_texts
-                )
-                .iloc[:amount, :]
-                .loc[:, original_columns]
-            )
+            return_df = view.sort_values(
+                by=["text_avg", "ann_avg"], ascending=self.select_minimal_texts
+            ).loc[:, original_columns]
             not_annotated.drop(
                 columns=["max_confidences", "text_avg", "ann_avg"], inplace=True
             )
 
             return return_df
+
         warnings.warn(
-            f"There is no confidences, sampled {amount} of samples from not annotated data."
+            f"There is no confidences, sampled of samples from not annotated data."
         )
 
-        amount = min(amount, len(not_annotated.index))
-        return not_annotated.sample(n=amount)
+        return not_annotated.sample(frac=1.0)

@@ -3,6 +3,8 @@ from typing import List, Optional
 import numpy as np
 import pandas as pd
 
+from active_learning.algorithms.utils import stratify_by_users
+
 
 class TextSelectorBase(ABC):
     def __init__(
@@ -15,16 +17,16 @@ class TextSelectorBase(ABC):
         self.annotation_columns = annotation_columns
         self.amount_per_user = amount_per_user
 
-    @abstractmethod
     def select_annotations(
         self,
         texts: pd.DataFrame,
-        amount: int,
         annotated: pd.DataFrame,
         not_annotated: pd.DataFrame,
-        confidences: np.ndarray,
+        confidences: Optional[np.ndarray] = None,
+        amount: Optional[int] = None,
     ) -> pd.DataFrame:
-        """Baseline active learning algorithm, which selects random annotations.
+        """Selects `amount` annotations (or `amount_per_users` per each user) annotations from `not_annotated` dataframe.
+        You can't change the index of `not_annotated` subrows as they are used as identificator of annotation.
 
         Args:
             texts (pd.DataFrame): Dataframe with texts data. It contains (at least)
@@ -42,4 +44,27 @@ class TextSelectorBase(ABC):
             pd.DataFrame: Dataframe with subset of rows of `not_annotated` dataframe with length equal to
             `amount`.
         """
+        amount_per_user = self.amount_per_user
+        if amount is None and amount_per_user is None:
+            raise ValueError("Either amount or amount_per_user must be not None")
+
+        sorted_annotations = self.sort_annotations(
+            texts, annotated, not_annotated, confidences
+        )
+
+        if amount_per_user is not None:
+            sorted_annotations = stratify_by_users(sorted_annotations, amount_per_user)
+        else:
+            sorted_annotations = sorted_annotations[:amount]
+
+        return sorted_annotations
+
+    @abstractmethod
+    def sort_annotations(
+        self,
+        texts: pd.DataFrame,
+        annotated: pd.DataFrame,
+        not_annotated: pd.DataFrame,
+        confidences: Optional[np.ndarray] = None,
+    ) -> pd.DataFrame:
         pass
