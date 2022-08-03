@@ -1,0 +1,4 @@
+outs:
+- md5: 67e5e4d2cc62fc8f140989c9df5c5a6d
+  size: 367140
+  path: cawi2_texts_multilang.csv

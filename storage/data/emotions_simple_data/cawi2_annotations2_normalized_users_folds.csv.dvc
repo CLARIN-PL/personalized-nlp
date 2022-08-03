@@ -1,0 +1,4 @@
+outs:
+- md5: bafa095d9a0b1d80955aace614d9fcad
+  size: 388381
+  path: cawi2_annotations2_normalized_users_folds.csv
