@@ -57,7 +57,7 @@ class ActiveLearningModule:
         annotated["original_index"] = annotated.index.values
 
         selected = self.text_selector.select_annotations(
-            texts, amount, annotated, not_annotated, self.confidences
+            texts, annotated, not_annotated, self.confidences, amount
         )
 
         if not self.stratify_by_user:
