@@ -12,28 +12,29 @@ from personalized_nlp.utils.experiments import product_kwargs
 from personalized_nlp.utils.callbacks.personal_metrics import (
     PersonalizedMetricsCallback,
 )
-from personalized_nlp.utils.callbacks import SaveOutputsLocal
 
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "10"
 os.environ["WANDB_START_METHOD"] = "thread"
 
 if __name__ == "__main__":
-    wandb_project_name = "AL_repeat"
+    wandb_project_name = "Unhealthy_amount_per_user"
     datamodule_cls = UnhealthyDataModule
 
     activelearning_kwargs_list = product_kwargs(
         {
             "text_selector_cls": [
-                # algorithms.TextAnnotationDiversitySelector,
-                # algorithms.RandomSelector,
-                # algorithms.ConfidenceSelector,
-                # algorithms.AverageConfidencePerUserSelector,
-                algorithms.ConfidenceAllDimsSelector,
+                algorithms.RandomSelector,
+                algorithms.ConfidenceSelector,
                 algorithms.MaxPositiveClassSelector,
+                algorithms.ConfidenceAllDimsSelector,
+                algorithms.Confidencev2Selector,
+                algorithms.RandomImprovedSelector,
             ],
-            "max_amount": [100_000],
-            "step_size": [5_000],
+            "max_amount": [50_000],
+            "step_size": [2_000],
+            "amount_per_user": [None],
+            "stratify_by_user": [False],
         }
     )
     datamodule_kwargs_list = product_kwargs(
@@ -49,7 +50,7 @@ if __name__ == "__main__":
             "test_fold": list(range(5)),
             "use_finetuned_embeddings": [False],
             "major_voting": [False],
-            "min_annotations_per_user_in_fold": [10],
+            "min_annotations_per_user_in_fold": [20],
         }
     )
     model_kwargs_list = product_kwargs(
@@ -66,7 +67,7 @@ if __name__ == "__main__":
             "lr_rate": [0.008],
             "regression": [False],
             "use_cuda": [False],
-            "model_type": ["baseline", "bias", "embedding"],
+            "model_type": ["peb"],
             "monitor_metric": ["valid_macro_f1_mean"],
             "monitor_mode": ["max"],
         }
@@ -87,7 +88,11 @@ if __name__ == "__main__":
         data_module = datamodule_cls(**datamodule_kwargs)
 
         text_selector_cls = activelearning_kwargs["text_selector_cls"]
-        text_selector = text_selector_cls(class_dims=data_module.class_dims)
+        text_selector = text_selector_cls(
+            class_dims=data_module.class_dims,
+            annotation_columns=data_module.annotation_columns,
+            amount_per_user=activelearning_kwargs["amount_per_user"],
+        )
         activelearning_kwargs["text_selector"] = text_selector
 
         trainer_kwargs["custom_callbacks"] = [
