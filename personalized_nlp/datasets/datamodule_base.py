@@ -112,6 +112,7 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         min_annotations_per_user_in_fold: Optional[int] = None,
         seed: int = 22,
         filter_train_annotations_path: Optional[str] = None,
+        use_cuda: bool = False,
         **kwargs,
     ):
         """_summary_
@@ -145,6 +146,7 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         self.regression = regression
         self.past_annotations_limit = past_annotations_limit
         self.stratify_folds_by = stratify_folds_by
+        self.use_cuda = use_cuda
 
         self._test_fold = test_fold if test_fold is not None else 0
         self.use_finetuned_embeddings = use_finetuned_embeddings
@@ -173,7 +175,7 @@ class BaseDataModule(LightningDataModule, abc.ABC):
     #         filter_dict[fold] = file
     #     return filter_dict
 
-    def _create_embeddings(self, use_cuda: Optional[bool] = None) -> None:
+    def _create_embeddings(self) -> None:
         texts = self.data["text"].tolist()
         embeddings_path = self.embeddings_path
 
@@ -182,15 +184,13 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         else:
             model_name = self.embeddings_type
 
-        if use_cuda is None:
-            use_cuda = torch.cuda.is_available()
+        use_cuda = self.use_cuda and torch.cuda.is_available()
 
         create_embeddings(
             texts, embeddings_path, model_name=model_name, use_cuda=use_cuda
         )
 
     def setup(self, stage: Optional[str] = None) -> None:
-        data = self.data
         annotations = self.annotations
         self._original_annotations = annotations.copy()
 
