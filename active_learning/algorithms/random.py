@@ -2,6 +2,7 @@ from typing import Optional
 import pandas as pd
 import numpy as np
 from active_learning.algorithms.base import TextSelectorBase
+from scipy.stats import entropy
 
 
 class RandomSelector(TextSelectorBase):
@@ -23,7 +24,7 @@ class RandomImprovedSelector(TextSelectorBase):
         not_annotated: pd.DataFrame,
         confidences: np.ndarray,
     ):
-        if len(annotated.index) > 15_000:
+        if len(annotated.index) > 25_000:
             selected_texts = annotated.text_id.unique()
             not_annotated = not_annotated.loc[
                 not_annotated.text_id.isin(selected_texts)
