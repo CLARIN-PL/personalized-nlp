@@ -95,6 +95,7 @@ class ActiveLearningModule:
             **datamodule_kwargs,
             **model_kwargs,
             **train_kwargs,
+            "stratify_by_user": self.stratify_by_user,
         }
 
         logger = pl_loggers.WandbLogger(
