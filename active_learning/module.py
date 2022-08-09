@@ -82,9 +82,18 @@ class ActiveLearningModule:
             train_kwargs["custom_callbacks"] = [confidences_callback]
 
         annotations = self.datamodule.annotations
-        annotated_annotations = annotations[annotations.split.isin(["train", "val"])]
+        annotated_annotations = annotations[annotations.split.isin(["train"])]
         annotated_texts_number = annotated_annotations.text_id.nunique()
         annotator_number = annotated_annotations.annotator_id.nunique()
+
+        mean_positive = (
+            annotated_annotations.loc[:, self.datamodule.annotation_columns]
+            .mean(axis=0)
+            .values
+        )
+        median_annotations_per_user = (
+            annotated_annotations["annotator_id"].value_counts().median()
+        )
 
         hparams = {
             "dataset": type(datamodule).__name__,
@@ -92,10 +101,12 @@ class ActiveLearningModule:
             "text_selector": type(self.text_selector).__name__,
             "unique_texts_number": annotated_texts_number,
             "unique_annotator_number": annotator_number,
+            "mean_positive": mean_positive,
+            "median_annotations_per_user": median_annotations_per_user,
+            "stratify_by_users": self.stratify_by_user,
             **datamodule_kwargs,
             **model_kwargs,
             **train_kwargs,
-            "stratify_by_user": self.stratify_by_user,
         }
 
         logger = pl_loggers.WandbLogger(
