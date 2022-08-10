@@ -15,3 +15,12 @@ from active_learning.algorithms.annotation_diversity import (
     TextAnnotationDiversitySelector,
 )
 from active_learning.algorithms.max_positive import MaxPositiveClassSelector
+from active_learning.algorithms.balanced_confidence import (
+    BalancedConfidenceSelector,
+)
+from active_learning.algorithms.balanced_classes_per_text import (
+    BalancedClassesPerTextSelector,
+)
+from active_learning.algorithms.balanced_classes_per_user import (
+    BalancedClassesPerUserSelector,
+)
