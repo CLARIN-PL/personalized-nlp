@@ -27,7 +27,7 @@ if __name__ == "__main__":
                 algorithms.MaxPositiveClassSelector,
                 algorithms.ConfidenceAllDimsSelector,
                 algorithms.Confidencev2Selector,
-                algorithms.RandomImprovedSelector,
+                # algorithms.RandomImprovedSelector,
             ],
             "max_amount": [50_000],
             "step_size": [2_000],
