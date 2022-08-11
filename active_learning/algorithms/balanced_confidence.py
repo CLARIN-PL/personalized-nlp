@@ -3,30 +3,19 @@ import warnings
 import pandas as pd
 import numpy as np
 
+from typing import Optional
+
 from active_learning.algorithms.base import TextSelectorBase
 
 
 class BalancedConfidenceSelector(TextSelectorBase):
 
-    def __init__(self,
-                 select_minimal_texts: bool = True,
-                 *args,
-                 **kwargs) -> None:
-        """Selector based on model confidence balance between classes. 
-                If there is a conflict, it is resolved based on absolute difference between model confidences between classes for a specific task.
-                If there are more than one task then the average is calculated across all tasks
-
-                """
-        super(BalancedConfidenceSelector, self).__init__()
-        self.select_minimal_texts: bool = select_minimal_texts
-
-    def select_annotations(
+    def sort_annotations(
         self,
         texts: pd.DataFrame,
-        amount: int,
         annotated: pd.DataFrame,
         not_annotated: pd.DataFrame,
-        confidences: np.ndarray,
+        confidences: Optional[np.ndarray] = None,
     ):
         """Select annotations using rule, described in __init__()
 
@@ -56,11 +45,6 @@ class BalancedConfidenceSelector(TextSelectorBase):
 
             sorted_index = np.argsort(confidences)
 
-            return not_annotated.iloc[sorted_index[:amount]]
+            return not_annotated.iloc[sorted_index]
 
-        warnings.warn(
-            f"There is no confidences, sampled {amount} of samples from not annotated data."
-        )
-
-        amount = min(amount, len(not_annotated.index))
-        return not_annotated.sample(n=amount)
+        return not_annotated.sample(frac=1.0)

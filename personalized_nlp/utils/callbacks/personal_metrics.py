@@ -8,6 +8,7 @@ from pytorch_lightning.callbacks import Callback
 
 
 class PersonalizedMetricsCallback(Callback):
+
     def __init__(self):
         super().__init__()
         self._outputs: list[dict[str, Any]] = []
@@ -17,8 +18,7 @@ class PersonalizedMetricsCallback(Callback):
 
     def on_test_epoch_end(self, trainer, pl_module, *args, **kwargs):
         annotator_ids = torch.cat(
-            [o["x"]["annotator_ids"] for o in self._outputs], dim=0
-        )
+            [o["x"]["annotator_ids"] for o in self._outputs], dim=0)
         y_pred = torch.cat([o["y_pred"] for o in self._outputs], dim=0)
         y_true = torch.cat([o["y"] for o in self._outputs], dim=0)
 
@@ -39,26 +39,25 @@ class PersonalizedMetricsCallback(Callback):
                 start_idx = sum(class_dims[:cls_dim_idx])
                 end_idx = start_idx + class_dims[cls_dim_idx]
 
-                person_confidences = output[
-                    annotator_ids == annotator_id, start_idx:end_idx
-                ]
+                person_confidences = output[annotator_ids == annotator_id,
+                                            start_idx:end_idx].cpu().numpy()
                 person_y_pred = np.argmax(person_confidences, axis=1)
-                person_y_true = y[annotator_ids == annotator_id, cls_dim_idx].long()
+                person_y_true = y[annotator_ids == annotator_id,
+                                  cls_dim_idx].long().cpu().numpy()
 
-                personal_metrics = classification_report(
-                    person_y_true, person_y_pred, output_dict=True
-                )
+                personal_metrics = classification_report(person_y_true,
+                                                         person_y_pred,
+                                                         output_dict=True)
 
-                class_name = (
-                    class_names[cls_dim_idx] if class_names else str(cls_dim_idx)
-                )
+                class_name = (class_names[cls_dim_idx]
+                              if class_names else str(cls_dim_idx))
 
                 for cls_idx in range(class_dims[cls_dim_idx]):
                     if str(cls_idx) in personal_metrics:
                         value = personal_metrics[str(cls_idx)]["f1-score"]
-                        metrics[f"test_personal_f1_{class_name}_{cls_idx}"].append(
-                            value
-                        )
+                        metrics[
+                            f"test_personal_f1_{class_name}_{cls_idx}"].append(
+                                value)
 
                 value = personal_metrics["macro avg"]["f1-score"]
                 metrics[f"test_personal_macro_f1"].append(value)

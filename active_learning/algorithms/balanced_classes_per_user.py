@@ -3,31 +3,19 @@ import warnings
 import pandas as pd
 import numpy as np
 
+from typing import Optional
+
 from active_learning.algorithms.base import TextSelectorBase
 
 
 class BalancedClassesPerUserSelector(TextSelectorBase):
 
-    def __init__(self,
-                 select_minimal_texts: bool = True,
-                 *args,
-                 **kwargs) -> None:
-        """Selector based on model predicted classes balance on user. 
-        If there is a conflict, it is resolved based on model balanced predicted classes on text.
-
-        Args:
-            select_minimal_texts (bool, optional): Wheter to choose annotations with minimal (True) or maximal (False) confidence. Defaults to True.
-        """
-        super(BalancedClassesPerUserSelector, self).__init__()
-        self.select_minimal_texts: bool = select_minimal_texts
-
-    def select_annotations(
+    def sort_annotations(
         self,
         texts: pd.DataFrame,
-        amount: int,
         annotated: pd.DataFrame,
         not_annotated: pd.DataFrame,
-        confidences: np.ndarray,
+        confidences: Optional[np.ndarray] = None,
     ) -> pd.DataFrame:
         """Select annotations using rule, described in __init__()
 
@@ -60,16 +48,12 @@ class BalancedClassesPerUserSelector(TextSelectorBase):
             view.loc[:, "ann_avg"] = (view["ann_avg"] - 0.5).abs()
 
             return_df = (view.sort_values(
-                by=["ann_avg", "text_avg"],
-                ascending=True).iloc[:amount, :].loc[:, original_columns])
+                by=["ann_avg",
+                    "text_avg"], ascending=True).loc[:, original_columns])
             not_annotated.drop(
                 columns=["predicted_class", "text_avg", "ann_avg"],
                 inplace=True)
 
             return return_df
-        warnings.warn(
-            f"There is no confidences, sampled {amount} of samples from not annotated data."
-        )
 
-        amount = min(amount, len(not_annotated.index))
-        return not_annotated.sample(n=amount)
+        return not_annotated.sample(frac=1.0)
