@@ -1,9 +1,8 @@
-import numpy as np
-import pandas as pd
 from personalized_nlp.datasets.datamodule_base import BaseDataModule
 from personalized_nlp.learning.train import train_test
-from settings import LOGS_DIR
+from personalized_nlp.utils import seed_everything
 from pytorch_lightning import loggers as pl_loggers
+from settings import LOGS_DIR
 
 from active_learning.algorithms.base import TextSelectorBase
 from active_learning.callbacks.confidences import SaveConfidencesCallback
@@ -24,6 +23,7 @@ class ActiveLearningModule:
         wandb_project_name: str,
         validation_ratio: float = 0.2,
         train_with_all_annotations=True,
+        stratify_by_user=False,
         **kwargs
     ) -> None:
 
@@ -37,6 +37,7 @@ class ActiveLearningModule:
         self.validation_ratio = validation_ratio
         self.confidences = None
         self.train_with_all_annotations = train_with_all_annotations
+        self.stratify_by_user = stratify_by_user
 
         annotations = datamodule.annotations
         annotations.loc[annotations.split.isin(["train"]), "split"] = "none"
@@ -56,10 +57,11 @@ class ActiveLearningModule:
         annotated["original_index"] = annotated.index.values
 
         selected = self.text_selector.select_annotations(
-            texts, amount, annotated, not_annotated, self.confidences
+            texts, annotated, not_annotated, self.confidences, amount
         )
 
-        assert len(selected.index) <= amount
+        if not self.stratify_by_user:
+            selected = selected.iloc[:amount]
 
         self._assign_train_val_splits(annotated, selected)
 
@@ -80,9 +82,18 @@ class ActiveLearningModule:
             train_kwargs["custom_callbacks"] = [confidences_callback]
 
         annotations = self.datamodule.annotations
-        annotated_annotations = annotations[annotations.split.isin(["train", "val"])]
+        annotated_annotations = annotations[annotations.split.isin(["train"])]
         annotated_texts_number = annotated_annotations.text_id.nunique()
         annotator_number = annotated_annotations.annotator_id.nunique()
+
+        mean_positive = (
+            annotated_annotations.loc[:, self.datamodule.annotation_columns]
+            .mean(axis=0)
+            .values
+        )
+        median_annotations_per_user = (
+            annotated_annotations["annotator_id"].value_counts().median()
+        )
 
         hparams = {
             "dataset": type(datamodule).__name__,
@@ -90,6 +101,9 @@ class ActiveLearningModule:
             "text_selector": type(self.text_selector).__name__,
             "unique_texts_number": annotated_texts_number,
             "unique_annotator_number": annotator_number,
+            "mean_positive": mean_positive,
+            "median_annotations_per_user": median_annotations_per_user,
+            "stratify_by_users": self.stratify_by_user,
             **datamodule_kwargs,
             **model_kwargs,
             **train_kwargs,
@@ -102,6 +116,7 @@ class ActiveLearningModule:
             log_model=False,
         )
 
+        seed_everything(24)
         trainer = train_test(
             datamodule,
             model_kwargs=model_kwargs,

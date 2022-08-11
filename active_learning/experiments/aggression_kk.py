@@ -3,9 +3,7 @@ from itertools import product
 
 from active_learning.module import ActiveLearningModule
 import active_learning.algorithms as algorithms
-from personalized_nlp.datasets.unhealthy_conversations.unhealthy import (
-    UnhealthyDataModule,
-)
+from personalized_nlp.datasets.wiki.aggression import AggressionDataModule
 
 from personalized_nlp.utils import seed_everything
 from personalized_nlp.utils.experiments import product_kwargs
@@ -13,28 +11,29 @@ from personalized_nlp.utils.callbacks.personal_metrics import (
     PersonalizedMetricsCallback,
 )
 
-
-os.environ["CUDA_VISIBLE_DEVICES"] = "10"
+os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 os.environ["WANDB_START_METHOD"] = "thread"
 
 if __name__ == "__main__":
-    wandb_project_name = "Unhealthy_amount_per_user"
-    datamodule_cls = UnhealthyDataModule
+    wandb_project_name = "AL_New_Balanced_Measures"
+    datamodule_cls = AggressionDataModule
 
     activelearning_kwargs_list = product_kwargs(
         {
             "text_selector_cls": [
+                # algorithms.TextAnnotationDiversitySelector,
+                algorithms.BalancedConfidenceSelector,
+                algorithms.BalancedClassesPerUserSelector,
+                algorithms.BalancedClassesPerTextSelector,
+                # algorithms.TextScaledAnnotationDiversitySelector,
                 algorithms.RandomSelector,
-                algorithms.ConfidenceSelector,
-                algorithms.MaxPositiveClassSelector,
-                algorithms.ConfidenceAllDimsSelector,
-                algorithms.Confidencev2Selector,
-                algorithms.RandomImprovedSelector,
+                # algorithms.ConfidenceSelector,
+                # algorithms.AverageConfidencePerUserSelector,
+                # algorithms.ConfidenceAllDimsSelector,
+                # algorithms.MaxPositiveClassSelector,
             ],
-            "max_amount": [50_000],
-            "step_size": [2_000],
-            "amount_per_user": [None],
-            "stratify_by_user": [False],
+            "max_amount": [100_000],  # [40_000]
+            "step_size": [5_000],
         }
     )
     datamodule_kwargs_list = product_kwargs(
@@ -46,11 +45,11 @@ if __name__ == "__main__":
             "limit_past_annotations_list": [None],
             "stratify_folds_by": ["users", "texts"][1:],
             "folds_num": [5],
-            "batch_size": [3000],
-            "test_fold": list(range(5)),
+            "batch_size": [3_000],
+            "test_fold": list(range(5)),  # list(range(5)),
             "use_finetuned_embeddings": [False],
             "major_voting": [False],
-            "min_annotations_per_user_in_fold": [20],
+            "min_annotations_per_user_in_fold": [10],
         }
     )
     model_kwargs_list = product_kwargs(
@@ -66,8 +65,8 @@ if __name__ == "__main__":
             "epochs": [20],
             "lr_rate": [0.008],
             "regression": [False],
-            "use_cuda": [False],
-            "model_type": ["peb"],
+            "use_cuda": [False],  # False
+            "model_type": ["baseline", "bias", "embedding"],
             "monitor_metric": ["valid_macro_f1_mean"],
             "monitor_mode": ["max"],
         }
@@ -88,11 +87,7 @@ if __name__ == "__main__":
         data_module = datamodule_cls(**datamodule_kwargs)
 
         text_selector_cls = activelearning_kwargs["text_selector_cls"]
-        text_selector = text_selector_cls(
-            class_dims=data_module.class_dims,
-            annotation_columns=data_module.annotation_columns,
-            amount_per_user=activelearning_kwargs["amount_per_user"],
-        )
+        text_selector = text_selector_cls(class_dims=data_module.class_dims)
         activelearning_kwargs["text_selector"] = text_selector
 
         trainer_kwargs["custom_callbacks"] = [

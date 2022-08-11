@@ -3,9 +3,7 @@ from itertools import product
 
 from active_learning.module import ActiveLearningModule
 import active_learning.algorithms as algorithms
-from personalized_nlp.datasets.unhealthy_conversations.unhealthy import (
-    UnhealthyDataModule,
-)
+from personalized_nlp.datasets.wiki.aggression import AggressionDataModule
 
 from personalized_nlp.utils import seed_everything
 from personalized_nlp.utils.experiments import product_kwargs
@@ -13,23 +11,23 @@ from personalized_nlp.utils.callbacks.personal_metrics import (
     PersonalizedMetricsCallback,
 )
 
-
-os.environ["CUDA_VISIBLE_DEVICES"] = "10"
+os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 os.environ["WANDB_START_METHOD"] = "thread"
 
 if __name__ == "__main__":
-    wandb_project_name = "Unhealthy_amount_per_user"
-    datamodule_cls = UnhealthyDataModule
+    wandb_project_name = "Aggression_amount_per_user"
+    datamodule_cls = AggressionDataModule
 
     activelearning_kwargs_list = product_kwargs(
         {
             "text_selector_cls": [
+                # algorithms.TextAnnotationDiversitySelector,
                 algorithms.RandomSelector,
                 algorithms.ConfidenceSelector,
                 algorithms.MaxPositiveClassSelector,
                 algorithms.ConfidenceAllDimsSelector,
                 algorithms.Confidencev2Selector,
-                algorithms.RandomImprovedSelector,
+                # algorithms.RandomImprovedSelector,
             ],
             "max_amount": [50_000],
             "step_size": [2_000],
