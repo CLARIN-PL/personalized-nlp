@@ -3,19 +3,26 @@ import warnings
 import pandas as pd
 import numpy as np
 
-from typing import Optional
-
 from active_learning.algorithms.base import TextSelectorBase
 
 
 class BalancedClassesPerUserSelector(TextSelectorBase):
+    def __init__(self, select_minimal_texts: bool = True, *args, **kwargs) -> None:
+        """Selector based on model predicted classes balance on user.
+        If there is a conflict, it is resolved based on model balanced predicted classes on text.
+
+        Args:
+            select_minimal_texts (bool, optional): Wheter to choose annotations with minimal (True) or maximal (False) confidence. Defaults to True.
+        """
+        super(BalancedClassesPerUserSelector, self).__init__()
+        self.select_minimal_texts: bool = select_minimal_texts
 
     def sort_annotations(
         self,
         texts: pd.DataFrame,
         annotated: pd.DataFrame,
         not_annotated: pd.DataFrame,
-        confidences: Optional[np.ndarray] = None,
+        confidences: np.ndarray,
     ) -> pd.DataFrame:
         """Select annotations using rule, described in __init__()
 
@@ -40,20 +47,25 @@ class BalancedClassesPerUserSelector(TextSelectorBase):
             view = not_annotated.loc[:, :]
             view.loc[:, "predicted_class"] = confidences.argmax(axis=1)
             view.loc[:, "text_avg"] = view.loc[:, "text_id"].map(
-                view.groupby("text_id")["predicted_class"].mean())
+                view.groupby("text_id")["predicted_class"].mean()
+            )
             view.loc[:, "ann_avg"] = view.loc[:, "annotator_id"].map(
-                view.groupby("annotator_id")["predicted_class"].mean())
+                view.groupby("annotator_id")["predicted_class"].mean()
+            )
 
             view.loc[:, "text_avg"] = (view["text_avg"] - 0.5).abs()
             view.loc[:, "ann_avg"] = (view["ann_avg"] - 0.5).abs()
 
-            return_df = (view.sort_values(
-                by=["ann_avg",
-                    "text_avg"], ascending=True).loc[:, original_columns])
+            return_df = view.sort_values(
+                by=["ann_avg", "text_avg"], ascending=True
+            ).loc[:, original_columns]
             not_annotated.drop(
-                columns=["predicted_class", "text_avg", "ann_avg"],
-                inplace=True)
+                columns=["predicted_class", "text_avg", "ann_avg"], inplace=True
+            )
 
             return return_df
+        warnings.warn(
+            f"There is no confidences, sampled of samples from not annotated data."
+        )
 
         return not_annotated.sample(frac=1.0)
