@@ -19,7 +19,7 @@ class AgressionAttackCombinedDatamodule(WikiDataModule):
     
     @property
     def class_dims(self) -> List[int]:
-        return [1, 1]
+        return [2, 2]
 
     @property
     def annotation_columns(self) -> List[str]:
