@@ -16,3 +16,7 @@
 /toxicity_annotated_comments_processed.csv
 /toxicity_annotations_texts_folds.csv
 /toxicity_annotations_users_folds.csv
+/agression_attack.csv
+/agression_attack.tsv
+/agression_attack_texts_folds.csv
+/agression_attack_users_folds.csv
