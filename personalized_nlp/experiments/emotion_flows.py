@@ -4,7 +4,7 @@ from itertools import product
 from pytorch_lightning.callbacks import EarlyStopping
 
 from personalized_nlp.datasets.emotions import EmotionsSimpleDataModule, EmotionsCollocationsDatamodule
-from personalized_nlp.datasets.wiki import AggressionDataModule, ToxicityDataModule, AttackDataModule
+from personalized_nlp.datasets.wiki import AggressionDataModule, ToxicityDataModule, AttackDataModule, AgressionAttackCombinedDatamodule
 from personalized_nlp.datasets.clarin_emo_sent import ClarinEmoSentNoNoiseDataModule
 from personalized_nlp.datasets.clarin_emo_text import ClainEmoTextNoNoiseDataModule
 
@@ -35,18 +35,14 @@ def parse_args():
 
 
 if __name__ == "__main__":
-    wandb_project_name = "EmotionFlowsGridFull"
-    used_folds = 3
+    wandb_project_name = "AggressionAttack2"
+    used_folds = 10
     datamodule_classes = [
-        EmotionsCollocationsDatamodule, 
-        AggressionDataModule, 
-        ToxicityDataModule, 
-        AttackDataModule,
-        EmotionsSimpleDataModule,
+        AgressionAttackCombinedDatamodule
     ]
     
-    grid_name = parse_args().grid
-    grid = GRIDS[grid_name]
+    #grid_name = parse_args().grid
+    #grid = GRIDS[grid_name]
 
     datamodule_kwargs_list = product_kwargs(
         {
@@ -60,46 +56,46 @@ if __name__ == "__main__":
             "major_voting": [False],
         }
     )
-    model_kwargs_list = grid['model_kwargs_list']
-    flow_kwargs_list = grid['flow_kwargs_list']
-    trainer_kwargs_list = grid['trainer_kwargs_list']
+    # model_kwargs_list = grid['model_kwargs_list']
+    # flow_kwargs_list = grid['flow_kwargs_list']
+    # trainer_kwargs_list = grid['trainer_kwargs_list']
     
-    # model_kwargs_list = product_kwargs(
-    #     {
-    #         "embedding_dim": [50],
-    #         "dp_emb": [0.25],
-    #         "dp": [0.0],
-    #         "hidden_dim": [100],
-    #     }
-    # )
-    # flow_kwargs_list = product_kwargs(
-    #     {
-    #         "hidden_features": [2], #[2, 4, 8],
-    #         "num_layers":  [3], #[1, 2, 3],
-    #         "num_blocks_per_layer":  [2], #[1, 2, 4],
-    #         "dropout_probability": [0.3], #[0.0, 0.1, 0.3],
-    #         "batch_norm_within_layers": [True], #[True, False],
-    #         "batch_norm_between_layers":  [True], #[True, False],
-    #     }
-    # )
-    # trainer_kwargs_list = product_kwargs(
-    #     {
-    #         "epochs": [500],
-    #        "lr_rate": [1e-4],
-    #         "use_cuda": [True],
-    #         "flow_type": [
-    #             'maf', 
-    #             'real_nvp', 
-    #             'nice'
-    #         ],#["nice", "maf", "real_nvp"],
-    #         "model_type": [
-    #             # 'flow_baseline', 
-    #             # 'flow_onehot',
-    #             # 'flow_peb',
-    #             'flow_bias'
-    #         ]
-    #     }
-    # )
+    model_kwargs_list = product_kwargs(
+        {
+            "embedding_dim": [50],
+            "dp_emb": [0.25],
+            "dp": [0.0],
+            "hidden_dim": [100],
+        }
+    )
+    flow_kwargs_list = product_kwargs(
+        {
+            "hidden_features": [2], #[2, 4, 8],
+            "num_layers":  [3], #[1, 2, 3],
+            "num_blocks_per_layer":  [2], #[1, 2, 4],
+            "dropout_probability": [0.3], #[0.0, 0.1, 0.3],
+            "batch_norm_within_layers": [True], #[True, False],
+            "batch_norm_between_layers":  [True], #[True, False],
+        }
+    )
+    trainer_kwargs_list = product_kwargs(
+        {
+            "epochs": [500],
+           "lr_rate": [1e-4],
+            "use_cuda": [True],
+            "flow_type": [
+               # 'maf', 
+                'real_nvp', 
+                #'nice'
+            ],#["nice", "maf", "real_nvp"],
+            "model_type": [
+                'flow_baseline', 
+                'flow_onehot',
+                'flow_peb',
+                'flow_bias'
+            ]
+        }
+    )
 
     for datamodule_cls in datamodule_classes:
         for datamodule_kwargs in datamodule_kwargs_list:
@@ -113,7 +109,7 @@ if __name__ == "__main__":
             ):
                 hparams = {
                     "dataset": type(data_module).__name__,
-                    "grid_name": grid_name,
+                    #"grid_name": grid_name,
                     **datamodule_kwargs,
                     **model_kwargs,
                     **trainer_kwargs,
@@ -134,7 +130,7 @@ if __name__ == "__main__":
                     logger=logger,
                     **trainer_kwargs,
                     custom_callbacks=[
-                        EarlyStopping(monitor="valid_loss", mode="min", patience=3),
+                        EarlyStopping(monitor="valid_loss", mode="min", patience=10),
                         #SaveDistribution(save_dir='distro', fold=datamodule_kwargs["test_fold"])
                     ],
                 )
