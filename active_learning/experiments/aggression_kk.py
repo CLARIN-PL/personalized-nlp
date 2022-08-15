@@ -14,7 +14,7 @@ os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 os.environ["WANDB_START_METHOD"] = "thread"
 
 if __name__ == "__main__":
-    wandb_project_name = "AL_Balanced_Measures_Stratified"
+    wandb_project_name = "AL_Aggression_Balanced_Measures_Stratified"
     datamodule_cls = AggressionDataModule
 
     activelearning_kwargs_list = product_kwargs({

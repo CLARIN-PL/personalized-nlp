@@ -3,19 +3,19 @@ from itertools import product
 
 from active_learning.module import ActiveLearningModule
 import active_learning.algorithms as algorithms
-from personalized_nlp.datasets.clarin_emo_sent import ClarinEmoSentDataModule
+from personalized_nlp.datasets.measuring_hate_speech import MeasuringHateSpeechDataModule
 
 from personalized_nlp.utils import seed_everything
 from personalized_nlp.utils.experiments import product_kwargs
 from personalized_nlp.utils.callbacks.personal_metrics import (
     PersonalizedMetricsCallback, )
 
-os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+os.environ["CUDA_VISIBLE_DEVICES"] = "2"
 os.environ["WANDB_START_METHOD"] = "thread"
 
 if __name__ == "__main__":
-    wandb_project_name = "AL_ClarinEmoSent_Balanced_Measures_Stratified"
-    datamodule_cls = ClarinEmoSentDataModule
+    wandb_project_name = "AL_MeasuringHateSpeech_Balanced_Measures_Stratified"
+    datamodule_cls = MeasuringHateSpeechDataModule
 
     activelearning_kwargs_list = product_kwargs({
         "text_selector_cls": [
