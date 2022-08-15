@@ -12,25 +12,17 @@ from personalized_nlp.datasets.datamodule_base import BaseDataModule
 
 class MeasuringHateSpeechDataModule(BaseDataModule):
 
-    @property 
+    @property
     def annotations_file(self) -> str:
-        return f'annotations_{self.stratify_folds_by}_folds.csv'
-    
-    @property 
+        return f'annotations.tsv'
+
+    @property
     def data_file(self) -> str:
-        return f'data_processed.csv'
+        return f'data.tsv'
 
     @property
     def data_dir(self) -> Path:
         return DATA_DIR / "measuring_hate_speech"
-    
-    @property
-    def annotations_file(self) -> str:
-        return f"uc_annotations_{self.stratify_folds_by}_folds.csv"
-    
-    @property
-    def data_file(self) -> str:
-        return 'uc_texts_processed.csv'
 
     def __init__(
         self,
