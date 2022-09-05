@@ -469,6 +469,7 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         df = annotations
 
         X = df.loc[:, ["text_id", "annotator_id"]]
+        X["annotation_id"] = X.index.values
         y = df[self.annotation_columns]
 
         # X["text_id"] = X["text_id"].apply(lambda r_id: self.text_id_idx_dict[r_id])
