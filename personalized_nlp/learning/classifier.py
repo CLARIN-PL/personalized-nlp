@@ -10,13 +10,13 @@ from personalized_nlp.utils.metrics import F1Class, PrecisionClass, RecallClass
 
 class Classifier(pl.LightningModule):
     def __init__(
-        self, 
-        model, 
-        class_dims, 
-        lr: float, 
+        self,
+        model,
+        class_dims,
+        lr: float,
         class_names=None,
-        ) -> None:
-        
+    ) -> None:
+
         super(Classifier, self).__init__()
         self.model = model
         self.lr = lr
@@ -88,7 +88,7 @@ class Classifier(pl.LightningModule):
             "preds": preds,
             "y": y,
             "x": x,
-            "class_names": self.class_names
+            "class_names": self.class_names,
         }
 
     def validation_step(self, batch, batch_idx):
@@ -100,7 +100,15 @@ class Classifier(pl.LightningModule):
         self.log("valid_loss", loss, prog_bar=True)
         self.log_all_metrics(output=output, y=y, split="valid")
 
-        return loss
+        return {
+            "loss": loss,
+            "output": output,
+            "y": y,
+            "x": x,
+            "y_pred": output,
+            "is_regression": False,
+            "class_names": self.class_names,
+        }
 
     def test_step(self, batch, batch_idx):
         x, y = batch
@@ -160,7 +168,8 @@ class Classifier(pl.LightningModule):
 
                 if split == "valid" and metric_type == "macro_f1":
                     f1_macros = [
-                        log_dict[metric_key].compute().cpu() for metric_key in metric_keys
+                        log_dict[metric_key].compute().cpu()
+                        for metric_key in metric_keys
                     ]
 
                     log_dict["valid_macro_f1_mean"] = np.mean(f1_macros)

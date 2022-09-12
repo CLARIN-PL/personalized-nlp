@@ -21,6 +21,7 @@ def train_test(
     custom_callbacks=None,
     monitor_metric="valid_loss",
     monitor_mode="min",
+    advanced_output=False,
     **kwargs
 ):
     """Train model and return predictions for test dataset"""
@@ -41,9 +42,9 @@ def train_test(
     train_loader = datamodule.train_dataloader()
     val_loader = datamodule.val_dataloader()
     test_loader = datamodule.test_dataloader()
-    
-    #raise Exception(f'Train: {len(train_loader.dataset)}\nVal: {len(val_loader.dataset)}\nTest: {len(test_loader.dataset)}\nSum: {len(train_loader.dataset) + len(val_loader.dataset) + len(test_loader.dataset)}\nInner: {len(datamodule.annotations)}')
-    
+
+    # raise Exception(f'Train: {len(train_loader.dataset)}\nVal: {len(val_loader.dataset)}\nTest: {len(test_loader.dataset)}\nSum: {len(train_loader.dataset) + len(val_loader.dataset) + len(test_loader.dataset)}\nInner: {len(datamodule.annotations)}')
+
     if regression:
         class_names = datamodule.annotation_columns
 
@@ -78,6 +79,10 @@ def train_test(
         callbacks=callbacks,
     )
     trainer.fit(model, train_loader, val_loader)
+    train_metrics = trainer.logged_metrics
     trainer.test(dataloaders=test_loader)
 
-    return trainer
+    if advanced_output:
+        return {"trainer": trainer, "train_metrics": train_metrics}
+    else:
+        return trainer

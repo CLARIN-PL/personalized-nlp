@@ -1,8 +1,14 @@
 from typing import List
-from personalized_nlp.datasets.datamodule_base import BaseDataModule
-from personalized_nlp.learning.train import train_test
 
 import numpy as np
+from active_learning.callbacks.confidences import SaveConfidencesCallback
+from personalized_nlp.datasets.datamodule_base import BaseDataModule
+from personalized_nlp.learning.train import train_test
+from personalized_nlp.utils.callbacks.personal_metrics import (
+    PersonalizedMetricsCallback,
+)
+from sklearn.linear_model import LinearRegression
+from sklearn.model_selection import cross_validate
 
 from active_learning.algorithms.base import TextSelectorBase
 from active_learning.module import ActiveLearningModule
@@ -24,9 +30,9 @@ class ActiveReinforcementLearningModule(ActiveLearningModule):
         validation_ratio: float = 0.2,
         train_with_all_annotations: bool = True,
         stratify_by_user: bool = False,
-        reinforce_experiment_num: int = 0,
-        reinforce_subsample_num: int = 1,
-        **kwargs
+        reinforce_experiment_num: int = 3,
+        reinforce_subsample_num: int = 100,
+        **kwargs,
     ) -> None:
 
         super().__init__(
@@ -42,14 +48,18 @@ class ActiveReinforcementLearningModule(ActiveLearningModule):
         )
         self.reinforce_experiment_num = reinforce_experiment_num
         self.reinforce_subsample_num = reinforce_subsample_num
+        self.reinforce_confidences = None
 
     def experiment(self, max_amount: int, step_size: int, **kwargs):
         while self.annotated_amount < max_amount:
             not_annotated = (self.datamodule.annotations.split == "none").sum()
             if not_annotated == 0:
                 break
+            print("add annotations step")
             self.add_annotations(step_size)
+            print("reinforce step")
             self._reinforce_iteration()
+            print("reinforce step")
             self.train_model()
 
         if self.train_with_all_annotations:
@@ -68,6 +78,7 @@ class ActiveReinforcementLearningModule(ActiveLearningModule):
 
         undersampled_f1_results = []
         undersampled_indexes = []
+        undersampled_metrics = []
 
         for _ in range(self.reinforce_experiment_num):
             # subsample training dataset
@@ -76,14 +87,29 @@ class ActiveReinforcementLearningModule(ActiveLearningModule):
             # results for subsampled training datasets
             undersampled_f1_results.append(self._reinforce_train_test())
 
+            confidences = self.reinforce_confidences
+            annotations = self.datamodule.annotations
+            texts = self.datamodule.data
+
+            annotated = annotations.loc[annotations["split"].isin(["train"])]
+            subsampled = annotations.loc[
+                annotations["split"] == "subsampled_for_reinforce",
+                ["text_id", "annotator_id"],
+            ]
+            metrics = self.text_selector.get_metrics(
+                texts, annotated, subsampled, confidences
+            )
+
+            undersampled_metrics.append(metrics)
+
             # revert subsampling training dataset
             self._revert_subsample()
 
         self._improve_linear_regression(
-            full_sample_result, undersampled_indexes, undersampled_results
+            full_sample_result, undersampled_f1_results, undersampled_metrics
         )
 
-    def _subsample_train_annotations(self) -> None:
+    def _subsample_train_annotations(self) -> np.array:
         annotations = self.datamodule.annotations
         train_annotations = annotations.loc[annotations.split == "train"]
         train_annotations_idx = train_annotations.index.tolist()
@@ -93,6 +119,8 @@ class ActiveReinforcementLearningModule(ActiveLearningModule):
         )
 
         annotations.loc[subsampled_idx, "split"] = "subsampled_for_reinforce"
+
+        return subsampled_idx
 
     def _revert_subsample(self) -> None:
         annotations = self.datamodule.annotations
@@ -104,22 +132,54 @@ class ActiveReinforcementLearningModule(ActiveLearningModule):
         model_kwargs = dict(self.model_kwargs)
         train_kwargs = dict(self.train_kwargs)
 
-        trainer = train_test(
-            datamodule,
-            model_kwargs=model_kwargs,
-            **train_kwargs,
+        metrics_callback = PersonalizedMetricsCallback()
+        confidences_callback = SaveConfidencesCallback()
+        train_kwargs["custom_callbacks"] = [metrics_callback, confidences_callback]
+
+        trainer_output = train_test(
+            datamodule, model_kwargs=model_kwargs, **train_kwargs, advanced_output=True
         )
 
-        personal_f1 = 0  # fetch personal f1 from trainer
-        return personal_f1
+        if any(datamodule.annotations.split == "subsampled_for_reinforce"):
+            # gather confidence levels
+            not_annotated_dataloader = datamodule.custom_dataloader(
+                "subsampled_for_reinforce", shuffle=False
+            )
+            trainer = trainer_output["trainer"]
+            trainer.predict(dataloaders=not_annotated_dataloader)
+
+            self.reinforce_confidences = confidences_callback.predict_outputs
+
+        personal_f1 = trainer_output["train_metrics"]["valid_personal_macro_f1"]
+
+        return personal_f1.cpu().numpy()
 
     def _improve_linear_regression(
         self,
         full_sample_result: float,
-        undersampled_indexes: List[int],
         undersampled_f1_results: List[float],
+        undersampled_metrics: List[np.ndarray],
     ):
         # calculate text selector metrics for undersampled annotations
+        print([x.shape for x in undersampled_metrics])
+        X = np.vstack(undersampled_metrics)
+        y = np.array(undersampled_f1_results) - full_sample_result
+
         # train linear regression to predict model f1 metrics
+        self._test_regression(X, y)
+        reg = LinearRegression().fit(X, y)
+
         # update self.text_selector with new linear model
-        pass
+        self.text_selector.set_new_model(reg)
+
+    def _test_regression(self, X, y):
+        reg = LinearRegression()
+        cv_results = cross_validate(
+            reg,
+            X,
+            y,
+            cv=5,
+            scoring=("r2", "neg_mean_squared_error"),
+        )
+
+        print(f"Reinforcement regression scoring: {cv_results}")
