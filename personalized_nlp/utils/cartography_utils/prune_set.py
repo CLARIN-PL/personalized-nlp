@@ -20,8 +20,9 @@ def create_folds_dict(root: str, file_ext: str = '.csv', regex: str = '(?<=fold_
 def filter_annotations(metrics_df: pd.DataFrame, sort_by: str, ascending: bool, top_perc: float):
     if sort_by == 'random':
         idx = metrics_df.index.values
-        np.random.shuffle(idx)
-        return metrics_df.iloc[idx, :]
+        #np.random.shuffle(idx)
+        #print(idx)
+        return metrics_df.loc[idx, :].head(n=int(len(metrics_df) * top_perc))
     sorted_scores = metrics_df.sort_values(by=[sort_by], ascending=ascending)
     
     selected = sorted_scores.head(n=int(len(sorted_scores) * top_perc))
@@ -30,6 +31,7 @@ def filter_annotations(metrics_df: pd.DataFrame, sort_by: str, ascending: bool, 
 def filter_by_users(metrics_df: pd.DataFrame, sort_by: str, ascending: bool, top_perc: float):
     dfs = []
     metrics_df[['text_id', 'annotator_id']] = metrics_df['guid'].str.split('_', expand=True)
+    
     selected = metrics_df.groupby('annotator_id').apply(lambda x: filter_annotations(x, sort_by=sort_by, ascending=ascending, top_perc=top_perc))
     selected.reset_index(drop=True)
     return selected

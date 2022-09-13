@@ -104,8 +104,8 @@ class Regressor(pl.LightningModule):
                 metric_values.append(metric_value)
                 log_dict[metric_key] = self.metrics[metric_key]
 
-            mean_metric_key = f"{split}_{metric_type}_mean"
-            self.metrics[mean_metric_key](output, y)
-            log_dict[mean_metric_key] = self.metrics[mean_metric_key]
+            # mean_metric_key = f"{split}_{metric_type}_mean"
+            # self.metrics[mean_metric_key](output, y)
+            # log_dict[mean_metric_key] = self.metrics[mean_metric_key]
 
             self.log_dict(log_dict, on_step=on_step, on_epoch=on_epoch)

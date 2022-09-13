@@ -3,7 +3,7 @@ import functools
 from itertools import product
 from pytorch_lightning.callbacks import EarlyStopping
 
-from personalized_nlp.datasets.wiki.toxicity import ToxicityDataModule
+from personalized_nlp.datasets.wiki.toxicity_cartography import ToxicityCartographyRegressorDataModule
 
 from personalized_nlp.learning.train import train_test
 from settings import LOGS_DIR
@@ -19,20 +19,22 @@ os.environ["WANDB_START_METHOD"] = "thread"
 if __name__ == "__main__":
     sort_by = 'random'
     stratify_by_users = True
-    wandb_project_name = "ToxicityAmbigousRegressor"
-    datamodule_cls = ToxicityDataModule
+    wandb_project_name = "ToxicityRegressor10prcOutputs"
+    datamodule_cls = ToxicityCartographyRegressorDataModule
 
     datamodule_kwargs_list = product_kwargs(
         {
-            "regression": [False],
+            "regression": [True],
             "embeddings_type": ["xlmr"],
             "limit_past_annotations_list": [None],
             "stratify_folds_by": ["420balanced"],
-            "fold_nums": [10],
+            "fold_nums": [3],
             "batch_size": [3000],
-            "test_fold": list(range(1)),
+            "test_fold": [0],
             "use_finetuned_embeddings": [False],
-            "major_voting": [False]
+            "major_voting": [False],
+            "model": ["baseline", "peb"],
+            "value": ['variability']
         }
     )
     model_kwargs_list = product_kwargs(
@@ -45,51 +47,28 @@ if __name__ == "__main__":
     )
     trainer_kwargs_list = product_kwargs(
         {
-            "epochs": [20],
+            "epochs": [100],
             "lr_rate": [0.008],
-            "regression": [False],
+            "regression": [True],
             "use_cuda": [True],
-            # "model_type": ["baseline", "onehot", "peb", "bias", "embedding"],
-            "model_type": ["peb"],
-            "top_perc": [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0],
-            "ascending": [True], #[True, False],
-            'sort_by': ['random'] #['y_pred_variability', 'y_true_variability']
-            #"sort_by": ["variability", "threshold_closeness", "confidence", "correctness", "forgetfulness"]
+            "ascending": [True, False],
         }
     )
 
     for datamodule_kwargs in datamodule_kwargs_list:
         seed_everything()
-        # prune_dict = create_folds_dict(
-        #     #root='/home/konradkaranowski/storage/personalized-nlp/storage/outputs/regressor_outputs/09-01-2022-Sepmodel=peb_fold=0.csv'
-        #     #root='/home/konradkaranowski/storage/personalized-nlp/storage/outputs/cartography_outputs/cartography_wiki_toxicity_model=embedding/metrics/class_toxicity'
-        # )
-        prune_dict = dict()
-        prune_dict[0] = '/home/konradkaranowski/storage/personalized-nlp/storage/outputs/regressor_outputs/09-01-2022-Sepmodel=peb_fold=0.csv'
         data_module = datamodule_cls(**datamodule_kwargs)
 
         for model_kwargs, trainer_kwargs in product(
             model_kwargs_list,
             trainer_kwargs_list,
         ):
-            prune_function = functools.partial(
-                prune_train_set,
-                metrics_dict=prune_dict,
-                # sort_by=''
-                sort_by=trainer_kwargs["sort_by"], 
-                ascending=trainer_kwargs["ascending"], 
-                top_perc=trainer_kwargs['top_perc'],
-                stratify_by_users=stratify_by_users
-            )
-            
-            data_module.set_prune_train_function(prune_function)
-            
+            trainer_kwargs['model_type'] = datamodule_kwargs['model']
             hparams = {
                 "dataset": type(data_module).__name__,
                 **datamodule_kwargs,
                 **model_kwargs,
                 **trainer_kwargs,
-                "sort_by": f'{trainer_kwargs["sort_by"]}_{"ascending" if trainer_kwargs["ascending"] else "descending"}' ,
                 "ascending": True,
                 "train_size": len(data_module.train_dataloader().dataset),
                 "stratify_by_users": stratify_by_users
@@ -107,7 +86,10 @@ if __name__ == "__main__":
                 model_kwargs=model_kwargs,
                 logger=logger,
                 **trainer_kwargs,
-                custom_callbacks=[EarlyStopping(monitor="valid_loss", mode="min", patience=3)]
+                custom_callbacks=[
+                    EarlyStopping(monitor="valid_loss", mode="min", patience=3),
+                    callbacks.SaveOutputsLocal(save_dir='regressor_outputs', save_text=False, model=trainer_kwargs['model_type'], fold=datamodule_kwargs['test_fold'])
+                ]
             )
 
             logger.experiment.finish()
