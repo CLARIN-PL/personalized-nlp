@@ -1,1 +1,2 @@
 from cartography_active_learning.datasets.cartography_data_module import CartographyDataModule
+from cartography_active_learning.datasets.regressor_data_module import RegressorDataModule

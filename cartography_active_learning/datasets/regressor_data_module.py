@@ -19,15 +19,16 @@ from personalized_nlp.utils.embeddings import create_embeddings
 from personalized_nlp.utils.finetune import finetune_datamodule_embeddings
 
 
-class CartographyDataModule(LightningDataModule):
+class RegressorDataModule(LightningDataModule):
     
     def __init__(
         self,
         # new
         annotations: pd.DataFrame, 
+        test_data: pd.DataFrame,
         data: pd.DataFrame, 
-        test_fold: int = 0, 
-        val_fold: int = 1,
+        metric: str,
+        split_size: float,
         
         # old
         train_transforms=None,
@@ -36,11 +37,7 @@ class CartographyDataModule(LightningDataModule):
         dims=None,
         batch_size: int = 3000,
         embeddings_type: str = "labse",
-        major_voting: bool = False,
         regression: bool = False,
-        past_annotations_limit: Optional[int] = None,
-        use_finetuned_embeddings: bool = False,
-        min_annotations_per_user_in_fold: Optional[int] = None,
         seed: int = 22,
         **kwargs,
     ):
@@ -57,55 +54,46 @@ class CartographyDataModule(LightningDataModule):
             filtered_annotations (str, optional): path to dataframe for filter annotations (for example choose only user=1, text=1,2,4 etc). Defaults to None.
         """
 
-        super(CartographyDataModule, self).__init__(
+        super(RegressorDataModule, self).__init__(
             train_transforms=train_transforms,
             val_transforms=val_transforms,
             test_transforms=test_transforms,
             dims=dims,
         )
 
-        self._init_args = locals()
-        del self._init_args["self"]
-        del self._init_args["__class__"]
 
         self.batch_size = batch_size
         self.embeddings_type = embeddings_type
-        self.major_voting = major_voting
         self.regression = regression
-        self.past_annotations_limit = past_annotations_limit
-
-       # self._test_fold = test_fold if test_fold is not None else 0
-        self.use_finetuned_embeddings = use_finetuned_embeddings
-        self.min_annotations_per_user_in_fold = min_annotations_per_user_in_fold
-
 
         self.annotations = annotations
+        self.test_data = test_data
+        
+        # nienawidzę tego kodu kurwa jebana mać
+        self.test_data['variability'] = 0
+        
+        self.metric = metric
         self.data = data
-        self._test_fold = test_fold
-        self._val_fold = val_fold
+        self.val_size = split_size
 
         seed_everything(seed)
 
+        
         self.prepare_data()
         self.setup()
-        
-        # toxicity
-        os.makedirs(self.data_dir / "embeddings", exist_ok=True)
-    
-    def add_top_k(self, predictions: pd.DataFrame, metric: str, amount: int, ascending: bool = True) -> None:
-        predictions.sort_values(by=metric, inplace=True, ascending=ascending)
-        to_add = predictions.head(n=amount)
-        self.annotations.loc[self.annotations['guid'].isin(to_add['guid']), 'available'] = True
+
+    def _split_annotations(self):
+        id_max = len(self.annotations)
+        val_size = int(id_max * self.val_size) 
+        splits = ['val'] * val_size + ['train'] * (id_max - val_size)
+        np.random.shuffle(splits)
+        self.annotations['ann_split'] = splits
     
     def prepare_data(self) -> None:
         self.data = self._remap_column_names(self.data)
         self.data["text"] = self.data["text"].str.replace("NEWLINE_TOKEN", "  ")
         self.annotations = self._remap_column_names(self.annotations)
-        
-        self.annotations["split"] = "train"
-        self.annotations.loc[self.annotations.fold == self.val_fold, "split"] = "val"
-        self.annotations.loc[self.annotations.fold == self.test_fold, "split"] = "test"
-
+        self._split_annotations()
 
     def _get_data_by_split(
         self, annotations: pd.DataFrame
@@ -121,8 +109,7 @@ class CartographyDataModule(LightningDataModule):
         tuples and y is numpy array of labels for the annotations.
         :rtype: [type]
         """
-        df = annotations[annotations['available'] == True]
-
+        df = annotations
         X = df.loc[:, ["text_id", "annotator_id"]]
         y = df[self.annotation_columns]
 
@@ -157,23 +144,11 @@ class CartographyDataModule(LightningDataModule):
 
 
         self.compute_annotator_biases()
-
-        if self.regression:
-            self._normalize_labels()
-
-        if self.major_voting:
-            self.compute_major_votes()
-
         if not os.path.exists(self.embeddings_path):
             self._create_embeddings()
 
         embeddings_path = self.embeddings_path
 
-        if self.use_finetuned_embeddings:
-            finetune_datamodule_embeddings(self)
-            embeddings_path = (
-                f"{self.data_dir}/embeddings/{self.embeddings_type}_{self.test_fold}.p"
-            )
 
         with open(embeddings_path, "rb") as f:
             text_idx_to_emb = pickle.load(f)
@@ -189,24 +164,10 @@ class CartographyDataModule(LightningDataModule):
         self.text_embeddings = torch.tensor(embeddings)
 
 
-    def _normalize_labels(self):
-        annotation_columns = self.annotation_columns
-        df = self.annotations
-
-        mins = df.loc[:, annotation_columns].values.min(axis=0)
-        df.loc[:, annotation_columns] = df.loc[:, annotation_columns] - mins
-
-        maxes = df.loc[:, annotation_columns].values.max(axis=0)
-        df.loc[:, annotation_columns] = df.loc[:, annotation_columns] / maxes
-
-        df.loc[:, annotation_columns] = df.loc[:, annotation_columns].fillna(0)
-
-
     def compute_annotator_biases(self):
         annotations_with_data = self.annotations_with_data
 
-        personal_df_mask = ~(annotations_with_data.fold.isin([self.test_fold, self.val_fold])) & (annotations_with_data.available)
-
+        personal_df_mask = annotations_with_data.ann_split == 'train'
         personal_df = annotations_with_data.loc[personal_df_mask]
 
         annotation_columns = self.annotation_columns
@@ -244,16 +205,46 @@ class CartographyDataModule(LightningDataModule):
         Returns:
             DataLoader: testing dataloader for the dataset.
         """
-        return self._get_dataloader("test", False)
+        return self._get_test_dataloader()
 
     def custom_dataloader(
         self, split_name: str = "none", shuffle: bool = False
     ) -> DataLoader:
         return self._get_dataloader(split_name, shuffle)
+    
+    def _get_test_dataloader(self):
+    
+        annotations = self.test_data
+
+        X, y = self._get_data_by_split(annotations)
+        text_features = self._get_text_features()
+        annotator_features = self._get_annotator_features()
+
+        dataset = BatchIndexedDataset(
+            X,
+            y,
+            text_features=text_features,
+            annotator_features=annotator_features,
+        )
+
+        order_sampler_cls = torch.utils.data.sampler.SequentialSampler
+
+        sampler = torch.utils.data.sampler.BatchSampler(
+            order_sampler_cls(dataset),
+            batch_size=self.batch_size,
+            drop_last=False,
+        )
+
+        return torch.utils.data.DataLoader(
+            dataset, sampler=sampler, batch_size=None, num_workers=4
+        )
+
 
     def _get_dataloader(self, split: str, shuffle: bool) -> DataLoader:
+        
+
         annotations = self.annotations
-        annotations = annotations.loc[annotations.split == split]
+        annotations = annotations.loc[annotations.ann_split == split]
 
         X, y = self._get_data_by_split(annotations)
         text_features = self._get_text_features()
@@ -335,11 +326,11 @@ class CartographyDataModule(LightningDataModule):
     
     @property
     def class_dims(self) -> List[int]:
-        return [2]
+        return [1]
 
     @property
     def annotation_columns(self) -> List[str]:
-        return ["toxicity"]
+        return [self.metric]
 
     @property
     def embeddings_path(self) -> Path:
@@ -356,35 +347,8 @@ class CartographyDataModule(LightningDataModule):
         return max(self.annotations["annotator_id"]) + 1
 
     @property
-    def train_text_split_names(self) -> List[str]:
-        return ["present", "past"]
-
-    @property
-    def val_text_split_names(self) -> List[str]:
-        return ["future1"]
-
-    @property
-    def test_text_split_names(self) -> List[str]:
-        return ["future2"]
-
-    @property
-    def train_folds(self) -> List[int]:
-        all_folds = range(self.folds_num)
-        exclude_folds = [self.val_fold, self.test_fold]
-
-        return [fold for fold in all_folds if fold not in exclude_folds]
-
-    @property
     def num_annotations(self) -> int:
         return len(self.annotations)
-
-    @property
-    def val_fold(self) -> int:
-        return self._val_fold
-
-    @property
-    def test_fold(self) -> int:
-        return self._test_fold
 
     @property
     def text_embedding_dim(self) -> int:
@@ -395,53 +359,5 @@ class CartographyDataModule(LightningDataModule):
 
     @property
     def annotations_with_data(self) -> pd.DataFrame:
-        return self.annotations.merge(self.data)
-    
-    @property
-    def train_pct_used(self) -> float:
-        train_df = self.annotations.loc[self.annotations.split == 'train']
-        if (~train_df['available']).sum() == 0:
-            return 1.0
-        return (train_df['available'] == True).sum() / len(train_df)
-    
-    @property
-    def unused_train(self) -> pd.DataFrame:
-        train_df = self.annotations.loc[self.annotations.split == 'train']
-        return train_df[train_df['available'] == False].copy()
+        return self.annotations.merge(self.data, on='text_id')
 
-    @property
-    def train_size(self) -> int:
-        train_df = self.annotations.loc[self.annotations.split == 'train']
-        return len(train_df)
-
-    # do wywalenia
-     # def compute_major_votes(self) -> None:
-    #     """Computes mean votes for texts in train folds."""
-    #     annotations = self.annotations
-    #     annotation_columns = self.annotation_columns
-
-    #     text_id_to_fold = (
-    #         annotations.loc[:, ["text_id", "fold"]]
-    #         .drop_duplicates()
-    #         .set_index("text_id")
-    #         .to_dict()["fold"]
-    #     )
-
-    #     val_test_annotations = annotations.loc[annotations.fold.isin([self.test_fold, self.val_fold])]
-    #     annotations = annotations.loc[~annotations.fold.isin([self.test_fold, self.val_fold])]
-
-    #     dfs = []
-    #     for col in annotation_columns:
-    #         if self.regression:
-    #             aggregate_lambda = lambda x: x.mean()
-    #         else:
-    #             aggregate_lambda = lambda x: pd.Series.mode(x)[0]
-
-    #         dfs.append(annotations.groupby("text_id")[col].apply(aggregate_lambda))
-
-    #     annotations = pd.concat(dfs, axis=1).reset_index()
-    #     annotations["annotator_id"] = 0
-    #     annotations["split"] = "train"
-    #     annotations["fold"] = annotations["text_id"].map(text_id_to_fold)
-
-    #     self.annotations = pd.concat([annotations, val_test_annotations])

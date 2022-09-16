@@ -14,17 +14,16 @@ def main():
     
     PROJECT_NAME = 'CartographyActiveLearningBugFix'
     SPLIT_SIZES = [0.1, 0.15, 0.2]
-    ASCENDING = False
-    METRIC = "variability"
-    SEED_SIZES = [0.05, 0.1, 0.15, 0.2]
+    METRIC = "random"
+    SEED_SIZES = [0.001, 0.05, 0.1, 0.15, 0.2]
     MODELS = ['baseline']
     MODEL_KWARGS = {"embedding_dim": 50,
             "dp_emb": 0.25,
             "dp": 0.0,
             "hidden_dim": 100}
     MAX_EPOCHS = 100
-    STEP_SIZES = [0.05, 0.1, 0.01]
-    TEST_FOLDS = [i for i in range(1)]
+    STEP_SIZES = [0.1, 0.01]
+    TEST_FOLDS = [i for i in range(10)]
     
     for split_size in SPLIT_SIZES:
         for seed_size in SEED_SIZES:
@@ -56,7 +55,7 @@ def main():
                                     "seed_size": seed_size,
                                     "step_size": step_size,
                                     "test_fold": test_fold,
-                                    "metric": f'{METRIC}_{ASCENDING}',
+                                    "metric": METRIC,
                                     "split_size": split_size
                                 }
 
@@ -67,7 +66,7 @@ def main():
                                     log_model=False,
                                 )
                             
-                            training_dynamics = train_model_cartography(
+                            _ = train_model_cartography(
                                 model_type, 
                                 datamodule, 
                                 model_kwargs=MODEL_KWARGS, 
@@ -76,50 +75,11 @@ def main():
                                 custom_callbacks=[
                                     callbacks.EarlyStopping(monitor="valid_loss", mode="min", patience=3)
                                 ])
+                           
+                            train = datamodule.unused_train
                             
-                            del logger
-                            
-                            cartography_df = get_cartography(training_dynamics)
-                            
-                            regressor_data_module = RegressorDataModule(
-                                annotations=cartography_df,
-                                test_data=datamodule.unused_train,
-                                data=texts,
-                                metric=f'{METRIC}',
-                                split_size=split_size
-                            )
-                            
-                            hparams = {
-                                    "dataset": type(datamodule).__name__,
-                                    "model_type": model_type,
-                                    "model": "train_model",
-                                    "seed_size": seed_size,
-                                    "step_size": step_size,
-                                    "test_fold": test_fold,
-                                    "split_sizes": split_size,
-                                    "test_size": len(regressor_data_module.test_dataloader().dataset)
-                                }
-
-                            regressor_logger = pl_loggers.CSVLogger(
-                                    save_dir=str(LOGS_DIR)
-                                )
-                            
-                            predictions = train_regressor(
-                                model_type, 
-                                regressor_data_module, 
-                                model_kwargs=MODEL_KWARGS, 
-                                lr=1e-5,
-                                logger=regressor_logger, 
-                                epochs=MAX_EPOCHS, 
-                                regression=True,
-                                custom_callbacks=[
-                                    callbacks.EarlyStopping(monitor="valid_loss", mode="min", patience=3)
-                                ])
-                            
-                            del regressor_logger
-                            
-                            train = datamodule.unused_train.merge(predictions, on='guid')
-                            datamodule.add_top_k(train, metric=METRIC, amount=int(datamodule.train_size * step_size), ascending=ASCENDING)
+                            train['random'] = np.random.sample(size=len(train))
+                            datamodule.add_top_k(train, metric='random', amount=int(datamodule.train_size * step_size), ascending=False)
         
 if __name__ == '__main__':
     main()

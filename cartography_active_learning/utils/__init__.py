@@ -1,1 +1,2 @@
 from cartography_active_learning.utils.get_seed import get_seed
+from cartography_active_learning.utils.cartography import get_cartography
