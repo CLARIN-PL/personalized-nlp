@@ -12,11 +12,11 @@ from cartography_active_learning.utils.cartography import get_cartography
 
 def main():
     
-    PROJECT_NAME = 'CartographyActiveLearningBugFix'
+    PROJECT_NAME = 'CartographyActiveLearning'
     SPLIT_SIZES = [0.1, 0.15, 0.2]
     METRIC = "random"
     SEED_SIZES = [0.001, 0.05, 0.1, 0.15, 0.2]
-    MODELS = ['baseline']
+    MODELS = ['baseline', 'embedding']
     MODEL_KWARGS = {"embedding_dim": 50,
             "dp_emb": 0.25,
             "dp": 0.0,

@@ -12,19 +12,19 @@ from cartography_active_learning.utils.cartography import get_cartography
 
 def main():
     
-    PROJECT_NAME = 'CartographyActiveLearningBugFix'
+    PROJECT_NAME = 'CartographyActiveLearning'
     SPLIT_SIZES = [0.1, 0.15, 0.2]
     ASCENDING = False
     METRIC = "variability"
     SEED_SIZES = [0.05, 0.1, 0.15, 0.2]
-    MODELS = ['baseline']
+    MODELS = ['embedding']
     MODEL_KWARGS = {"embedding_dim": 50,
             "dp_emb": 0.25,
             "dp": 0.0,
             "hidden_dim": 100}
     MAX_EPOCHS = 100
     STEP_SIZES = [0.05, 0.1, 0.01]
-    TEST_FOLDS = [i for i in range(1)]
+    TEST_FOLDS = [i for i in range(10)]
     
     for split_size in SPLIT_SIZES:
         for seed_size in SEED_SIZES:
