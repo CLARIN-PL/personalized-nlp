@@ -30,8 +30,8 @@ class ActiveReinforcementLearningModule(ActiveLearningModule):
         validation_ratio: float = 0.2,
         train_with_all_annotations: bool = True,
         stratify_by_user: bool = False,
-        reinforce_experiment_num: int = 3,
-        reinforce_subsample_num: int = 100,
+        reinforce_experiment_num: int = 50,
+        reinforce_subsample_num: int = 200,
         **kwargs,
     ) -> None:
 
@@ -55,12 +55,12 @@ class ActiveReinforcementLearningModule(ActiveLearningModule):
             not_annotated = (self.datamodule.annotations.split == "none").sum()
             if not_annotated == 0:
                 break
-            print("add annotations step")
             self.add_annotations(step_size)
-            print("reinforce step")
-            self._reinforce_iteration()
-            print("reinforce step")
-            self.train_model()
+            regression_result = self._reinforce_iteration()
+
+            mean_regression_r2 = regression_result["test_r2"].mean()
+            additional_hparams = {"mean_regression_r2": mean_regression_r2}
+            self.train_model(additional_hparams=additional_hparams)
 
         if self.train_with_all_annotations:
             # Train at all annotations as baseline
@@ -69,9 +69,9 @@ class ActiveReinforcementLearningModule(ActiveLearningModule):
                 self.add_annotations(not_annotated)
                 self.train_model()
 
-    def _reinforce_iteration(self) -> None:
+    def _reinforce_iteration(self) -> dict:
         if self.reinforce_experiment_num == 0:
-            return
+            return {}
 
         # result for full training dataset
         full_sample_result = self._reinforce_train_test()
@@ -105,7 +105,7 @@ class ActiveReinforcementLearningModule(ActiveLearningModule):
             # revert subsampling training dataset
             self._revert_subsample()
 
-        self._improve_linear_regression(
+        return self._improve_linear_regression(
             full_sample_result, undersampled_f1_results, undersampled_metrics
         )
 
@@ -160,17 +160,27 @@ class ActiveReinforcementLearningModule(ActiveLearningModule):
         undersampled_f1_results: List[float],
         undersampled_metrics: List[np.ndarray],
     ):
+        print("Learning regression")
+        print("Full sample result:", full_sample_result)
+        print("Undersampled F1 results", undersampled_f1_results)
+
         # calculate text selector metrics for undersampled annotations
-        print([x.shape for x in undersampled_metrics])
+        y_list = []
+        for f1_result, metrics in zip(undersampled_f1_results, undersampled_metrics):
+            ys = [full_sample_result - f1_result] * metrics.shape[0]
+            y_list.append(ys)
+
+        y = np.hstack(y_list)
         X = np.vstack(undersampled_metrics)
-        y = np.array(undersampled_f1_results) - full_sample_result
 
         # train linear regression to predict model f1 metrics
-        self._test_regression(X, y)
+        cv_results = self._test_regression(X, y)
         reg = LinearRegression().fit(X, y)
 
         # update self.text_selector with new linear model
         self.text_selector.set_new_model(reg)
+
+        return cv_results
 
     def _test_regression(self, X, y):
         reg = LinearRegression()
@@ -183,3 +193,5 @@ class ActiveReinforcementLearningModule(ActiveLearningModule):
         )
 
         print(f"Reinforcement regression scoring: {cv_results}")
+
+        return cv_results
