@@ -7,8 +7,8 @@ from itertools import cycle
 
 
 class TextAnnotationDiversitySelector(TextSelectorBase):
-    def __init__(self, class_dims=None) -> None:
-        super().__init__(class_dims)
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
 
         self.text_ids_cycle = None
 
