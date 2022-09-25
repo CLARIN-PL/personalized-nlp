@@ -41,9 +41,9 @@ def train_test(
     train_loader = datamodule.train_dataloader()
     val_loader = datamodule.val_dataloader()
     test_loader = datamodule.test_dataloader()
-    
-    #raise Exception(f'Train: {len(train_loader.dataset)}\nVal: {len(val_loader.dataset)}\nTest: {len(test_loader.dataset)}\nSum: {len(train_loader.dataset) + len(val_loader.dataset) + len(test_loader.dataset)}\nInner: {len(datamodule.annotations)}')
-    
+
+    # raise Exception(f'Train: {len(train_loader.dataset)}\nVal: {len(val_loader.dataset)}\nTest: {len(test_loader.dataset)}\nSum: {len(train_loader.dataset) + len(val_loader.dataset) + len(test_loader.dataset)}\nInner: {len(datamodule.annotations)}')
+
     if regression:
         class_names = datamodule.annotation_columns
 
@@ -59,7 +59,7 @@ def train_test(
     if logger is None:
         logger = pl_loggers.WandbLogger(save_dir=LOGS_DIR, log_model=log_model)
 
-    checkpoint_dir = CHECKPOINTS_DIR / logger.experiment.name
+    checkpoint_dir = CHECKPOINTS_DIR / logger.experiment.id
     checkpoint_callback = ModelCheckpoint(
         dirpath=checkpoint_dir, save_top_k=1, monitor=monitor_metric, mode=monitor_mode
     )

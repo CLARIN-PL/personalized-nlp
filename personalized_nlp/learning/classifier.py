@@ -10,19 +10,21 @@ from personalized_nlp.utils.metrics import F1Class, PrecisionClass, RecallClass
 
 class Classifier(pl.LightningModule):
     def __init__(
-        self, 
-        model, 
-        class_dims, 
-        lr: float, 
+        self,
+        model,
+        class_dims,
+        lr: float,
         class_names=None,
-        ) -> None:
-        
+        log_validation_metrics=False,
+    ) -> None:
+
         super(Classifier, self).__init__()
         self.model = model
         self.lr = lr
 
         self.class_dims = class_dims
         self.class_names = class_names
+        self.log_validation_metrics = log_validation_metrics
 
         self.metric_types = ("accuracy", "precision", "recall", "f1", "macro_f1")
 
@@ -88,7 +90,7 @@ class Classifier(pl.LightningModule):
             "preds": preds,
             "y": y,
             "x": x,
-            "class_names": self.class_names
+            "class_names": self.class_names,
         }
 
     def validation_step(self, batch, batch_idx):
@@ -98,7 +100,8 @@ class Classifier(pl.LightningModule):
         loss = self.step(output=output, y=y)
 
         self.log("valid_loss", loss, prog_bar=True)
-        self.log_all_metrics(output=output, y=y, split="valid")
+        if self.log_validation_metrics:
+            self.log_all_metrics(output=output, y=y, split="valid")
 
         return loss
 
@@ -146,6 +149,9 @@ class Classifier(pl.LightningModule):
 
             log_dict = {}
             for metric_type in self.metric_types:
+                if split == "valid" and not "f1" in metric_type:
+                    continue
+
                 metric_key_prefix = f"{split}_{metric_type}_{class_name}"
 
                 metric_keys = [
@@ -160,7 +166,8 @@ class Classifier(pl.LightningModule):
 
                 if split == "valid" and metric_type == "macro_f1":
                     f1_macros = [
-                        log_dict[metric_key].compute().cpu() for metric_key in metric_keys
+                        log_dict[metric_key].compute().cpu()
+                        for metric_key in metric_keys
                     ]
 
                     log_dict["valid_macro_f1_mean"] = np.mean(f1_macros)
