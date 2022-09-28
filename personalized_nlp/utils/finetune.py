@@ -2,14 +2,15 @@ import os
 
 import personalized_nlp.utils.callbacks as callbacks
 from personalized_nlp.learning.train import train_test
+from pytorch_lightning.callbacks import EarlyStopping
 from settings import TRANSFORMER_MODEL_STRINGS
 
 
 def finetune_datamodule_embeddings(
     original_datamodule,
-    batch_size: int = 20,
-    epochs=3,
-    lr_rate=2e-5,
+    batch_size: int = 32,  # 20
+    epochs=50,  # 3
+    lr_rate=0.00005,
     use_cuda=True,
 ):
 
@@ -36,7 +37,7 @@ def finetune_datamodule_embeddings(
     regression = datamodule.regression
     model_kwargs = {
         "huggingface_model_name": TRANSFORMER_MODEL_STRINGS[embeddings_type],
-        "max_length": 128,
+        "max_length": 512,  # 128
     }
 
     train_test(
@@ -51,6 +52,11 @@ def finetune_datamodule_embeddings(
             callbacks.SaveEmbeddingCallback(
                 datamodule=datamodule,
                 save_path=embeddings_path,
-            )
+            ),
+            EarlyStopping(
+                # monitor="valid_accuracy_sentiment",
+                monitor="valid_macro_f1_sentiment",
+                mode="max",
+                patience=10)
         ],
     )

@@ -4,7 +4,6 @@ import abc
 import pickle
 from pathlib import Path
 
-
 import torch
 import numpy as np
 import pandas as pd
@@ -23,6 +22,7 @@ from personalized_nlp.utils.finetune import finetune_datamodule_embeddings
 # TODO specify types!
 # TODO add docstring!
 class BaseDataModule(LightningDataModule, abc.ABC):
+
     @abc.abstractproperty
     def class_dims(self) -> List[int]:
         raise NotImplementedError()
@@ -152,9 +152,8 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         self.use_finetuned_embeddings = use_finetuned_embeddings
         self.min_annotations_per_user_in_fold = min_annotations_per_user_in_fold
 
-        self.split_sizes = (
-            split_sizes if split_sizes is not None else [0.55, 0.15, 0.15, 0.15]
-        )
+        self.split_sizes = (split_sizes if split_sizes is not None else
+                            [0.55, 0.15, 0.15, 0.15])
 
         self.annotations = pd.DataFrame([])
         self.data = pd.DataFrame([])
@@ -186,9 +185,10 @@ class BaseDataModule(LightningDataModule, abc.ABC):
 
         use_cuda = self.use_cuda and torch.cuda.is_available()
 
-        create_embeddings(
-            texts, embeddings_path, model_name=model_name, use_cuda=use_cuda
-        )
+        create_embeddings(texts,
+                          embeddings_path,
+                          model_name=model_name,
+                          use_cuda=use_cuda)
 
     def setup(self, stage: Optional[str] = None) -> None:
         annotations = self.annotations
@@ -218,9 +218,14 @@ class BaseDataModule(LightningDataModule, abc.ABC):
 
         if self.use_finetuned_embeddings:
             finetune_datamodule_embeddings(self)
-            embeddings_path = (
-                f"{self.data_dir}/embeddings/{self.embeddings_type}_{self.test_fold}.p"
-            )
+            if self.stratify_folds_by == 'predefined':
+                embeddings_path = (
+                    f"{self.data_dir}/embeddings/{self.embeddings_type}_{self.test_fold}_predefined.p"
+                )
+            else:
+                embeddings_path = (
+                    f"{self.data_dir}/embeddings/{self.embeddings_type}_{self.test_fold}.p"
+                )
 
         with open(embeddings_path, "rb") as f:
             text_idx_to_emb = pickle.load(f)
@@ -253,17 +258,21 @@ class BaseDataModule(LightningDataModule, abc.ABC):
             test_fold = self.test_fold
 
             self.annotations["split"] = "train"
-            self.annotations.loc[self.annotations.fold == val_fold, "split"] = "val"
-            self.annotations.loc[self.annotations.fold == test_fold, "split"] = "test"
+            self.annotations.loc[self.annotations.fold == val_fold,
+                                 "split"] = "val"
+            self.annotations.loc[self.annotations.fold == test_fold,
+                                 "split"] = "test"
         elif self.stratify_folds_by == 'predefined':
             pass
         else:
             self.data = split_texts(self.data, self.split_sizes)
 
-            text_id_to_text_split = self.data.set_index("text_id")["text_split"]
+            text_id_to_text_split = self.data.set_index(
+                "text_id")["text_split"]
             text_id_to_text_split = text_id_to_text_split.to_dict()
 
-            annotator_id_to_fold = self.annotations.set_index("annotator_id")["fold"]
+            annotator_id_to_fold = self.annotations.set_index(
+                "annotator_id")["fold"]
             annotator_id_to_fold = annotator_id_to_fold.to_dict()
 
             def _get_annotation_split(row):
@@ -283,9 +292,9 @@ class BaseDataModule(LightningDataModule, abc.ABC):
                 return "none"
 
             self.annotations["split"] = "none"
-            self.annotations["split"] = self.annotations[
-                ["text_id", "annotator_id"]
-            ].apply(_get_annotation_split, axis=1)
+            self.annotations["split"] = self.annotations[[
+                "text_id", "annotator_id"
+            ]].apply(_get_annotation_split, axis=1)
 
     def _assign_folds(self):
         """Randomly assign fold to each annotation."""
@@ -302,9 +311,8 @@ class BaseDataModule(LightningDataModule, abc.ABC):
 
         annotations["fold"] = 0
         for i in range(self.folds_num):
-            annotations.loc[
-                annotations[stratify_column].isin(folded_ids[i]), "fold"
-            ] = i
+            annotations.loc[annotations[stratify_column].isin(folded_ids[i]),
+                            "fold"] = i
 
     def _normalize_labels(self):
         annotation_columns = self.annotation_columns
@@ -324,13 +332,12 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         annotation_columns = self.annotation_columns
 
         text_id_to_fold = (
-            annotations.loc[:, ["text_id", "fold"]]
-            .drop_duplicates()
-            .set_index("text_id")
-            .to_dict()["fold"]
-        )
+            annotations.loc[:,
+                            ["text_id", "split"]].drop_duplicates().set_index(
+                                "text_id").to_dict()["split"])
 
-        val_test_annotations = annotations.loc[annotations.split.isin(["val", "test"])]
+        val_test_annotations = annotations.loc[annotations.split.isin(
+            ["val", "test"])]
         annotations = annotations.loc[~annotations.split.isin(["val", "test"])]
 
         dfs = []
@@ -340,7 +347,8 @@ class BaseDataModule(LightningDataModule, abc.ABC):
             else:
                 aggregate_lambda = lambda x: pd.Series.mode(x)[0]
 
-            dfs.append(annotations.groupby("text_id")[col].apply(aggregate_lambda))
+            dfs.append(
+                annotations.groupby("text_id")[col].apply(aggregate_lambda))
 
         annotations = pd.concat(dfs, axis=1).reset_index()
         annotations["annotator_id"] = 0
@@ -360,17 +368,17 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         personal_df = annotations_with_data.loc[personal_df_mask]
 
         annotation_columns = self.annotation_columns
-        annotator_biases = get_annotator_biases(personal_df, annotation_columns)
+        annotator_biases = get_annotator_biases(personal_df,
+                                                annotation_columns)
 
         all_annotator_ids = self._original_annotations.annotator_id.unique()
-        annotator_id_df = pd.DataFrame(all_annotator_ids, columns=["annotator_id"])
+        annotator_id_df = pd.DataFrame(all_annotator_ids,
+                                       columns=["annotator_id"])
 
         annotator_biases = annotator_id_df.merge(
-            annotator_biases.reset_index(), how="left"
-        )
+            annotator_biases.reset_index(), how="left")
         self.annotator_biases = (
-            annotator_biases.set_index("annotator_id").sort_index().fillna(0)
-        )
+            annotator_biases.set_index("annotator_id").sort_index().fillna(0))
 
     def train_dataloader(self) -> DataLoader:
         """Returns dataloader for training part of the dataset.
@@ -396,9 +404,9 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         """
         return self._get_dataloader("test", False)
 
-    def custom_dataloader(
-        self, split_name: str = "none", shuffle: bool = False
-    ) -> DataLoader:
+    def custom_dataloader(self,
+                          split_name: str = "none",
+                          shuffle: bool = False) -> DataLoader:
         return self._get_dataloader(split_name, shuffle)
 
     def _get_dataloader(self, split: str, shuffle: bool) -> DataLoader:
@@ -427,9 +435,10 @@ class BaseDataModule(LightningDataModule, abc.ABC):
             drop_last=False,
         )
 
-        return torch.utils.data.DataLoader(
-            dataset, sampler=sampler, batch_size=None, num_workers=4
-        )
+        return torch.utils.data.DataLoader(dataset,
+                                           sampler=sampler,
+                                           batch_size=None,
+                                           num_workers=4)
 
     def _get_text_features(self) -> Dict[str, Any]:
         """Returns dictionary of features of all texts in the dataset.
@@ -455,8 +464,7 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         return {"annotator_biases": self.annotator_biases.values.astype(float)}
 
     def _get_data_by_split(
-        self, annotations: pd.DataFrame
-    ) -> Tuple[np.ndarray, np.ndarray]:
+            self, annotations: pd.DataFrame) -> Tuple[np.ndarray, np.ndarray]:
         """Returns annotations (coded indices of annotators and texts), and
         their labels in the dataset for given splits. Used during training.
         :param annotations: DataFrame of annotations from which the data will
@@ -471,6 +479,7 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         df = annotations
 
         X = df.loc[:, ["text_id", "annotator_id"]]
+        X["annotation_id"] = X.index.values
         y = df[self.annotation_columns]
 
         # X["text_id"] = X["text_id"].apply(lambda r_id: self.text_id_idx_dict[r_id])
@@ -514,27 +523,26 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         return get_conformity(self.annotations, self.annotation_columns)
 
     def limit_past_annotations(self, limit: int):
-        past_annotations = self.annotations.merge(self.data[self.data.split == "past"])
+        past_annotations = self.annotations.merge(
+            self.data[self.data.split == "past"])
 
-        text_stds = (
-            past_annotations.groupby("text_id")[self.annotation_columns]
-            .agg("std")
-            .reset_index()
-        )
+        text_stds = (past_annotations.groupby("text_id")[
+            self.annotation_columns].agg("std").reset_index())
         text_stds.columns = ["text_id", "std"]
 
         past_annotations = past_annotations.merge(text_stds)
 
-        controversial_annotations = past_annotations.groupby("annotator_id").apply(
-            lambda x: x.sort_values(by="std", ascending=False)[:limit]
-        )
+        controversial_annotations = past_annotations.groupby(
+            "annotator_id").apply(
+                lambda x: x.sort_values(by="std", ascending=False)[:limit])
 
-        past_split_text_ids = self.data[self.data.split == "past"].text_id.tolist()
-        non_past_annotations = self.annotations[
-            ~self.annotations["text_id"].isin(past_split_text_ids)
-        ]
+        past_split_text_ids = self.data[self.data.split ==
+                                        "past"].text_id.tolist()
+        non_past_annotations = self.annotations[~self.annotations["text_id"].
+                                                isin(past_split_text_ids)]
 
-        self.annotations = pd.concat([non_past_annotations, controversial_annotations])
+        self.annotations = pd.concat(
+            [non_past_annotations, controversial_annotations])
 
     def filter_annotators(self) -> None:
         """Filters annotators with less than `min_annotations_per_user_in_fold` annotations
@@ -542,24 +550,20 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         """
         if self.stratify_folds_by == "users":
             raise Exception(
-                "Cannot use user folds with min_annotations_per_user_in_fold"
-            )
+                "Cannot use user folds with min_annotations_per_user_in_fold")
 
         min_annotations = self.min_annotations_per_user_in_fold
 
-        annotation_counts = self.annotations.loc[
-            :, ["annotator_id", "fold"]
-        ].value_counts()
+        annotation_counts = self.annotations.loc[:, ["annotator_id", "fold"
+                                                     ]].value_counts()
         annotation_counts = annotation_counts.reset_index().rename(
-            columns={0: "annotation_number"}
-        )
+            columns={0: "annotation_number"})
         annotators_to_ignore = annotation_counts.loc[
-            annotation_counts.annotation_number < min_annotations
-        ].annotator_id.unique()
+            annotation_counts.annotation_number <
+            min_annotations].annotator_id.unique()
 
-        self.annotations = self.annotations[
-            ~self.annotations.annotator_id.isin(annotators_to_ignore)
-        ]
+        self.annotations = self.annotations[~self.annotations.annotator_id.
+                                            isin(annotators_to_ignore)]
 
         annotations = self.annotations
         annotation_columns = self.annotation_columns
@@ -571,24 +575,19 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         for annotation_column in annotation_columns:
             class_dim = annotations[annotation_column].nunique()
 
-            annotations_per_class = annotations.loc[
-                :, ["annotator_id", "fold", annotation_column]
-            ].value_counts()
+            annotations_per_class = annotations.loc[:, [
+                "annotator_id", "fold", annotation_column
+            ]].value_counts()
 
             annotations_per_class = annotations_per_class[
-                annotations_per_class >= min_class_annotations
-            ]
+                annotations_per_class >= min_class_annotations]
 
-            class_fold_per_annotator = (
-                annotations_per_class.reset_index().annotator_id.value_counts()
-            )
+            class_fold_per_annotator = (annotations_per_class.reset_index().
+                                        annotator_id.value_counts())
 
             annotators_to_filter.update(
-                class_fold_per_annotator[
-                    class_fold_per_annotator < folds_num * class_dim
-                ].index.tolist()
-            )
+                class_fold_per_annotator[class_fold_per_annotator < folds_num *
+                                         class_dim].index.tolist())
 
-        self.annotations = self.annotations.loc[
-            ~self.annotations.annotator_id.isin(annotators_to_filter)
-        ]
+        self.annotations = self.annotations.loc[~self.annotations.annotator_id.
+                                                isin(annotators_to_filter)]

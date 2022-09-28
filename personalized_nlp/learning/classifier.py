@@ -9,14 +9,15 @@ from personalized_nlp.utils.metrics import F1Class, PrecisionClass, RecallClass
 
 
 class Classifier(pl.LightningModule):
+
     def __init__(
-        self, 
-        model, 
-        class_dims, 
-        lr: float, 
+        self,
+        model,
+        class_dims,
+        lr: float,
         class_names=None,
-        ) -> None:
-        
+    ) -> None:
+
         super(Classifier, self).__init__()
         self.model = model
         self.lr = lr
@@ -24,13 +25,15 @@ class Classifier(pl.LightningModule):
         self.class_dims = class_dims
         self.class_names = class_names
 
-        self.metric_types = ("accuracy", "precision", "recall", "f1", "macro_f1")
+        self.metric_types = ("accuracy", "precision", "recall", "f1",
+                             "macro_f1")
 
         class_metrics = {}
 
         for split in ["train", "valid", "test"]:
             for class_idx in range(len(class_dims)):
-                class_name = class_names[class_idx] if class_names else str(class_idx)
+                class_name = class_names[class_idx] if class_names else str(
+                    class_idx)
 
                 num_classes = class_dims[class_idx]
 
@@ -38,21 +41,22 @@ class Classifier(pl.LightningModule):
 
                 for class_dim in range(num_classes):
                     class_metrics[
-                        f"{split}_precision_{class_name}_{class_dim}"
-                    ] = PrecisionClass(
-                        num_classes=num_classes, average=None, class_idx=class_dim
-                    )
+                        f"{split}_precision_{class_name}_{class_dim}"] = PrecisionClass(
+                            num_classes=num_classes,
+                            average=None,
+                            class_idx=class_dim)
                     class_metrics[
-                        f"{split}_recall_{class_name}_{class_dim}"
-                    ] = RecallClass(
-                        num_classes=num_classes, average=None, class_idx=class_dim
-                    )
-                    class_metrics[f"{split}_f1_{class_name}_{class_dim}"] = F1Class(
-                        average="none", num_classes=num_classes, class_idx=class_dim
-                    )
+                        f"{split}_recall_{class_name}_{class_dim}"] = RecallClass(
+                            num_classes=num_classes,
+                            average=None,
+                            class_idx=class_dim)
+                    class_metrics[
+                        f"{split}_f1_{class_name}_{class_dim}"] = F1Class(
+                            average="none",
+                            num_classes=num_classes,
+                            class_idx=class_dim)
                 class_metrics[f"{split}_macro_f1_{class_name}"] = F1Score(
-                    average="macro", num_classes=num_classes
-                )
+                    average="macro", num_classes=num_classes)
 
         self.metrics = nn.ModuleDict(class_metrics)
 
@@ -67,9 +71,8 @@ class Classifier(pl.LightningModule):
             start_idx = sum(class_dims[:cls_idx])
             end_idx = start_idx + class_dims[cls_idx]
 
-            loss = loss + nn.CrossEntropyLoss()(
-                output[:, start_idx:end_idx], y[:, cls_idx].long()
-            )
+            loss = loss + nn.CrossEntropyLoss()(output[:, start_idx:end_idx],
+                                                y[:, cls_idx].long())
 
         return loss
 
@@ -88,7 +91,8 @@ class Classifier(pl.LightningModule):
             "preds": preds,
             "y": y,
             "x": x,
-            "class_names": self.class_names
+            "class_names": self.class_names,
+            "guids": x["annotation_ids"],
         }
 
     def validation_step(self, batch, batch_idx):
@@ -109,9 +113,11 @@ class Classifier(pl.LightningModule):
         loss = self.step(output=output, y=y)
 
         self.log("test_loss", loss, prog_bar=True)
-        self.log_all_metrics(
-            output=output, y=y, split="test", on_step=False, on_epoch=True
-        )
+        self.log_all_metrics(output=output,
+                             y=y,
+                             split="test",
+                             on_step=False,
+                             on_epoch=True)
 
         return {
             "loss": loss,
@@ -123,7 +129,10 @@ class Classifier(pl.LightningModule):
             "class_names": self.class_names,
         }
 
-    def predict_step(self, batch: Any, batch_idx: int, dataloader_idx: int = 0) -> Any:
+    def predict_step(self,
+                     batch: Any,
+                     batch_idx: int,
+                     dataloader_idx: int = 0) -> Any:
         x, _ = batch
 
         return {"output": self.forward(x)}
@@ -149,20 +158,25 @@ class Classifier(pl.LightningModule):
                 metric_key_prefix = f"{split}_{metric_type}_{class_name}"
 
                 metric_keys = [
-                    k for k in self.metrics.keys() if k.startswith(metric_key_prefix)
+                    k for k in self.metrics.keys()
+                    if k.startswith(metric_key_prefix)
                 ]
                 for metric_key in metric_keys:
-                    self.metrics[metric_key](
-                        output[:, start_idx:end_idx].float(), y[:, cls_idx].long()
-                    )
+                    self.metrics[metric_key](output[:,
+                                                    start_idx:end_idx].float(),
+                                             y[:, cls_idx].long())
 
                     log_dict[metric_key] = self.metrics[metric_key]
 
                 if split == "valid" and metric_type == "macro_f1":
                     f1_macros = [
-                        log_dict[metric_key].compute().cpu() for metric_key in metric_keys
+                        log_dict[metric_key].compute().cpu()
+                        for metric_key in metric_keys
                     ]
 
                     log_dict["valid_macro_f1_mean"] = np.mean(f1_macros)
 
-            self.log_dict(log_dict, on_step=on_step, on_epoch=on_epoch, prog_bar=True)
+            self.log_dict(log_dict,
+                          on_step=on_step,
+                          on_epoch=on_epoch,
+                          prog_bar=True)

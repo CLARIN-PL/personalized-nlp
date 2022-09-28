@@ -12,6 +12,8 @@ from settings import CBOW_EMBEDDINGS_PATH, SKIPGRAM_EMBEDDINGS_PATH
 
 
 def _get_embeddings(texts, tokenizer, model, max_seq_len=256, use_cuda=False):
+    max_seq_len = 512
+
     def batch(iterable, n=1):
         l = len(iterable)
         for ndx in range(0, l, n):
@@ -23,13 +25,14 @@ def _get_embeddings(texts, tokenizer, model, max_seq_len=256, use_cuda=False):
         device = 'cpu'
 
     all_embeddings = []
-    for batched_texts in tqdm(batch(texts, 200), total=len(texts)/200):
+    for batched_texts in tqdm(batch(texts, 200), total=len(texts) / 200):
         with torch.no_grad():
             batch_encoding = tokenizer.batch_encode_plus(
                 batched_texts,
                 padding='longest',
                 add_special_tokens=True,
-                truncation=True, max_length=max_seq_len,
+                truncation=True,
+                max_length=max_seq_len,
                 return_tensors='pt',
             ).to(device)
 
@@ -44,7 +47,8 @@ def _get_embeddings(texts, tokenizer, model, max_seq_len=256, use_cuda=False):
     return torch.cat(all_embeddings, axis=0).to('cpu')
 
 
-def create_embeddings(texts, embeddings_path=None,
+def create_embeddings(texts,
+                      embeddings_path=None,
                       model_name='xlm-roberta-base',
                       use_cuda=True):
 
@@ -59,7 +63,10 @@ def create_embeddings(texts, embeddings_path=None,
         if use_cuda:
             model = model.to('cuda')
 
-        embeddings = _get_embeddings(texts, tokenizer, model, use_cuda=use_cuda)
+        embeddings = _get_embeddings(texts,
+                                     tokenizer,
+                                     model,
+                                     use_cuda=use_cuda)
         embeddings = embeddings.cpu().numpy()
 
     text_idx_to_emb = {}
@@ -80,9 +87,9 @@ def create_fasttext_embeddings(texts: List[str], model_name: str):
         embeddings_path = SKIPGRAM_EMBEDDINGS_PATH
     else:
         embeddings_path = CBOW_EMBEDDINGS_PATH
-        
+
     ft = fasttext.load_model(str(embeddings_path))
-    
+
     embeddings = [ft.get_sentence_vector(t.replace('\n', ' ')) for t in texts]
     embeddings = np.array(embeddings)
     return embeddings
