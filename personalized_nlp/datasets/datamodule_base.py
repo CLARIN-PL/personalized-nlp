@@ -113,6 +113,7 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         seed: int = 22,
         filter_train_annotations_path: Optional[str] = None,
         use_cuda: bool = False,
+        test_batch_size: Optional[int] = None,
         **kwargs,
     ):
         """_summary_
@@ -147,6 +148,8 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         self.past_annotations_limit = past_annotations_limit
         self.stratify_folds_by = stratify_folds_by
         self.use_cuda = use_cuda
+        self.train_with_major_votes = False
+        self.test_batch_size = test_batch_size
 
         self._test_fold = test_fold if test_fold is not None else 0
         self.use_finetuned_embeddings = use_finetuned_embeddings
@@ -161,6 +164,7 @@ class BaseDataModule(LightningDataModule, abc.ABC):
 
         seed_everything(seed)
 
+        self._setup_called = False
         self.prepare_data()
         self.setup()
 
@@ -191,6 +195,11 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         )
 
     def setup(self, stage: Optional[str] = None) -> None:
+        if self._setup_called:
+            return
+
+        self._setup_called = True
+
         annotations = self.annotations
         self._original_annotations = annotations.copy()
 
@@ -209,7 +218,7 @@ class BaseDataModule(LightningDataModule, abc.ABC):
             self._normalize_labels()
 
         if self.major_voting:
-            self.compute_major_votes()
+            self.annotations = self.compute_major_votes()
 
         if not os.path.exists(self.embeddings_path):
             self._create_embeddings()
@@ -234,6 +243,11 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         assert len(self.data.index) == len(embeddings)
 
         self.text_embeddings = torch.tensor(embeddings)
+
+        def _prepare_data():
+            pass
+
+        self.prepare_data = _prepare_data
 
         # self.text_id_idx_dict = (
         #     data.loc[:, ["text_id"]]
@@ -316,7 +330,7 @@ class BaseDataModule(LightningDataModule, abc.ABC):
 
         df.loc[:, annotation_columns] = df.loc[:, annotation_columns].fillna(0)
 
-    def compute_major_votes(self) -> None:
+    def compute_major_votes(self) -> pd.DataFrame:
         """Computes mean votes for texts in train folds."""
         annotations = self.annotations
         annotation_columns = self.annotation_columns
@@ -328,8 +342,8 @@ class BaseDataModule(LightningDataModule, abc.ABC):
             .to_dict()["fold"]
         )
 
-        val_test_annotations = annotations.loc[annotations.split.isin(["val", "test"])]
-        annotations = annotations.loc[~annotations.split.isin(["val", "test"])]
+        val_test_annotations = annotations.loc[~annotations.split.isin(["train"])]
+        annotations = annotations.loc[annotations.split.isin(["train"])]
 
         dfs = []
         for col in annotation_columns:
@@ -345,7 +359,7 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         annotations["split"] = "train"
         annotations["fold"] = annotations["text_id"].map(text_id_to_fold)
 
-        self.annotations = pd.concat([annotations, val_test_annotations])
+        return pd.concat([annotations, val_test_annotations])
 
     def compute_annotator_biases(self):
         annotations_with_data = self.annotations_with_data
@@ -392,15 +406,21 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         Returns:
             DataLoader: testing dataloader for the dataset.
         """
-        return self._get_dataloader("test", False)
+        return self._get_dataloader("test", False, batch_size=self.test_batch_size)
 
     def custom_dataloader(
         self, split_name: str = "none", shuffle: bool = False
     ) -> DataLoader:
         return self._get_dataloader(split_name, shuffle)
 
-    def _get_dataloader(self, split: str, shuffle: bool) -> DataLoader:
+    def _get_dataloader(
+        self, split: str, shuffle: bool, batch_size: Optional[int] = None
+    ) -> DataLoader:
         annotations = self.annotations
+
+        if self.train_with_major_votes and split == "train":
+            annotations = self.compute_major_votes()
+
         annotations = annotations.loc[annotations.split == split]
 
         X, y = self._get_data_by_split(annotations)
@@ -419,9 +439,15 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         else:
             order_sampler_cls = torch.utils.data.sampler.SequentialSampler
 
+        if batch_size is None:
+            batch_size = self.batch_size
+
+        num_annotations = len(annotations.index)
+        batch_size = min(batch_size, int(num_annotations / 15))
+
         sampler = torch.utils.data.sampler.BatchSampler(
             order_sampler_cls(dataset),
-            batch_size=self.batch_size,
+            batch_size=batch_size,
             drop_last=False,
         )
 

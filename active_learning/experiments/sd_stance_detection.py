@@ -3,41 +3,40 @@ from itertools import product
 
 from active_learning.module import ActiveLearningModule
 import active_learning.algorithms as algorithms
-from personalized_nlp.datasets.wiki.aggression import AggressionDataModule
+from personalized_nlp.datasets.stance_detection.sd import (
+    SDStanceDetectionDataModule,
+)
 
 from personalized_nlp.utils import seed_everything
-from personalized_nlp.utils.callbacks.model_freezer import FreezingCallback
 from personalized_nlp.utils.experiments import product_kwargs
 from personalized_nlp.utils.callbacks.personal_metrics import (
     PersonalizedMetricsCallback,
 )
 
-os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+
+os.environ["CUDA_VISIBLE_DEVICES"] = "20"
 os.environ["WANDB_START_METHOD"] = "thread"
 
 if __name__ == "__main__":
-    wandb_project_name = "Aggression_freezing_test_full"
-    datamodule_cls = AggressionDataModule
+    wandb_project_name = "SD_stance_detection_AL_reduced_dims"
+    datamodule_cls = SDStanceDetectionDataModule
 
     activelearning_kwargs_list = product_kwargs(
         {
             "text_selector_cls": [
-                # algorithms.TextAnnotationDiversitySelector,
                 algorithms.RandomSelector,
                 algorithms.ConfidenceSelector,
-                algorithms.MaxPositiveClassSelector,
-                algorithms.ConfidenceAllDimsSelector,
                 # algorithms.Confidencev2Selector,
-                # algorithms.RandomImprovedSelector,
+                # algorithms.ConfidenceAllDimsSelector,
+                # algorithms.MaxPositiveClassSelector,
                 algorithms.BalancedClassesPerTextSelector,
                 algorithms.BalancedClassesPerUserSelector,
                 algorithms.BalancedConfidenceSelector,
             ],
-            "max_amount": [15_000],
-            "step_size": [1000],
-            "amount_per_user": [None],
-            "stratify_by_user": [False],
-            "model_freeze": [False],
+            "max_amount": [10_000],
+            "step_size": [480],
+            "amount_per_user": [100],
+            "stratify_by_user": [True],
         }
     )
     datamodule_kwargs_list = product_kwargs(
@@ -49,11 +48,12 @@ if __name__ == "__main__":
             "limit_past_annotations_list": [None],
             "stratify_folds_by": ["users", "texts"][1:],
             "folds_num": [5],
-            "batch_size": [3000],
+            "batch_size": [500],
             "test_fold": list(range(5)),
             "use_finetuned_embeddings": [False],
             "major_voting": [False],
-            "min_annotations_per_user_in_fold": [20],
+            "min_annotations_per_user_in_fold": [None],
+            "test_batch_size": [1000],
         }
     )
     model_kwargs_list = product_kwargs(
@@ -69,10 +69,11 @@ if __name__ == "__main__":
             "epochs": [20],
             "lr_rate": [0.008],
             "regression": [False],
-            "use_cuda": [False],
+            "use_cuda": [True],
             "model_type": ["peb"],
-            # "model_type": ["bias","peb"],
+            # "model_type": ["baseline", "peb"],
             "monitor_metric": ["valid_loss"],
+            # "monitor_metric": ["valid_macro_f1_mean"],
             "monitor_mode": ["min"],
         }
     )
@@ -100,11 +101,8 @@ if __name__ == "__main__":
         activelearning_kwargs["text_selector"] = text_selector
 
         trainer_kwargs["custom_callbacks"] = [
-            # PersonalizedMetricsCallback(),
+            PersonalizedMetricsCallback(),
         ]
-
-        if activelearning_kwargs["model_freeze"]:
-            trainer_kwargs["custom_callbacks"].append(FreezingCallback())
 
         module = ActiveLearningModule(
             datamodule=data_module,
@@ -112,7 +110,6 @@ if __name__ == "__main__":
             model_kwargs=model_kwargs,
             train_kwargs=trainer_kwargs,
             wandb_project_name=wandb_project_name,
-            hparams_to_log=activelearning_kwargs,
             **activelearning_kwargs,
         )
 

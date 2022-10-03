@@ -43,3 +43,10 @@ class HuBiSimple(nn.Module):
         x = self.fc2(x) + annotator_bias
 
         return x
+
+    def set_requires_grad(self, model_part: str, requires_grad: bool):
+        if model_part == "text":
+            self.fc1.requires_grad_(requires_grad)
+            self.fc2.requires_grad_(requires_grad)
+        elif model_part == "user":
+            self.annotator_biases.requires_grad_(requires_grad)

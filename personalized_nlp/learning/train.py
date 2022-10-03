@@ -38,11 +38,7 @@ def train_test(
         **model_kwargs
     )
 
-    train_loader = datamodule.train_dataloader()
-    val_loader = datamodule.val_dataloader()
     test_loader = datamodule.test_dataloader()
-
-    # raise Exception(f'Train: {len(train_loader.dataset)}\nVal: {len(val_loader.dataset)}\nTest: {len(test_loader.dataset)}\nSum: {len(train_loader.dataset) + len(val_loader.dataset) + len(test_loader.dataset)}\nInner: {len(datamodule.annotations)}')
 
     if regression:
         class_names = datamodule.annotation_columns
@@ -77,7 +73,7 @@ def train_test(
         logger=logger,
         callbacks=callbacks,
     )
-    trainer.fit(model, train_loader, val_loader)
+    trainer.fit(model, datamodule)
     trainer.test(dataloaders=test_loader)
 
     return trainer
