@@ -60,7 +60,7 @@ class TransformerUserId(nn.Module):
             return_tensors="pt",
         )
         if self.use_cuda:
-            batch_encoding = batch_encoding.to("cuda:2")
+            batch_encoding = batch_encoding.to("cuda")
 
         emb = model(**batch_encoding).pooler_output
 

@@ -1,13 +1,14 @@
+import os
+
+os.environ["CUDA_VISIBLE_DEVICES"] = "2"
+
 import numpy as np
 import pandas as pd
 from personalized_nlp.utils.finetune import finetune_datamodule_embeddings
 from personalized_nlp.learning.classifier import Classifier
 import tqdm
 import torch
-import os
 
-
-os.environ["CUDA_VISIBLE_DEVICES"] = "2"
 
 CHECKPOINT_PATH = "/mnt/big_one/persemo/mgruza/personalized-nlp/storage/checkpoints/drawn-sponge-6/epoch=1-step=2654.ckpt"
 TEXTS_PATH = "/mnt/big_one/persemo/mgruza/personalized-nlp/storage/other/some_texts.csv"
@@ -35,7 +36,7 @@ def batch_forward(classifier, texts, batch_size=100):
 
 if __name__ == "__main__":
 
-    map_location = "cuda:2" if USE_CUDA else "cpu"
+    map_location = "cuda" if USE_CUDA else "cpu"
     classifier = Classifier.load_from_checkpoint(
         CHECKPOINT_PATH, map_location=map_location
     )
