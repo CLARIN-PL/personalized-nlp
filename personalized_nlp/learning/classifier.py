@@ -98,7 +98,7 @@ class Classifier(pl.LightningModule):
         loss = self.step(output=output, y=y)
 
         self.log("valid_loss", loss, prog_bar=True)
-        self.log_all_metrics(output=output, y=y, split="valid")
+        # self.log_all_metrics(output=output, y=y, split="valid")
 
         return {
             "loss": loss,

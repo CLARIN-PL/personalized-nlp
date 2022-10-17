@@ -118,7 +118,7 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         """_summary_
         Args:
             batch_size (int, optional): Batch size for data loaders. Defaults to 3000.
-            embeddings_type (str, optional): string identifier of embedding. Defaults to "bert".
+            embeddings_type (str, optional): string identifier of embedding. Defaults to "labse".
             major_voting (bool, optional): if true, use major voting. Defaults to False.
             folds_num (int, optional): Number of folds. Defaults to 10.
             regression (bool, optional): Normalize labels to [0, 1] range with min-max method. Defaults to False.
@@ -419,9 +419,13 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         else:
             order_sampler_cls = torch.utils.data.sampler.SequentialSampler
 
+        batch_size = self.batch_size
+        num_annotations = len(annotations.index)
+        batch_size = min(batch_size, int(num_annotations / 15))
+
         sampler = torch.utils.data.sampler.BatchSampler(
             order_sampler_cls(dataset),
-            batch_size=self.batch_size,
+            batch_size=batch_size,
             drop_last=False,
         )
 

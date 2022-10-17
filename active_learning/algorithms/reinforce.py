@@ -24,10 +24,10 @@ class ReinforceSelector(TextSelectorBase):
         not_annotated: pd.DataFrame,
         confidences: Optional[np.ndarray] = None,
     ):
-        cols = ["text_count", "annotator_count", "max_confidence"]
-        if confidences is not None:
-            cols += [f"conf_{i}" for i in range(confidences.shape[1])]
+        cols = ["num_annotated", "text_count", "annotator_count", "max_confidence"]
+        cols += [f"conf_{i}" for i in range(sum(self.class_dims))]
 
+        not_annotated["num_annotated"] = len(annotated.index)
         text_counts_df = annotated.text_id.value_counts().reset_index()
         text_counts_df.columns = ["text_id", "text_count"]
 
@@ -43,6 +43,8 @@ class ReinforceSelector(TextSelectorBase):
                 not_annotated[f"conf_{i}"] = confidences[:, i]
         else:
             not_annotated["max_confidence"] = 0
+            for i in range(sum(self.class_dims)):
+                not_annotated[f"conf_{i}"] = 0
 
         metrics = not_annotated.loc[:, cols].values
         if self.text_embeddings is not None:

@@ -11,7 +11,7 @@ from personalized_nlp.utils.callbacks.personal_metrics import (
     PersonalizedMetricsCallback,
 )
 
-os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+os.environ["CUDA_VISIBLE_DEVICES"] = "10"
 os.environ["WANDB_START_METHOD"] = "thread"
 
 
@@ -25,7 +25,7 @@ warnings.warn = warn
 
 
 if __name__ == "__main__":
-    wandb_project_name = "Aggression_reinforce"
+    wandb_project_name = "Aggression_reinforce_active"
     datamodule_cls = AggressionDataModule
 
     activelearning_kwargs_list = product_kwargs(
@@ -33,8 +33,8 @@ if __name__ == "__main__":
             "text_selector_cls": [
                 algorithms.ReinforceSelector,
             ],
-            "max_amount": [50_000],
-            "step_size": [2_000],
+            "max_amount": [40_000],
+            "step_size": [1_000],
             "amount_per_user": [None],
             "stratify_by_user": [True],
         }
@@ -48,7 +48,7 @@ if __name__ == "__main__":
             "limit_past_annotations_list": [None],
             "stratify_folds_by": ["users", "texts"][1:],
             "folds_num": [5],
-            "batch_size": [1000],
+            "batch_size": [300],
             "test_fold": list(range(5)),
             "use_finetuned_embeddings": [False],
             "major_voting": [False],
@@ -70,8 +70,8 @@ if __name__ == "__main__":
             "regression": [False],
             "use_cuda": [False],
             "model_type": ["peb"],
-            "monitor_metric": ["valid_macro_f1_mean"],
-            "monitor_mode": ["max"],
+            "monitor_metric": ["valid_loss"],
+            "monitor_mode": ["min"],
         }
     )
 
@@ -99,7 +99,7 @@ if __name__ == "__main__":
         activelearning_kwargs["text_selector"] = text_selector
 
         trainer_kwargs["custom_callbacks"] = [
-            PersonalizedMetricsCallback(),
+            # PersonalizedMetricsCallback(),
         ]
 
         module = ActiveReinforcementLearningModule(
