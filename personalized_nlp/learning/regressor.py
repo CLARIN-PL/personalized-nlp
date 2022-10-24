@@ -5,11 +5,12 @@ import pytorch_lightning as pl
 
 
 class Regressor(pl.LightningModule):
-    def __init__(self, model, lr, class_names):
+    def __init__(self, model, lr, class_names, log_valid_metrics: bool = False):
         super().__init__()
+        self.save_hyperparameters()
         self.model = model
         self.lr = lr
-
+        self.log_valid_metrics = log_valid_metrics
         self.class_names = class_names
 
         self.metric_types = ["r2"]
@@ -25,8 +26,8 @@ class Regressor(pl.LightningModule):
                 class_metrics[f"{split}_r2_{class_name}"] = R2Score()
 
             class_metrics[f"{split}_mae_mean"] = MeanAbsoluteError()
-            class_metrics[f"{split}_mae_mean"] = MeanSquaredError()
-            class_metrics[f"{split}_mae_mean"] = R2Score()
+            class_metrics[f"{split}_mse_mean"] = MeanSquaredError()
+            class_metrics[f"{split}_r2_mean"] = R2Score()
 
         self.metrics = nn.ModuleDict(class_metrics)
 
@@ -58,7 +59,9 @@ class Regressor(pl.LightningModule):
         loss = nn.MSELoss()(output, y)
 
         self.log("valid_loss", loss, prog_bar=True)
-        self.log_all_metrics(output=output, y=y, split="valid")
+        
+        if self.log_valid_metrics:
+            self.log_all_metrics(output=output, y=y, split="valid")
 
         return loss
 

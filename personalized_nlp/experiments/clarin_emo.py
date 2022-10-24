@@ -46,7 +46,7 @@ if __name__ == "__main__":
     trainer_kwargs_list = product_kwargs(
         {
             "epochs": [500],
-            "lr_rate": [0.008],
+            "lr": [0.008],
             "regression": [False],
             "use_cuda": [False],
             # "model_type": ["baseline", "onehot", "peb", "bias", "embedding"],
