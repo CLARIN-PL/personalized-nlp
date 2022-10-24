@@ -18,6 +18,8 @@ class Classifier(pl.LightningModule):
     ) -> None:
 
         super(Classifier, self).__init__()
+        self.save_hyperparameters()
+
         self.model = model
         self.lr = lr
 
@@ -175,3 +177,15 @@ class Classifier(pl.LightningModule):
                     log_dict["valid_macro_f1_mean"] = np.mean(f1_macros)
 
             self.log_dict(log_dict, on_step=on_step, on_epoch=on_epoch, prog_bar=True)
+
+    def decode_predictions(self, probabs: torch.Tensor) -> torch.Tensor:
+        class_dims = self.class_dims
+        predictions = []
+        for class_idx, _ in enumerate(class_dims):
+            start_idx = sum(class_dims[:class_idx])
+            end_idx = start_idx + class_dims[class_idx]
+
+            class_predictions = probabs[:, start_idx:end_idx].argmax(dim=1)
+            predictions.append(class_predictions.unsqueeze(1))
+
+        return torch.cat(predictions, dim=1)

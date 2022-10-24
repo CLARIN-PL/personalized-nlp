@@ -1,23 +1,21 @@
-from typing import Any, Dict, List, Optional, Tuple
-import os
 import abc
+import os
 import pickle
 from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple
 
-
-import torch
 import numpy as np
 import pandas as pd
-from torch.utils.data import DataLoader
-from pytorch_lightning import LightningDataModule, seed_everything
-
-from settings import EMBEDDINGS_SIZES, TRANSFORMER_MODEL_STRINGS
+import torch
 from personalized_nlp.datasets.dataset import BatchIndexedDataset
 from personalized_nlp.utils.biases import get_annotator_biases
 from personalized_nlp.utils.controversy import get_conformity
 from personalized_nlp.utils.data_splitting import split_texts
 from personalized_nlp.utils.embeddings import create_embeddings
 from personalized_nlp.utils.finetune import finetune_datamodule_embeddings
+from pytorch_lightning import LightningDataModule, seed_everything
+from settings import EMBEDDINGS_SIZES, TRANSFORMER_MODEL_STRINGS
+from torch.utils.data import DataLoader
 
 
 # TODO specify types!
@@ -102,6 +100,7 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         batch_size: int = 3000,
         embeddings_type: str = "labse",
         major_voting: bool = False,
+        test_major_voting: bool = False,
         folds_num: int = 10,
         regression: bool = False,
         past_annotations_limit: Optional[int] = None,
@@ -120,6 +119,7 @@ class BaseDataModule(LightningDataModule, abc.ABC):
             batch_size (int, optional): Batch size for data loaders. Defaults to 3000.
             embeddings_type (str, optional): string identifier of embedding. Defaults to "labse".
             major_voting (bool, optional): if true, use major voting. Defaults to False.
+            test_major_voting (bool, optional): if true, use major voting also on val and test dataset parts. Defaults to False.
             folds_num (int, optional): Number of folds. Defaults to 10.
             regression (bool, optional): Normalize labels to [0, 1] range with min-max method. Defaults to False.
             past_annotations_limit (Optional[int], optional): Maximum number of annotations in past dataset part. Defaults to None.
@@ -142,6 +142,7 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         self.batch_size = batch_size
         self.embeddings_type = embeddings_type
         self.major_voting = major_voting
+        self.test_major_voting = test_major_voting
         self.folds_num = folds_num
         self.regression = regression
         self.past_annotations_limit = past_annotations_limit
@@ -328,8 +329,19 @@ class BaseDataModule(LightningDataModule, abc.ABC):
             .to_dict()["fold"]
         )
 
-        val_test_annotations = annotations.loc[annotations.split.isin(["val", "test"])]
-        annotations = annotations.loc[~annotations.split.isin(["val", "test"])]
+        text_id_to_split = (
+            annotations.loc[:, ["text_id", "split"]]
+            .drop_duplicates()
+            .set_index("text_id")
+            .to_dict()["split"]
+        )
+
+        val_test_annotations = None
+        if not self.test_major_voting:
+            val_test_annotations = annotations.loc[
+                annotations.split.isin(["val", "test"])
+            ]
+            annotations = annotations.loc[~annotations.split.isin(["val", "test"])]
 
         dfs = []
         for col in annotation_columns:
@@ -342,10 +354,16 @@ class BaseDataModule(LightningDataModule, abc.ABC):
 
         annotations = pd.concat(dfs, axis=1).reset_index()
         annotations["annotator_id"] = 0
-        annotations["split"] = "train"
+        annotations["split"] = annotations["text_id"].map(text_id_to_split)
         annotations["fold"] = annotations["text_id"].map(text_id_to_fold)
 
-        self.annotations = pd.concat([annotations, val_test_annotations])
+        annotations = annotations.sample(frac=0.3)
+        # val_test_annotations = val_test_annotations.sample(frac=0.7)
+
+        if not self.test_major_voting:
+            self.annotations = pd.concat([annotations, val_test_annotations])
+        else:
+            self.annotations = annotations
 
     def compute_annotator_biases(self):
         annotations_with_data = self.annotations_with_data

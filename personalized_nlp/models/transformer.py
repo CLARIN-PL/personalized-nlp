@@ -13,6 +13,7 @@ class TransformerUserId(nn.Module):
         max_length: int = 128,
         append_annotator_ids=False,
         annotator_num=None,
+        use_cuda=True,
         **kwargs,
     ):
         super().__init__()
@@ -34,6 +35,7 @@ class TransformerUserId(nn.Module):
             self._model = AutoModel.from_pretrained(huggingface_model_name)
 
         self.max_length = max_length
+        self.use_cuda = use_cuda
 
         self.fc1 = nn.Linear(text_embedding_dim, output_dim)
 
@@ -57,7 +59,8 @@ class TransformerUserId(nn.Module):
             max_length=self.max_length,
             return_tensors="pt",
         )
-        batch_encoding = batch_encoding.to("cuda")
+        if self.use_cuda:
+            batch_encoding = batch_encoding.to("cuda")
 
         emb = model(**batch_encoding).pooler_output
 

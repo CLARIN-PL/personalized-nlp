@@ -9,7 +9,7 @@ def finetune_datamodule_embeddings(
     original_datamodule,
     batch_size: int = 20,
     epochs=3,
-    lr_rate=2e-5,
+    lr=2e-5,
     use_cuda=True,
 ):
 
@@ -44,7 +44,7 @@ def finetune_datamodule_embeddings(
         model_kwargs=model_kwargs,
         model_type="transformer_user_id",
         epochs=epochs,
-        lr=lr_rate,
+        lr=lr,
         regression=regression,
         use_cuda=use_cuda,
         custom_callbacks=[

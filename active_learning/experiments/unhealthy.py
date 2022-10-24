@@ -13,28 +13,30 @@ from personalized_nlp.utils.callbacks.personal_metrics import (
     PersonalizedMetricsCallback,
 )
 
-
-os.environ["CUDA_VISIBLE_DEVICES"] = "10"
+os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 os.environ["WANDB_START_METHOD"] = "thread"
 
 if __name__ == "__main__":
-    wandb_project_name = "Unhealthy_amount_per_user"
+    wandb_project_name = "AL_UnhealthyConversations_Balanced_Measures_Stratified"
     datamodule_cls = UnhealthyDataModule
 
     activelearning_kwargs_list = product_kwargs(
         {
             "text_selector_cls": [
                 algorithms.RandomSelector,
-                algorithms.ConfidenceSelector,
-                algorithms.MaxPositiveClassSelector,
-                algorithms.ConfidenceAllDimsSelector,
-                algorithms.Confidencev2Selector,
-                algorithms.RandomImprovedSelector,
+                algorithms.BalancedConfidenceSelector,
+                algorithms.BalancedClassesPerUserSelector,
+                algorithms.BalancedClassesPerTextSelector,
+                # algorithms.ConfidenceSelector,
+                # algorithms.MaxPositiveClassSelector,
+                # algorithms.ConfidenceAllDimsSelector,
+                # algorithms.Confidencev2Selector,
+                # algorithms.RandomImprovedSelector,
             ],
             "max_amount": [50_000],
             "step_size": [2_000],
-            "amount_per_user": [None],
-            "stratify_by_user": [False],
+            "amount_per_user": [2],
+            "stratify_by_user": [True],
         }
     )
     datamodule_kwargs_list = product_kwargs(
@@ -64,10 +66,10 @@ if __name__ == "__main__":
     trainer_kwargs_list = product_kwargs(
         {
             "epochs": [20],
-            "lr_rate": [0.008],
+            "lr": [0.008],
             "regression": [False],
-            "use_cuda": [False],
-            "model_type": ["peb"],
+            "use_cuda": [True],
+            "model_type": ["baseline", "bias", "embedding", "peb"][:-1],
             "monitor_metric": ["valid_macro_f1_mean"],
             "monitor_mode": ["max"],
         }
