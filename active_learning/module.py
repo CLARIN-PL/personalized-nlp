@@ -4,7 +4,6 @@ from personalized_nlp.learning.train import train_test
 from personalized_nlp.utils import seed_everything
 from pytorch_lightning import loggers as pl_loggers
 from settings import LOGS_DIR
-
 from active_learning.algorithms.base import TextSelectorBase
 from active_learning.callbacks.confidences import SaveConfidencesCallback
 
@@ -127,8 +126,6 @@ class ActiveLearningModule:
             **train_kwargs,
         )
 
-        logger.experiment.finish()
-
         if any(datamodule.annotations.split == "none"):
             # gather confidence levels
             not_annotated_dataloader = datamodule.custom_dataloader(
@@ -137,6 +134,8 @@ class ActiveLearningModule:
             trainer.predict(dataloaders=not_annotated_dataloader)
 
             self.confidences = confidences_callback.predict_outputs
+
+        logger.experiment.finish()
 
     def experiment(self, max_amount: int, step_size: int, **kwargs):
         while self.annotated_amount < max_amount:
