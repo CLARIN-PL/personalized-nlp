@@ -249,6 +249,9 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         # }
 
     def _assign_splits(self) -> None:
+        if "split" in self.annotations.columns:
+            return
+
         if self.stratify_folds_by == "texts":
             val_fold = self.val_fold
             test_fold = self.test_fold
