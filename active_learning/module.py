@@ -1,4 +1,4 @@
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 from personalized_nlp.datasets.datamodule_base import BaseDataModule
 from personalized_nlp.learning.train import train_test
 from personalized_nlp.utils import seed_everything
@@ -69,7 +69,7 @@ class ActiveLearningModule:
         annotations = self.datamodule.annotations
         annotations.loc[selected_annotations.index, "split"] = "train"
 
-    def train_model(self, additional_hparams: Dict[str, Any]):
+    def train_model(self, additional_hparams: Optional[Dict[str, Any]] = None):
         datamodule = self.datamodule
         datamodule_kwargs = dict(self.datamodule_kwargs)
         model_kwargs = dict(self.model_kwargs)
@@ -109,7 +109,8 @@ class ActiveLearningModule:
             **train_kwargs,
         }
 
-        hparams.update(additional_hparams)
+        if additional_hparams is not None:
+            hparams.update(additional_hparams)
 
         logger = pl_loggers.WandbLogger(
             save_dir=str(LOGS_DIR),
