@@ -1,16 +1,15 @@
+from typing import Optional
+
 import numpy as np
 import pandas as pd
-from active_learning.callbacks.confidences import SaveConfidencesCallback
 from personalized_nlp.datasets.datamodule_base import BaseDataModule
 from personalized_nlp.learning.train import train_test
-from personalized_nlp.utils.callbacks.personal_metrics import (
-    PersonalizedMetricsCallback,
-)
+from profilehooks import profile
 from sklearn.linear_model import LinearRegression
 from sklearn.model_selection import cross_validate
-from profilehooks import profile
 
 from active_learning.algorithms.base import TextSelectorBase
+from active_learning.callbacks.confidences import SaveConfidencesCallback
 from active_learning.module import ActiveLearningModule
 
 
@@ -32,6 +31,7 @@ class ActiveReinforcementLearningModule(ActiveLearningModule):
         stratify_by_user: bool = False,
         reinforce_experiment_num: int = 25,
         reinforce_subsample_num: int = 200,
+        log_X_y_path: Optional[str] = None,
         **kwargs,
     ) -> None:
 
@@ -50,6 +50,7 @@ class ActiveReinforcementLearningModule(ActiveLearningModule):
         self.reinforce_subsample_num = reinforce_subsample_num
         self.reinforce_confidences = None
         self._train_confidences = None
+        self.log_X_y_path = log_X_y_path
 
         self._all_ys = []
         self._all_Xs = []
@@ -202,13 +203,15 @@ class ActiveReinforcementLearningModule(ActiveLearningModule):
         y = np.hstack(self._all_ys)
         X = np.vstack(self._all_Xs)
 
-        df = pd.DataFrame(X)
-        df["y"] = y
-        filename = f"{y.shape[0]}.csv"
-        df.to_csv(
-            f"/home/mgruza/repos/personalized-nlp/active_learning/experiments/reinforce/{filename}",
-            index=False,
-        )
+        if self.log_X_y_path is not None:
+            path = self.log_X_y_path
+            df = pd.DataFrame(X)
+            df["y"] = y
+            filename = f"{y.shape[0]}.csv"
+            df.to_csv(
+                f"{path}/{filename}",
+                index=False,
+            )
 
         # train linear regression to predict model f1 metrics
         cv_results = self._test_regression(X, y)
