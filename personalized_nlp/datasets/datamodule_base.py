@@ -443,6 +443,7 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         batch_size = self.batch_size
         num_annotations = len(annotations.index)
         batch_size = min(batch_size, int(num_annotations / 15))
+        batch_size = max(batch_size, 1)
 
         sampler = torch.utils.data.sampler.BatchSampler(
             order_sampler_cls(dataset),
