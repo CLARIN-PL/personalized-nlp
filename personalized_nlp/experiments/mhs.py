@@ -89,7 +89,8 @@ if __name__ == "__main__":
                                  seed=datamodule_kwargs["seed"]),
                 LogTrainingDynamics(save_dir=LOGS_DIR / 'training_dynamics' /
                                     str(type(data_module).__name__) /
-                                    trainer_kwargs["model_type"]),
+                                    trainer_kwargs["model_type"] /
+                                    str(data_module.annotation_columns[0])),
                 PersonalizedMetricsCallback()
             ],
         )
