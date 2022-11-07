@@ -42,7 +42,7 @@ class MhsDataModule(BaseDataModule):
     @property
     def annotation_columns(self) -> List[str]:
         return ["sentiment", "violence", "humiliate", "hatespeech",
-                "insult"][1:2]
+                "insult"][2:3]
 
     @property
     def embeddings_path(self) -> Path:

@@ -8,9 +8,9 @@ from settings import TRANSFORMER_MODEL_STRINGS
 
 def finetune_datamodule_embeddings(
     original_datamodule,
-    batch_size: int = 32,  # 20
+    batch_size: int = 10,  # 20
     epochs=50,  # 3
-    lr_rate=0.00005,
+    lr_rate=0.00001,
     use_cuda=True,
 ):
 
@@ -37,7 +37,7 @@ def finetune_datamodule_embeddings(
     regression = datamodule.regression
     model_kwargs = {
         "huggingface_model_name": TRANSFORMER_MODEL_STRINGS[embeddings_type],
-        "max_length": 512,  # 128
+        "max_length": 128,  # 512 for IMDB dataset, 128 otherwise
     }
 
     train_test(
@@ -55,7 +55,8 @@ def finetune_datamodule_embeddings(
             ),
             EarlyStopping(
                 # monitor="valid_accuracy_sentiment",
-                monitor="valid_macro_f1_sentiment",
+                monitor=
+                f"valid_macro_f1_{original_datamodule.annotation_columns[0]}",
                 mode="max",
                 patience=10)
         ],

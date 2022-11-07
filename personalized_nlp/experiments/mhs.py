@@ -12,7 +12,7 @@ from personalized_nlp.utils.callbacks import (SaveOutputsLocal,
                                               LogTrainingDynamics,
                                               PersonalizedMetricsCallback)
 
-os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 os.environ["WANDB_START_METHOD"] = "thread"
 
 if __name__ == "__main__":
@@ -24,11 +24,11 @@ if __name__ == "__main__":
         "embeddings_type": ["roberta"],
         "stratify_folds_by": ["predefined"],
         "folds_num": [1],
-        "batch_size": [10],  # [10] for UserId model, [32] otherwise
+        "batch_size": [32],  # [10] for UserId model, [32] otherwise
         "seed": list(range(42, 52))[:1],
         "use_cuda": [True],
         "use_finetuned_embeddings":
-        [False]  # [False] for UserId model, [True] otherwise
+        [True]  # [False] for UserId model, [True] otherwise
     })
     model_kwargs_list = product_kwargs({
         "embedding_dim": [50],
@@ -36,22 +36,24 @@ if __name__ == "__main__":
         "dp": [0.0],
         "hidden_dim": [100],
         "append_annotator_ids":
-        [True]  # [True] for UserId model, [False] otherwise
+        [False]  # [True] for UserId model, [False] otherwise
     })
     trainer_kwargs_list = product_kwargs({
         "epochs":
         [50
          ],  # [3] for UserId model or [10] with early stopping, [50] otherwise
         # "lr_rate": [0.00001],  # [0.00001] for UserId model, [0.008] otherwise
-        "lr": [0.00001],  # [0.00001] for UserId model, [0.008] otherwise
+        "lr": [0.008],  # [0.00001] for UserId model, [0.008] otherwise
         # "auto_lr_find": [True],
         "regression": [False],
         "use_cuda": [True],  # False
         "model_type": [
             "baseline", "onehot", "peb", "bias", "embedding",
             "transformer_user_id"
-        ][-1:],
-        "monitor_metric": ["valid_macro_f1_sentiment"],
+        ][-2:-1],
+        "monitor_metric": [
+            f'valid_macro_f1_{["sentiment", "violence", "humiliate", "hatespeech", "insult"][2]}'
+        ],
         "monitor_mode": ["max"],
     })
 
@@ -80,9 +82,11 @@ if __name__ == "__main__":
             logger=logger,
             **trainer_kwargs,
             custom_callbacks=[
-                EarlyStopping(monitor="valid_macro_f1_sentiment",
-                              mode="max",
-                              patience=5),
+                EarlyStopping(
+                    monitor=
+                    f"valid_macro_f1_{data_module.annotation_columns[0]}",
+                    mode="max",
+                    patience=5),
                 SaveOutputsLocal(save_dir=str(LOGS_DIR),
                                  model=trainer_kwargs["model_type"],
                                  dataset=type(data_module).__name__,
