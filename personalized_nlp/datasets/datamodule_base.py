@@ -360,7 +360,7 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         annotations["split"] = annotations["text_id"].map(text_id_to_split)
         annotations["fold"] = annotations["text_id"].map(text_id_to_fold)
 
-        annotations = annotations.sample(frac=0.3)
+        # annotations = annotations.sample(frac=0.3)
         # val_test_annotations = val_test_annotations.sample(frac=0.7)
 
         if not self.test_major_voting:
