@@ -3,7 +3,7 @@ from itertools import product
 
 from active_learning.module import ActiveLearningModule
 import active_learning.algorithms as algorithms
-from personalized_nlp.datasets.kr.kr import KrDataModule
+from personalized_nlp.datasets.sd.sd import SDDataModule
 
 from personalized_nlp.utils import seed_everything
 from personalized_nlp.utils.experiments import product_kwargs
@@ -18,8 +18,8 @@ os.environ["CUDA_VISIBLE_DEVICES"] = "100"
 os.environ["WANDB_START_METHOD"] = "thread"
 
 if __name__ == "__main__":
-    wandb_project_name = "KR_2_small_batch"
-    datamodule_cls = KrDataModule
+    wandb_project_name = "SD_small_batch"
+    datamodule_cls = SDDataModule
 
     activelearning_kwargs_list = product_kwargs(
         {
