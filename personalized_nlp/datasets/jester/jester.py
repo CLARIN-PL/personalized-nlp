@@ -44,7 +44,7 @@ class JesterDataModule(BaseDataModule):
         os.makedirs(self.data_dir / "embeddings", exist_ok=True)
 
     def prepare_data(self) -> None:
-        self.data = pd.read_csv(self.data_dir / self.data_file)
+        self.data = pd.read_csv(self.data_dir / self.data_dir)
 
         self.annotations = pd.read_csv(
             self.data_dir / self.annotations_file
