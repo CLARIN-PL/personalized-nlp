@@ -33,10 +33,7 @@ class MeasuringHateSpeechDataModule(BaseDataModule):
         os.makedirs(self.data_dir / "embeddings", exist_ok=True)
 
     def prepare_data(self) -> None:
-        self.data = pd.read_csv(
-            self.data_dir / self.data_file,
-            sep="\t"
-        )
+        self.data = pd.read_csv(self.data_dir / self.data_file)
 
         self.annotators = pd.read_csv(
             self.data_dir / "worker_demographics.tsv",
