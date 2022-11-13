@@ -27,8 +27,8 @@ class ActiveLearningModule:
         train_kwargs: dict,
         wandb_project_name: str,
         validation_ratio: float = 0.2,
-        train_with_all_annotations=True,
-        stratify_by_user=False,
+        train_with_all_annotations: bool = True,
+        stratify_by_user: bool = False,
         **kwargs
     ) -> None:
         """Initialize class.
@@ -37,7 +37,8 @@ class ActiveLearningModule:
             datamodule: Data pool for active learning.
             text_selector: Selects which data should be annotated on each AL cycle.
             datamodule_kwargs: Keyword arguments for `datamodule`.
-            model_kwargs: Keyword arguments for `text_selector`.
+            model_kwargs: Model keyword arguments.
+            train_kwargs: Model training keyword arguments.
             wandb_project_name: Project name in service Weights & Biases.
             validation_ratio: IT LOOKS LIKE IT IS NOT USED.
             train_with_all_annotations: Whether model should be train on all data.
