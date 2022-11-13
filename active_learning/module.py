@@ -1,5 +1,8 @@
+import numpy as np
 import pandas as pd
+import wandb
 
+from personalized_nlp.learning.classifier import Classifier
 from personalized_nlp.datasets.datamodule_base import BaseDataModule
 from personalized_nlp.learning.train import train_test
 from personalized_nlp.utils import seed_everything
@@ -8,10 +11,18 @@ from settings import LOGS_DIR
 
 from active_learning.algorithms.base import TextSelectorBase
 from active_learning.callbacks.confidences import SaveConfidencesCallback
+from personalized_nlp.models import models as models_dict
+from sklearn.preprocessing import StandardScaler
+from sklearn.cluster import KMeans
+from typing import Final, Optional
+
+from .unsupervised import IUnsupervisedPretrained
 
 
 class ActiveLearningModule:
     """High level class defining how active learning algorithm looks like."""
+
+    RANDOM_STATE: Final[int] = 24
 
     @property
     def annotated_amount(self) -> int:
@@ -29,6 +40,8 @@ class ActiveLearningModule:
         validation_ratio: float = 0.2,
         train_with_all_annotations: bool = True,
         stratify_by_user: bool = False,
+        # TODO: Can be changed to optional class UnsupervisedPretrained to simplify ActiveLearningModule
+        unsupervised_pretrainer: Optional[IUnsupervisedPretrained] = None,
         **kwargs
     ) -> None:
         """Initialize class.
@@ -43,6 +56,7 @@ class ActiveLearningModule:
             validation_ratio: IT LOOKS LIKE IT IS NOT USED.
             train_with_all_annotations: Whether model should be train on all data.
             stratify_by_user: Whether data should be stratified by user. TODO: What it means?
+            unsupervised_pretrainer: If provided applies used to supplement AL with unsupervised pretraining.
             kwargs: NOT USED.
 
         """
@@ -57,6 +71,7 @@ class ActiveLearningModule:
         self.confidences = None
         self.train_with_all_annotations = train_with_all_annotations
         self.stratify_by_user = stratify_by_user
+        self.unsupervised_pretrainer = unsupervised_pretrainer
         annotations = datamodule.annotations
         annotations.loc[annotations.split.isin(["train"]), "split"] = "none"
 
@@ -72,10 +87,10 @@ class ActiveLearningModule:
         annotations = self.datamodule.annotations
         texts = self.datamodule.data
 
-        annotated = annotations.loc[annotations["split"].isin(["train"])]
+        annotated = annotations.loc[annotations["split"].isin(["train"])].copy()
         not_annotated = annotations.loc[
             annotations["split"] == "none", ["text_id", "annotator_id"]
-        ]
+        ].copy()
 
         not_annotated["original_index"] = not_annotated.index.values
         annotated["original_index"] = annotated.index.values
@@ -102,10 +117,54 @@ class ActiveLearningModule:
         annotations = self.datamodule.annotations
         annotations.loc[selected_annotations.index, "split"] = "train"
 
+    def _perform_unsupervised_pretraining(self):
+        """Perform unsupervised pre-training.
+
+        As defined in paper Rethinking deep active learning:Using unlabeled data at model training.
+
+        """
+        # TODO: Verify
+        output_dim = sum(self.datamodule.class_dims)
+        # K-Means
+        # Ugly since clients needs to know the structure of dict
+        model_type = self.train_kwargs["model_type"]
+        model_cls = models_dict[model_type]
+        initial_model = model_cls(
+            output_dim=output_dim,
+            text_embedding_dim=self.datamodule.text_embedding_dim,
+            annotator_num=self.datamodule.annotators_number,
+            bias_vector_length=len(self.datamodule.class_dims),
+            **self.model_kwargs,
+        )
+        # UGLY!
+        # Value must be identical as provided to train_test_split
+        lr = self.train_kwargs["lr"] if "lr" in self.train_kwargs else 1e-2
+        initial_model = Classifier(
+            model=initial_model,
+            lr=lr,
+            class_dims=self.datamodule.class_dims,
+            class_names=self.datamodule.annotation_columns,
+        )
+        trainer = self.unsupervised_pretrainer.pretrain(
+            data=self.datamodule.data,
+            text_embeddings=self.datamodule.text_embeddings,
+            model=initial_model,
+            random_state=self.RANDOM_STATE,
+        )
+        self._unsupervised_model = trainer.model
+        # TODO: Consider
+        # self._unsupervised_model = Classifier.load_from_checkpoint(
+        #     trainer.checkpoint,
+        #     lr=lr,
+        #     class_dims=self.datamodule.class_dims,
+        #     class_names=self.datamodule.annotation_columns,
+        # )
+
     def train_model(self):
         """Train model."""
 
         datamodule = self.datamodule
+        # TODO: Do we need that dict()?
         datamodule_kwargs = dict(self.datamodule_kwargs)
         model_kwargs = dict(self.model_kwargs)
         train_kwargs = dict(self.train_kwargs)
@@ -139,19 +198,21 @@ class ActiveLearningModule:
             "mean_positive": mean_positive,
             "median_annotations_per_user": median_annotations_per_user,
             "stratify_by_user": self.stratify_by_user,
+            "use_unsupervised_pretraining": self.unsupervised_pretrainer is not None,
             **datamodule_kwargs,
             **model_kwargs,
             **train_kwargs,
         }
-
         logger = pl_loggers.WandbLogger(
             save_dir=str(LOGS_DIR),
             config=hparams,
             project=self.wandb_project_name,
             log_model=False,
         )
+        if self.unsupervised_pretrainer is not None:
+            train_kwargs["pretrained_model"] = self._unsupervised_model
 
-        seed_everything(24)
+        seed_everything(self.RANDOM_STATE)
         trainer = train_test(
             datamodule,
             model_kwargs=model_kwargs,
@@ -179,6 +240,8 @@ class ActiveLearningModule:
             **kwargs:
 
         """
+        if self.unsupervised_pretrainer is not None:
+            self._perform_unsupervised_pretraining()
         while self.annotated_amount < max_amount:
             not_annotated = (self.datamodule.annotations.split == "none").sum()
             if not_annotated == 0:

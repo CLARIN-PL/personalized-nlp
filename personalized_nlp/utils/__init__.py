@@ -14,5 +14,4 @@ from personalized_nlp.utils.controversy import get_conformity, get_text_controve
 from personalized_nlp.utils.data_splitting import split_texts
 from personalized_nlp.utils.embeddings import create_embeddings, create_fasttext_embeddings
 from personalized_nlp.utils.finetune import finetune_datamodule_embeddings
-from personalized_nlp.utils.metrics import F1Class, PrecisionClass, RecallClass
-from personalized_nlp.utils.tokenizer import get_tokenized_texts, get_word_stats, get_tokens_sorted, get_text_data 
+from personalized_nlp.utils.tokenizer import get_tokenized_texts, get_word_stats, get_tokens_sorted, get_text_data

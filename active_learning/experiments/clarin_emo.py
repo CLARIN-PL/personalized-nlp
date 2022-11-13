@@ -10,6 +10,7 @@ from personalized_nlp.utils.experiments import product_kwargs
 from personalized_nlp.utils.callbacks.personal_metrics import (
     PersonalizedMetricsCallback,
 )
+from active_learning.unsupervised import KMeansUnsupervisedPretrainer
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "10"
 os.environ["WANDB_START_METHOD"] = "thread"
@@ -96,6 +97,10 @@ if __name__ == "__main__":
             model_kwargs=model_kwargs,
             train_kwargs=trainer_kwargs,
             wandb_project_name=wandb_project_name,
+            unsupervised_pretrainer=KMeansUnsupervisedPretrainer(
+                use_cuda=False,
+                num_classes=len(data_module.class_dims),
+            ),
             **activelearning_kwargs,
         )
 

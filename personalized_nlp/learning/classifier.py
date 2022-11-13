@@ -5,7 +5,7 @@ import torch.nn as nn
 import numpy as np
 from torchmetrics.classification.f_beta import F1Score
 from torchmetrics.classification.accuracy import Accuracy
-from personalized_nlp.utils.metrics import F1Class, PrecisionClass, RecallClass
+from personalized_nlp.metrics_utils.metrics import F1Class, PrecisionClass, RecallClass
 
 
 class Classifier(pl.LightningModule):
