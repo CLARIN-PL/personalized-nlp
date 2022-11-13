@@ -1,3 +1,5 @@
+import pandas as pd
+
 from personalized_nlp.datasets.datamodule_base import BaseDataModule
 from personalized_nlp.learning.train import train_test
 from personalized_nlp.utils import seed_everything
@@ -9,23 +11,40 @@ from active_learning.callbacks.confidences import SaveConfidencesCallback
 
 
 class ActiveLearningModule:
+    """High level class defining how active learning algorithm looks like."""
 
     @property
     def annotated_amount(self) -> int:
+        """Number of already annotated samples."""
         return self.datamodule.annotations.split.isin(["train"]).sum()
 
-    def __init__(self,
-                 datamodule: BaseDataModule,
-                 text_selector: TextSelectorBase,
-                 datamodule_kwargs: dict,
-                 model_kwargs: dict,
-                 train_kwargs: dict,
-                 wandb_project_name: str,
-                 validation_ratio: float = 0.2,
-                 train_with_all_annotations=True,
-                 stratify_by_user=False,
-                 **kwargs) -> None:
+    def __init__(
+        self,
+        datamodule: BaseDataModule,
+        text_selector: TextSelectorBase,
+        datamodule_kwargs: dict,
+        model_kwargs: dict,
+        train_kwargs: dict,
+        wandb_project_name: str,
+        validation_ratio: float = 0.2,
+        train_with_all_annotations=True,
+        stratify_by_user=False,
+        **kwargs
+    ) -> None:
+        """Initialize class.
 
+        Args:
+            datamodule: Data pool for active learning.
+            text_selector: Selects which data should be annotated on each AL cycle.
+            datamodule_kwargs: Keyword arguments for `datamodule`.
+            model_kwargs: Keyword arguments for `text_selector`.
+            wandb_project_name: Project name in service Weights & Biases.
+            validation_ratio: IT LOOKS LIKE IT IS NOT USED.
+            train_with_all_annotations: Whether model should be train on all data.
+            stratify_by_user: Whether data should be stratified by user. TODO: What it means?
+            kwargs: NOT USED.
+
+        """
         self.datamodule = datamodule
 
         self.model_kwargs = model_kwargs
@@ -42,30 +61,49 @@ class ActiveLearningModule:
 
         self.text_selector = text_selector
 
-    def add_annotations(self, amount):
+    def add_annotations(self, amount: int):
+        """Annotate texts.
+
+        Args:
+            amount: Number of texts that should be annotated.
+
+        """
         annotations = self.datamodule.annotations
         texts = self.datamodule.data
 
         annotated = annotations.loc[annotations["split"].isin(["train"])]
-        not_annotated = annotations.loc[annotations["split"] == "none",
-                                        ["text_id", "annotator_id"]]
+        not_annotated = annotations.loc[
+            annotations["split"] == "none", ["text_id", "annotator_id"]
+        ]
 
         not_annotated["original_index"] = not_annotated.index.values
         annotated["original_index"] = annotated.index.values
 
         selected = self.text_selector.select_annotations(
-            texts, annotated, not_annotated, self.confidences, amount)
+            texts, annotated, not_annotated, self.confidences, amount
+        )
 
         if not self.stratify_by_user:
             selected = selected.iloc[:amount]
 
         self._assign_train_val_splits(annotated, selected)
 
-    def _assign_train_val_splits(self, old_annotations, selected_annotations):
+    def _assign_train_val_splits(
+        self, old_annotations, selected_annotations: pd.DataFrame
+    ):
+        """Mark selected annotated data as training data.
+
+        Args:
+            old_annotations: NOT USED.
+            selected_annotations: Annotations that should be used as training data.
+
+        """
         annotations = self.datamodule.annotations
         annotations.loc[selected_annotations.index, "split"] = "train"
 
     def train_model(self):
+        """Train model."""
+
         datamodule = self.datamodule
         datamodule_kwargs = dict(self.datamodule_kwargs)
         model_kwargs = dict(self.model_kwargs)
@@ -83,11 +121,13 @@ class ActiveLearningModule:
         annotator_number = annotated_annotations.annotator_id.nunique()
 
         mean_positive = (
-            annotated_annotations.loc[:,
-                                      self.datamodule.annotation_columns].mean(
-                                          axis=0).values)
+            annotated_annotations.loc[:, self.datamodule.annotation_columns]
+            .mean(axis=0)
+            .values
+        )
         median_annotations_per_user = (
-            annotated_annotations["annotator_id"].value_counts().median())
+            annotated_annotations["annotator_id"].value_counts().median()
+        )
 
         hparams = {
             "dataset": type(datamodule).__name__,
@@ -123,12 +163,21 @@ class ActiveLearningModule:
         if any(datamodule.annotations.split == "none"):
             # gather confidence levels
             not_annotated_dataloader = datamodule.custom_dataloader(
-                "none", shuffle=False)
+                "none", shuffle=False
+            )
             trainer.predict(dataloaders=not_annotated_dataloader)
 
             self.confidences = confidences_callback.predict_outputs
 
     def experiment(self, max_amount: int, step_size: int, **kwargs):
+        """Run AL.
+
+        Args:
+            max_amount: Maximum number of texts that should be annotated before AL is stopped.
+            step_size: The number of texts that should be annotated in each AL cycle.
+            **kwargs:
+
+        """
         while self.annotated_amount < max_amount:
             not_annotated = (self.datamodule.annotations.split == "none").sum()
             if not_annotated == 0:
