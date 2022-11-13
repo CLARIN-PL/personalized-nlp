@@ -11,6 +11,7 @@ from active_learning.callbacks.confidences import SaveConfidencesCallback
 class ActiveLearningModule:
     @property
     def annotated_amount(self) -> int:
+        """Number of already annotated samples."""
         return self.datamodule.annotations.split.isin(["train"]).sum()
 
     def __init__(
@@ -43,7 +44,13 @@ class ActiveLearningModule:
 
         self.text_selector = text_selector
 
-    def add_annotations(self, amount):
+    def add_annotations(self, amount: int):
+        """Annotate texts.
+
+        Args:
+            amount: Number of texts that should be annotated.
+
+        """
         annotations = self.datamodule.annotations
         texts = self.datamodule.data
 
@@ -64,7 +71,16 @@ class ActiveLearningModule:
 
         self._assign_train_val_splits(annotated, selected)
 
-    def _assign_train_val_splits(self, old_annotations, selected_annotations):
+    def _assign_train_val_splits(
+        self, old_annotations, selected_annotations: pd.DataFrame
+    ):
+        """Mark selected annotated data as training data.
+
+        Args:
+            old_annotations: NOT USED.
+            selected_annotations: Annotations that should be used as training data.
+
+        """
         annotations = self.datamodule.annotations
         annotations.loc[selected_annotations.index, "split"] = "train"
 
@@ -138,6 +154,14 @@ class ActiveLearningModule:
         logger.experiment.finish()
 
     def experiment(self, max_amount: int, step_size: int, **kwargs):
+        """Run AL.
+
+        Args:
+            max_amount: Maximum number of texts that should be annotated before AL is stopped.
+            step_size: The number of texts that should be annotated in each AL cycle.
+            **kwargs:
+
+        """
         while self.annotated_amount < max_amount:
             not_annotated = (self.datamodule.annotations.split == "none").sum()
             if not_annotated == 0:
