@@ -13,6 +13,8 @@ storage/outputs/*
 
 # VirtualEnv dir
 venv/
+# Pyenv config file
+.python-version
 
 # JetBrains IDE temp dir
 .idea/
