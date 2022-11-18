@@ -1,11 +1,12 @@
+from datetime import datetime
+
 import pytorch_lightning as pl
 import torch
 from personalized_nlp.learning.classifier import Classifier
 from personalized_nlp.learning.regressor import Regressor
 from personalized_nlp.models import models as models_dict
-from settings import CHECKPOINTS_DIR, LOGS_DIR
-from pytorch_lightning import loggers as pl_loggers
 from pytorch_lightning.callbacks import ModelCheckpoint, TQDMProgressBar
+from settings import CHECKPOINTS_DIR, LOGS_DIR
 
 
 def train_test(
@@ -17,11 +18,11 @@ def train_test(
     regression=False,
     use_cuda=False,
     logger=None,
-    log_model=False,
     custom_callbacks=None,
     monitor_metric="valid_loss",
     monitor_mode="min",
-    **kwargs
+    advanced_output=False,
+    **kwargs,
 ):
     """Train model and return predictions for test dataset"""
     output_dim = (
@@ -35,15 +36,13 @@ def train_test(
         text_embedding_dim=text_embedding_dim,
         annotator_num=datamodule.annotators_number,
         bias_vector_length=len(datamodule.class_dims),
-        **model_kwargs
+        **model_kwargs,
     )
 
     train_loader = datamodule.train_dataloader()
     val_loader = datamodule.val_dataloader()
     test_loader = datamodule.test_dataloader()
-    
-    #raise Exception(f'Train: {len(train_loader.dataset)}\nVal: {len(val_loader.dataset)}\nTest: {len(test_loader.dataset)}\nSum: {len(train_loader.dataset) + len(val_loader.dataset) + len(test_loader.dataset)}\nInner: {len(datamodule.annotations)}')
-    
+
     if regression:
         class_names = datamodule.annotation_columns
 
@@ -56,10 +55,12 @@ def train_test(
             model=model, lr=lr, class_dims=class_dims, class_names=class_names
         )
 
-    if logger is None:
-        logger = pl_loggers.WandbLogger(save_dir=LOGS_DIR, log_model=log_model)
+    if logger is not None:
+        checkpoint_dir = CHECKPOINTS_DIR / logger.experiment.name
+    else:
+        datetime_now_string = datetime.now().strftime("%H:%M:%S")
+        checkpoint_dir = CHECKPOINTS_DIR / f"checkpoint-{datetime_now_string}"
 
-    checkpoint_dir = CHECKPOINTS_DIR / logger.experiment.name
     checkpoint_callback = ModelCheckpoint(
         dirpath=checkpoint_dir, save_top_k=1, monitor=monitor_metric, mode=monitor_mode
     )
@@ -76,8 +77,13 @@ def train_test(
         max_epochs=epochs,
         logger=logger,
         callbacks=callbacks,
+        reload_dataloaders_every_n_epochs=2,
     )
     trainer.fit(model, train_loader, val_loader)
+    train_metrics = trainer.logged_metrics
     trainer.test(dataloaders=test_loader)
 
-    return trainer
+    if advanced_output:
+        return {"trainer": trainer, "train_metrics": train_metrics}
+    else:
+        return trainer

@@ -24,3 +24,6 @@ from active_learning.algorithms.balanced_classes_per_text import (
 from active_learning.algorithms.balanced_classes_per_user import (
     BalancedClassesPerUserSelector,
 )
+from active_learning.algorithms.reinforce import (
+    ReinforceSelector,
+)

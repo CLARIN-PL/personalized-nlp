@@ -1,9 +1,10 @@
 from abc import ABC, abstractmethod
 from typing import List, Optional
+
 import numpy as np
 import pandas as pd
-
 from active_learning.algorithms.utils import stratify_by_users
+from sklearn.linear_model import LinearRegression
 
 
 class TextSelectorBase(ABC):
@@ -68,3 +69,6 @@ class TextSelectorBase(ABC):
         confidences: Optional[np.ndarray] = None,
     ) -> pd.DataFrame:
         pass
+
+    def set_new_model(self, regressor: LinearRegression):
+        self.regressor = regressor

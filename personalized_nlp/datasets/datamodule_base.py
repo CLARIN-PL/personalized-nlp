@@ -117,7 +117,7 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         """_summary_
         Args:
             batch_size (int, optional): Batch size for data loaders. Defaults to 3000.
-            embeddings_type (str, optional): string identifier of embedding. Defaults to "bert".
+            embeddings_type (str, optional): string identifier of embedding. Defaults to "labse".
             major_voting (bool, optional): if true, use major voting. Defaults to False.
             test_major_voting (bool, optional): if true, use major voting also on val and test dataset parts. Defaults to False.
             folds_num (int, optional): Number of folds. Defaults to 10.
@@ -249,6 +249,9 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         # }
 
     def _assign_splits(self) -> None:
+        if "split" in self.annotations.columns:
+            return
+
         if self.stratify_folds_by == "texts":
             val_fold = self.val_fold
             test_fold = self.test_fold
@@ -357,7 +360,7 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         annotations["split"] = annotations["text_id"].map(text_id_to_split)
         annotations["fold"] = annotations["text_id"].map(text_id_to_fold)
 
-        annotations = annotations.sample(frac=0.3)
+        # annotations = annotations.sample(frac=0.3)
         # val_test_annotations = val_test_annotations.sample(frac=0.7)
 
         if not self.test_major_voting:
@@ -437,9 +440,14 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         else:
             order_sampler_cls = torch.utils.data.sampler.SequentialSampler
 
+        batch_size = self.batch_size
+        num_annotations = len(annotations.index)
+        batch_size = min(batch_size, int(num_annotations / 15))
+        batch_size = max(batch_size, 1)
+
         sampler = torch.utils.data.sampler.BatchSampler(
             order_sampler_cls(dataset),
-            batch_size=self.batch_size,
+            batch_size=batch_size,
             drop_last=False,
         )
 

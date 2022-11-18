@@ -1,30 +1,31 @@
+from typing import Any, Dict, Optional
 from personalized_nlp.datasets.datamodule_base import BaseDataModule
 from personalized_nlp.learning.train import train_test
 from personalized_nlp.utils import seed_everything
 from pytorch_lightning import loggers as pl_loggers
 from settings import LOGS_DIR
-
 from active_learning.algorithms.base import TextSelectorBase
 from active_learning.callbacks.confidences import SaveConfidencesCallback
 
 
 class ActiveLearningModule:
-
     @property
     def annotated_amount(self) -> int:
         return self.datamodule.annotations.split.isin(["train"]).sum()
 
-    def __init__(self,
-                 datamodule: BaseDataModule,
-                 text_selector: TextSelectorBase,
-                 datamodule_kwargs: dict,
-                 model_kwargs: dict,
-                 train_kwargs: dict,
-                 wandb_project_name: str,
-                 validation_ratio: float = 0.2,
-                 train_with_all_annotations=True,
-                 stratify_by_user=False,
-                 **kwargs) -> None:
+    def __init__(
+        self,
+        datamodule: BaseDataModule,
+        text_selector: TextSelectorBase,
+        datamodule_kwargs: dict,
+        model_kwargs: dict,
+        train_kwargs: dict,
+        wandb_project_name: str,
+        validation_ratio: float = 0.2,
+        train_with_all_annotations=True,
+        stratify_by_user=False,
+        **kwargs
+    ) -> None:
 
         self.datamodule = datamodule
 
@@ -47,14 +48,16 @@ class ActiveLearningModule:
         texts = self.datamodule.data
 
         annotated = annotations.loc[annotations["split"].isin(["train"])]
-        not_annotated = annotations.loc[annotations["split"] == "none",
-                                        ["text_id", "annotator_id"]]
+        not_annotated = annotations.loc[
+            annotations["split"] == "none", ["text_id", "annotator_id"]
+        ]
 
         not_annotated["original_index"] = not_annotated.index.values
         annotated["original_index"] = annotated.index.values
 
         selected = self.text_selector.select_annotations(
-            texts, annotated, not_annotated, self.confidences, amount)
+            texts, annotated, not_annotated, self.confidences, amount
+        )
 
         if not self.stratify_by_user:
             selected = selected.iloc[:amount]
@@ -65,7 +68,7 @@ class ActiveLearningModule:
         annotations = self.datamodule.annotations
         annotations.loc[selected_annotations.index, "split"] = "train"
 
-    def train_model(self):
+    def train_model(self, additional_hparams: Optional[Dict[str, Any]] = None):
         datamodule = self.datamodule
         datamodule_kwargs = dict(self.datamodule_kwargs)
         model_kwargs = dict(self.model_kwargs)
@@ -83,11 +86,13 @@ class ActiveLearningModule:
         annotator_number = annotated_annotations.annotator_id.nunique()
 
         mean_positive = (
-            annotated_annotations.loc[:,
-                                      self.datamodule.annotation_columns].mean(
-                                          axis=0).values)
+            annotated_annotations.loc[:, self.datamodule.annotation_columns]
+            .mean(axis=0)
+            .values
+        )
         median_annotations_per_user = (
-            annotated_annotations["annotator_id"].value_counts().median())
+            annotated_annotations["annotator_id"].value_counts().median()
+        )
 
         hparams = {
             "dataset": type(datamodule).__name__,
@@ -102,6 +107,9 @@ class ActiveLearningModule:
             **model_kwargs,
             **train_kwargs,
         }
+
+        if additional_hparams is not None:
+            hparams.update(additional_hparams)
 
         logger = pl_loggers.WandbLogger(
             save_dir=str(LOGS_DIR),
@@ -118,15 +126,16 @@ class ActiveLearningModule:
             **train_kwargs,
         )
 
-        logger.experiment.finish()
-
         if any(datamodule.annotations.split == "none"):
             # gather confidence levels
             not_annotated_dataloader = datamodule.custom_dataloader(
-                "none", shuffle=False)
+                "none", shuffle=False
+            )
             trainer.predict(dataloaders=not_annotated_dataloader)
 
             self.confidences = confidences_callback.predict_outputs
+
+        logger.experiment.finish()
 
     def experiment(self, max_amount: int, step_size: int, **kwargs):
         while self.annotated_amount < max_amount:
