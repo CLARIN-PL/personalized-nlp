@@ -69,7 +69,7 @@ if __name__ == "__main__":
             "regression": [False],
             "use_cuda": [True],  # False
             "model_type": ["baseline", "bias", "embedding"],
-            "monitor_metric": ["valid_macro_f1_mean"],
+            "monitor_metric": ["valid_loss"],
             "monitor_mode": ["max"],
         }
     )
