@@ -9,7 +9,13 @@ To download data, enter personalized_nlp folder and type in:
 
 ## How to run experiments:
 
-`python -m personalized_nlp.experiments.jester`
+First, preprocess selected dataset with `scripts.process_data` pipeline, to assigns folds to texts:
+
+`python -m scripts.process_data --annotations_df_path .../personalized-nlp/storage/data/unhealthy_conversations/uc_annotations.csv --texts_df_path .../personalized-nlp/storage/data/unhealthy_conversations/uc_texts.csv --annotator_col annotator_id --num_folds 5 --text_col text_id`
+
+Then, you can run experiments with:
+
+`python -m personalized_nlp.experiments.uhnealthy`
 
 ## How to add DataModule for a new dataset
 
