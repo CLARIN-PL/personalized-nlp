@@ -1,21 +1,21 @@
 import abc
 import pickle
+from enum import Enum
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 import pandas as pd
 import torch
-from personalized_nlp.datasets.dataset import BatchIndexedDataset
+from pytorch_lightning import LightningDataModule, seed_everything
+from torch.utils.data import DataLoader
+
+from personalized_active_learning.datasets.types import TextFeaturesBatchDataset
 from personalized_nlp.utils.biases import get_annotator_biases
-from personalized_nlp.utils.controversy import get_conformity
 from personalized_nlp.utils.data_splitting import split_texts
 from personalized_nlp.utils.embeddings import create_embeddings
 from personalized_nlp.utils.finetune import finetune_datamodule_embeddings
-from pytorch_lightning import LightningDataModule, seed_everything
 from settings import EMBEDDINGS_SIZES, TRANSFORMER_MODEL_STRINGS
-from torch.utils.data import DataLoader
-from enum import Enum
 
 
 class SplitMode(Enum):
@@ -186,13 +186,15 @@ class BaseDataset(LightningDataModule, abc.ABC):
     def __init__(
         self,
         batch_size: int = 3000,
-        split_mode: SplitMode = SplitMode.USERS,
+        split_mode: SplitMode = SplitMode.TEXTS,
         embeddings_type: str = "labse",  # TODO: Change to class
         major_voting: bool = False,  # TODO: Not sure if we need that
         test_major_voting: bool = False,  # TODO: Not sure if we need that
         folds_num: int = 10,  # TODO: Can be obtained from data?
         past_annotations_limit: Optional[int] = None,  # TODO: Not sure if we need that
-        split_sizes: Optional[List[str]] = None,  # TODO: Used only when split mode is user, ugly
+        split_sizes: Optional[
+            List[str]
+        ] = None,  # TODO: Used only when split mode is user, ugly
         use_finetuned_embeddings: bool = False,  # TODO: I would like to eliminate that
         test_fold_index: int = 0,
         min_annotations_per_user_in_fold: Optional[int] = None,
@@ -243,7 +245,7 @@ class BaseDataset(LightningDataModule, abc.ABC):
         # TODO: Shouldn't be called here
         seed_everything(seed)
 
-        self.annotations, self.data = self.load_data_and_annotations()
+        self.data, self.annotations = self.load_data_and_annotations()
         self.setup()
 
     # TODO: Rewrite embeddings
@@ -273,7 +275,7 @@ class BaseDataset(LightningDataModule, abc.ABC):
         if self.min_annotations_per_user_in_fold is not None:
             self.filter_annotators()
 
-        self.compute_annotator_biases()
+        self.annotator_biases = self.compute_annotator_biases()
 
         if self.major_voting:
             self.compute_major_votes()
@@ -334,7 +336,9 @@ class BaseDataset(LightningDataModule, abc.ABC):
             test_fold_index = self.test_fold_index
             self.annotations["split"] = "train"
             self.annotations.loc[self.annotations.fold == val_fold_index, "split"] = "val"
-            self.annotations.loc[self.annotations.fold == test_fold_index, "split"] = "test"
+            self.annotations.loc[
+                self.annotations.fold == test_fold_index, "split"
+            ] = "test"
         elif self.split_mode == SplitMode.USERS:
             # TODO: Whats going on here?
             self.data = split_texts(self.data, self.split_sizes)
@@ -414,7 +418,7 @@ class BaseDataset(LightningDataModule, abc.ABC):
         else:
             self.annotations = annotations
 
-    def compute_annotator_biases(self):
+    def compute_annotator_biases(self) -> pd.DataFrame:
         annotations_with_data = self.annotations_with_data
 
         if self.split_mode == SplitMode.USERS:
@@ -433,9 +437,7 @@ class BaseDataset(LightningDataModule, abc.ABC):
         annotator_biases = annotator_id_df.merge(
             annotator_biases.reset_index(), how="left"
         )
-        self.annotator_biases = (
-            annotator_biases.set_index("annotator_id").sort_index().fillna(0)
-        )
+        return annotator_biases.set_index("annotator_id").sort_index().fillna(0)
 
     def train_dataloader(self) -> DataLoader:
         """Returns dataloader for training part of the dataset.
@@ -471,14 +473,16 @@ class BaseDataset(LightningDataModule, abc.ABC):
         annotations = annotations.loc[annotations.split == split]
 
         X, y = self._get_data_by_split(annotations)
-        text_features = self._get_text_features()
-        annotator_features = self._get_annotator_features()
-
-        dataset = BatchIndexedDataset(
-            X,
-            y,
-            text_features=text_features,
-            annotator_features=annotator_features,
+        # TODO: X shouldn't be an array to avoid magic numbers
+        text_ids = X[:, 0]
+        annotator_ids = X[:, 1]
+        dataset = TextFeaturesBatchDataset(
+            text_ids=text_ids,
+            annotator_ids=annotator_ids,
+            embeddings=self.text_embeddings,
+            raw_texts=self.data["text"].values,
+            annotator_biases=self.annotator_biases.values.astype(float),
+            y=y,
         )
 
         if shuffle:
@@ -542,11 +546,6 @@ class BaseDataset(LightningDataModule, abc.ABC):
 
         X = df.loc[:, ["text_id", "annotator_id"]]
         y = df[self.annotation_columns]
-
-        # X["text_id"] = X["text_id"].apply(lambda r_id: self.text_id_idx_dict[r_id])
-        # X["annotator_id"] = X["annotator_id"].apply(
-        #     lambda w_id: self.annotator_id_idx_dict[w_id]
-        # )
 
         X, y = X.values, y.values
 
