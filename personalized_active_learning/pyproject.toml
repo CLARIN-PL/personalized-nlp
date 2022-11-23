@@ -1,0 +1,3 @@
+# just a black configuration
+[tool.black]
+line-length = 90
