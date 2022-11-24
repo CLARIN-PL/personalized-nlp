@@ -8,7 +8,7 @@ from personalized_active_learning.datasets import UnhealthyDataset
 from personalized_active_learning.datasets.base import SplitMode
 from personalized_active_learning.models import Baseline
 from personalized_nlp.utils import seed_everything
-from personalized_nlp.utils.callbacks.personal_metrics import (
+from personalized_active_learning.metrics.personal_metrics import (
     PersonalizedMetricsCallback,
 )
 from personalized_nlp.utils.experiments import product_kwargs
@@ -97,7 +97,10 @@ if __name__ == "__main__":
             PersonalizedMetricsCallback(),
         ]
         # TODO: Parametrize, for now we don't have alternative
-        model = Baseline()
+        model = Baseline(
+            output_dim=sum(data_module.classes_dimensions),
+            embedding_dim=50,
+        )
         module = StandardActiveLearningFlow(
             dataset=data_module,
             datamodule_kwargs=datamodule_kwargs,
