@@ -6,11 +6,11 @@ import active_learning.algorithms as algorithms
 from personalized_active_learning.active_learning_flows import StandardActiveLearningFlow
 from personalized_active_learning.datasets import UnhealthyDataset
 from personalized_active_learning.datasets.base import SplitMode
-from personalized_active_learning.models import Baseline
-from personalized_nlp.utils import seed_everything
 from personalized_active_learning.metrics.personal_metrics import (
     PersonalizedMetricsCallback,
 )
+from personalized_active_learning.models import Baseline
+from personalized_nlp.utils import seed_everything
 from personalized_nlp.utils.experiments import product_kwargs
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "1"

@@ -3,11 +3,12 @@ from datetime import datetime
 
 import pytorch_lightning as pl
 import torch
+from pytorch_lightning.callbacks import ModelCheckpoint, TQDMProgressBar
 
 from personalized_active_learning.datasets import BaseDataset
 from personalized_nlp.learning.classifier import Classifier
-from pytorch_lightning.callbacks import ModelCheckpoint, TQDMProgressBar
 from settings import CHECKPOINTS_DIR
+
 
 def train_test(
     datamodule: BaseDataset,
@@ -22,7 +23,6 @@ def train_test(
     advanced_output=False,
 ):
     """Train model and return predictions for test dataset"""
-    text_embedding_dim = datamodule.text_embedding_dim
 
     train_loader = datamodule.train_dataloader()
     val_loader = datamodule.val_dataloader()
@@ -30,9 +30,7 @@ def train_test(
     class_dims = datamodule.classes_dimensions
     class_names = datamodule.annotation_columns
 
-    model = Classifier(
-        model=model, lr=lr, class_dims=class_dims, class_names=class_names
-    )
+    model = Classifier(model=model, lr=lr, class_dims=class_dims, class_names=class_names)
 
     if logger is not None:
         checkpoint_dir = CHECKPOINTS_DIR / logger.experiment.name

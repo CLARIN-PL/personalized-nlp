@@ -7,7 +7,18 @@ import torch
 
 @dataclass()
 class TextFeaturesBatch:
-    """Defines contract between datasets & models. TextFeaturesBatch is models input."""
+    """Batch of texts with their features.
+
+    Defines contract between datasets & models. I.E. TextFeaturesBatch is a models input.
+
+    Args:
+        text_ids: The IDs of text
+        raw_texts: The raw texts.
+        embeddings: The embeddings of texts.
+        annotator_ids: The ids of annotators which annotated texts.
+        annotator_biases: The biases of annotators. TODO: Not sure how they are counted.
+
+    """
 
     # TODO: Consider change in approach - models operates on tensors.
     # TODO: Something else prepares data for them.

@@ -1,11 +1,12 @@
 # TODO: REFACTOR!!!
 from collections import defaultdict
 from typing import Any
-import torch
-import numpy as np
 
-from sklearn.metrics import classification_report
+import numpy as np
+import torch
 from pytorch_lightning.callbacks import Callback
+from sklearn.metrics import classification_report
+import pytorch_lightning as pl
 
 
 class PersonalizedMetricsCallback(Callback):
@@ -66,9 +67,7 @@ class PersonalizedMetricsCallback(Callback):
                 end_idx = start_idx + class_dims[cls_dim_idx]
 
                 person_confidences = (
-                    output[annotator_ids == annotator_id, start_idx:end_idx]
-                    .cpu()
-                    .numpy()
+                    output[annotator_ids == annotator_id, start_idx:end_idx].cpu().numpy()
                 )
                 person_y_pred = np.argmax(person_confidences, axis=1)
                 person_y_true = (
@@ -79,9 +78,7 @@ class PersonalizedMetricsCallback(Callback):
                     person_y_true, person_y_pred, output_dict=True
                 )
 
-                class_name = (
-                    class_names[cls_dim_idx] if class_names else str(cls_dim_idx)
-                )
+                class_name = class_names[cls_dim_idx] if class_names else str(cls_dim_idx)
 
                 for cls_idx in range(class_dims[cls_dim_idx]):
                     if str(cls_idx) in personal_metrics:

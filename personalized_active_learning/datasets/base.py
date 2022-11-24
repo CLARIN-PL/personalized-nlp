@@ -2,7 +2,7 @@ import abc
 import pickle
 from enum import Enum
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import List, Optional, Tuple
 
 import numpy as np
 import pandas as pd
@@ -174,7 +174,7 @@ class BaseDataset(LightningDataModule, abc.ABC):
     # TODO: Rewrite embeddings
     @property
     def text_embedding_dim(self) -> int:
-        if not self.embeddings_type in EMBEDDINGS_SIZES:
+        if self.embeddings_type not in EMBEDDINGS_SIZES:
             raise NotImplementedError()
 
         return EMBEDDINGS_SIZES[self.embeddings_type]
@@ -190,7 +190,7 @@ class BaseDataset(LightningDataModule, abc.ABC):
         embeddings_type: str = "labse",  # TODO: Change to class
         major_voting: bool = False,  # TODO: Not sure if we need that
         test_major_voting: bool = False,  # TODO: Not sure if we need that
-        folds_num: int = 10,  # TODO: Can be obtained from data?
+        folds_num: int = 10,
         past_annotations_limit: Optional[int] = None,  # TODO: Not sure if we need that
         split_sizes: Optional[
             List[str]
@@ -238,6 +238,7 @@ class BaseDataset(LightningDataModule, abc.ABC):
         self.use_finetuned_embeddings = use_finetuned_embeddings
         self.min_annotations_per_user_in_fold = min_annotations_per_user_in_fold
 
+        # TODO: Move default value to same constants
         self.split_sizes = (
             split_sizes if split_sizes is not None else [0.55, 0.15, 0.15, 0.15]
         )
@@ -265,8 +266,7 @@ class BaseDataset(LightningDataModule, abc.ABC):
         )
 
     def setup(self, stage: Optional[str] = None) -> None:
-        annotations = self.annotations
-        self._original_annotations = annotations.copy()
+        self._original_annotations = self.annotations.copy()
         self._split_data()
 
         if self.past_annotations_limit is not None:
@@ -404,9 +404,9 @@ class BaseDataset(LightningDataModule, abc.ABC):
 
         dfs = []
         for col in annotation_columns:
-            aggregate_lambda = lambda x: pd.Series.mode(x)[0]
-
-            dfs.append(annotations.groupby("text_id")[col].apply(aggregate_lambda))
+            dfs.append(
+                annotations.groupby("text_id")[col].apply(lambda x: pd.Series.mode(x)[0])
+            )
 
         annotations = pd.concat(dfs, axis=1).reset_index()
         annotations["annotator_id"] = 0
@@ -505,29 +505,6 @@ class BaseDataset(LightningDataModule, abc.ABC):
             dataset, sampler=sampler, batch_size=None, num_workers=4
         )
 
-    def _get_text_features(self) -> Dict[str, Any]:
-        """Returns dictionary of features of all texts in the dataset.
-        Each feature should be a numpy array of whatever dtype, with length
-        equal to number of texts in the dataset. Features can be used by
-        models during training.
-        :return: dictionary of text features
-        :rtype: Dict[str, Any]
-        """
-        return {
-            "embeddings": self.text_embeddings,
-            "raw_texts": self.data["text"].values,
-        }
-
-    def _get_annotator_features(self):
-        """Returns dictionary of features of all annotators in the dataset.
-        Each feature should be a numpy array of whatever dtype, with length
-        equal to number of annotators in the dataset. Features can be used by
-        models during training.
-        :return: dictionary of annotator features
-        :rtype: Dict[str, Any]
-        """
-        return {"annotator_biases": self.annotator_biases.values.astype(float)}
-
     def _get_data_by_split(
         self, annotations: pd.DataFrame
     ) -> Tuple[np.ndarray, np.ndarray]:
@@ -601,13 +578,11 @@ class BaseDataset(LightningDataModule, abc.ABC):
         ]
 
         annotations = self.annotations
-        annotation_columns = self.annotation_columns
-        folds_num = self.folds_num
         min_class_annotations = 1
 
         annotators_to_filter = set()
 
-        for annotation_column in annotation_columns:
+        for annotation_column in self.annotation_columns:
             class_dim = annotations[annotation_column].nunique()
 
             annotations_per_class = annotations.loc[
@@ -624,7 +599,7 @@ class BaseDataset(LightningDataModule, abc.ABC):
 
             annotators_to_filter.update(
                 class_fold_per_annotator[
-                    class_fold_per_annotator < folds_num * class_dim
+                    class_fold_per_annotator < self.folds_num * class_dim
                 ].index.tolist()
             )
 
