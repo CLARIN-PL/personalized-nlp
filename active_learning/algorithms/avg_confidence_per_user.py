@@ -14,7 +14,7 @@ class AverageConfidencePerUserSelector(TextSelectorBase):
         Args:
             select_minimal_texts (bool, optional): Wheter to choose annotations with minimal (True) or maximal (False) confidence. Defaults to True.
         """
-        super(AverageConfidencePerUserSelector, self).__init__()
+        super(AverageConfidencePerUserSelector, self).__init__(*args, **kwargs)
         self.select_minimal_texts: bool = select_minimal_texts
 
     def sort_annotations(
