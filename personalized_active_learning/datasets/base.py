@@ -525,13 +525,13 @@ class BaseDataset(LightningDataModule, abc.ABC):
         annotations = self.annotations
         annotations = annotations.loc[annotations.split == split]
 
-        X, y = self._get_data_by_split(annotations)
+        data, y = self._get_data_and_labels(annotations)
         # TODO: X shouldn't be an array to avoid magic numbers
-        text_ids = X[:, 0]
-        annotator_ids = X[:, 1]
+        text_ids = data["text_id"]
+        annotator_ids = data["annotator_id"]
         dataset = TextFeaturesBatchDataset(
-            text_ids=text_ids,
-            annotator_ids=annotator_ids,
+            text_ids=text_ids.values,
+            annotator_ids=annotator_ids.values,
             embeddings=self.text_embeddings,
             raw_texts=self.data["text"].values,
             annotator_biases=self.annotator_biases.values.astype(float),
@@ -561,9 +561,9 @@ class BaseDataset(LightningDataModule, abc.ABC):
             num_workers=4,  # TODO: Number of workers shouldn't be hardcoded
         )
 
-    def _get_data_by_split(
+    def _get_data_and_labels(
         self, annotations: pd.DataFrame
-    ) -> Tuple[np.ndarray, np.ndarray]:
+    ) -> Tuple[pd.DataFrame, np.ndarray]:
         """
 
         Args:
@@ -579,7 +579,7 @@ class BaseDataset(LightningDataModule, abc.ABC):
         X = df.loc[:, ["text_id", "annotator_id"]]
         y = df[self.annotation_columns]
 
-        X, y = X.values, y.values
+        y = y.values
 
         if y.ndim < 2:
             y = y[:, None]
