@@ -44,7 +44,7 @@ class PersonalizedMetricsCallback(Callback):
 
     def on_test_epoch_end(self, trainer, pl_module, *args, **kwargs):
         annotator_ids = torch.cat(
-            [o["x"]["annotator_ids"] for o in self._test_outputs], dim=0
+            [o["x"].annotator_ids for o in self._test_outputs], dim=0
         )
         y_pred = torch.cat([o["y_pred"] for o in self._test_outputs], dim=0)
         y_true = torch.cat([o["y"] for o in self._test_outputs], dim=0)
