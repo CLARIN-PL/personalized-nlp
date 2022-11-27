@@ -57,7 +57,7 @@ class TextFeaturesBatchDataset(torch.utils.data.Dataset):
             text_ids=torch.tensor(batch_text_ids),
             annotator_ids=torch.tensor(batch_annotator_ids),
             raw_texts=self.raw_texts[batch_text_ids],
-            embeddings=torch.tensor(self.embeddings[batch_text_ids]),
+            embeddings=self.embeddings[batch_text_ids],  # Is already a tensor
             annotator_biases=torch.tensor(self.annotator_biases[batch_annotator_ids]),
         )
         return text_features_batch, batch_y
