@@ -262,22 +262,6 @@ class BaseDataset(LightningDataModule, abc.ABC):
         """
         return self.annotations.merge(self.data)
 
-    # TODO: Rewrite embeddings
-    def _create_embeddings(self) -> None:
-        texts = self.data["text"].tolist()
-        embeddings_path = self.embeddings_path
-
-        if self.embeddings_type in TRANSFORMER_MODEL_STRINGS:
-            model_name = TRANSFORMER_MODEL_STRINGS[self.embeddings_type]
-        else:
-            model_name = self.embeddings_type
-
-        use_cuda = self.use_cuda and torch.cuda.is_available()
-
-        create_embeddings(
-            texts, embeddings_path, model_name=model_name, use_cuda=use_cuda
-        )
-
     def setup(self, stage: Optional[str] = None) -> None:
         """Setup DataSet.
 
@@ -297,12 +281,12 @@ class BaseDataset(LightningDataModule, abc.ABC):
         self._split_data()
 
         if self.past_annotations_limit is not None:
-            self.limit_past_annotations(self.past_annotations_limit)
+            self._limit_past_annotations(self.past_annotations_limit)
 
         if self.min_annotations_per_user_in_fold is not None:
-            self.filter_annotators()
+            self._filter_annotators()
 
-        self.annotator_biases = self.compute_annotator_biases()
+        self.annotator_biases = self._compute_annotator_biases()
 
         if self.major_voting:
             self.compute_major_votes()
@@ -330,6 +314,180 @@ class BaseDataset(LightningDataModule, abc.ABC):
         assert len(self.data.index) == len(embeddings)
 
         self.text_embeddings = torch.tensor(embeddings)
+
+    def compute_major_votes(self) -> None:
+        """Computes mean votes for texts in train folds."""
+        annotations = self.annotations
+        annotation_columns = self.annotation_columns
+
+        text_id_to_fold = (
+            annotations.loc[:, ["text_id", "fold"]]
+            .drop_duplicates()
+            .set_index("text_id")
+            .to_dict()["fold"]
+        )
+
+        text_id_to_split = (
+            annotations.loc[:, ["text_id", "split"]]
+            .drop_duplicates()
+            .set_index("text_id")
+            .to_dict()["split"]
+        )
+
+        val_test_annotations = None
+        if not self.test_major_voting:
+            val_test_annotations = annotations.loc[
+                annotations.split.isin(["val", "test"])
+            ]
+            annotations = annotations.loc[~annotations.split.isin(["val", "test"])]
+
+        dfs = []
+        for col in annotation_columns:
+            dfs.append(
+                annotations.groupby("text_id")[col].apply(lambda x: pd.Series.mode(x)[0])
+            )
+
+        annotations = pd.concat(dfs, axis=1).reset_index()
+        annotations["annotator_id"] = 0
+        annotations["split"] = annotations["text_id"].map(text_id_to_split)
+        annotations["fold"] = annotations["text_id"].map(text_id_to_fold)
+
+        if not self.test_major_voting:
+            self.annotations = pd.concat([annotations, val_test_annotations])
+        else:
+            self.annotations = annotations
+
+    def train_dataloader(self) -> DataLoader:
+        """Returns dataloader for training part of the dataset.
+
+        Returns:
+            DataLoader: training dataloader for the dataset.
+        """
+        return self._get_dataloader("train", True)
+
+    def val_dataloader(self) -> DataLoader:
+        """Returns dataloader for validation part of the dataset.
+
+        Returns:
+            DataLoader: validation dataloader for the dataset.
+        """
+        return self._get_dataloader("val", False)
+
+    def test_dataloader(self) -> DataLoader:
+        """Returns dataloader for testing part of the dataset.
+
+        Returns:
+            DataLoader: testing dataloader for the dataset.
+        """
+        return self._get_dataloader("test", False)
+
+    def custom_dataloader(
+        self,
+        split_name: str = "none",
+        shuffle: bool = False,
+    ) -> DataLoader:
+        """Get a custom dataloader.
+
+        Used purely to obtain a dataloader with split `none`.
+
+        Args:
+            split_name: The name of selected split. Must be one of:
+                train, val, test, none.
+            shuffle: Whether to shuffle data.
+
+        Returns:
+            A dataloader with specified parameters.
+
+        """
+        return self._get_dataloader(split_name, shuffle)
+
+    def _compute_annotator_biases(self) -> pd.DataFrame:
+        annotations_with_data = self.annotations_with_data
+
+        if self.split_mode == SplitMode.USERS:
+            personal_df_mask = annotations_with_data.text_split == "past"
+        else:
+            personal_df_mask = annotations_with_data.split == "train"
+
+        personal_df = annotations_with_data.loc[personal_df_mask]
+
+        annotation_columns = self.annotation_columns
+        annotator_biases = get_annotator_biases(personal_df, annotation_columns)
+
+        all_annotator_ids = self._original_annotations.annotator_id.unique()
+        annotator_id_df = pd.DataFrame(all_annotator_ids, columns=["annotator_id"])
+
+        annotator_biases = annotator_id_df.merge(
+            annotator_biases.reset_index(), how="left"
+        )
+        return annotator_biases.set_index("annotator_id").sort_index().fillna(0)
+
+    def _get_dataloader(self, split: str, shuffle: bool) -> DataLoader:
+        """Get a dataloader.
+
+        Args:
+            split_name: The name of selected split. Must be one of:
+                train, val, test, none.
+            shuffle: Whether to shuffle data.
+
+        Returns:
+            A dataloader with specified parameters.
+
+        """
+        annotations = self.annotations
+        annotations = annotations.loc[annotations.split == split]
+
+        data, y = self._get_data_and_labels(annotations)
+        # TODO: X shouldn't be an array to avoid magic numbers
+        text_ids = data["text_id"]
+        annotator_ids = data["annotator_id"]
+        dataset = TextFeaturesBatchDataset(
+            text_ids=text_ids.values,
+            annotator_ids=annotator_ids.values,
+            embeddings=self.text_embeddings,
+            raw_texts=self.data["text"].values,
+            annotator_biases=self.annotator_biases.values.astype(float),
+            y=y,
+        )
+
+        if shuffle:
+            sampler = torch.utils.data.sampler.RandomSampler(dataset)
+        else:
+            sampler = torch.utils.data.sampler.SequentialSampler(dataset)
+
+        batch_size = self.batch_size
+        num_annotations = len(annotations.index)
+        batch_size = min(batch_size, int(num_annotations / 15))
+        batch_size = max(batch_size, 1)
+
+        batch_sampler = torch.utils.data.sampler.BatchSampler(
+            sampler=sampler,
+            batch_size=batch_size,
+            drop_last=False,
+        )
+
+        return torch.utils.data.DataLoader(
+            dataset,
+            sampler=batch_sampler,
+            batch_size=None,
+            num_workers=4,  # TODO: Number of workers shouldn't be hardcoded
+        )
+
+    # TODO: Rewrite embeddings
+    def _create_embeddings(self) -> None:
+        texts = self.data["text"].tolist()
+        embeddings_path = self.embeddings_path
+
+        if self.embeddings_type in TRANSFORMER_MODEL_STRINGS:
+            model_name = TRANSFORMER_MODEL_STRINGS[self.embeddings_type]
+        else:
+            model_name = self.embeddings_type
+
+        use_cuda = self.use_cuda and torch.cuda.is_available()
+
+        create_embeddings(
+            texts, embeddings_path, model_name=model_name, use_cuda=use_cuda
+        )
 
     def _split_data(self) -> None:
         """Split data into train, validation & test.
@@ -403,164 +561,6 @@ class BaseDataset(LightningDataModule, abc.ABC):
                 )
             )
 
-    def compute_major_votes(self) -> None:
-        """Computes mean votes for texts in train folds."""
-        annotations = self.annotations
-        annotation_columns = self.annotation_columns
-
-        text_id_to_fold = (
-            annotations.loc[:, ["text_id", "fold"]]
-            .drop_duplicates()
-            .set_index("text_id")
-            .to_dict()["fold"]
-        )
-
-        text_id_to_split = (
-            annotations.loc[:, ["text_id", "split"]]
-            .drop_duplicates()
-            .set_index("text_id")
-            .to_dict()["split"]
-        )
-
-        val_test_annotations = None
-        if not self.test_major_voting:
-            val_test_annotations = annotations.loc[
-                annotations.split.isin(["val", "test"])
-            ]
-            annotations = annotations.loc[~annotations.split.isin(["val", "test"])]
-
-        dfs = []
-        for col in annotation_columns:
-            dfs.append(
-                annotations.groupby("text_id")[col].apply(lambda x: pd.Series.mode(x)[0])
-            )
-
-        annotations = pd.concat(dfs, axis=1).reset_index()
-        annotations["annotator_id"] = 0
-        annotations["split"] = annotations["text_id"].map(text_id_to_split)
-        annotations["fold"] = annotations["text_id"].map(text_id_to_fold)
-
-        if not self.test_major_voting:
-            self.annotations = pd.concat([annotations, val_test_annotations])
-        else:
-            self.annotations = annotations
-
-    def compute_annotator_biases(self) -> pd.DataFrame:
-        annotations_with_data = self.annotations_with_data
-
-        if self.split_mode == SplitMode.USERS:
-            personal_df_mask = annotations_with_data.text_split == "past"
-        else:
-            personal_df_mask = annotations_with_data.split == "train"
-
-        personal_df = annotations_with_data.loc[personal_df_mask]
-
-        annotation_columns = self.annotation_columns
-        annotator_biases = get_annotator_biases(personal_df, annotation_columns)
-
-        all_annotator_ids = self._original_annotations.annotator_id.unique()
-        annotator_id_df = pd.DataFrame(all_annotator_ids, columns=["annotator_id"])
-
-        annotator_biases = annotator_id_df.merge(
-            annotator_biases.reset_index(), how="left"
-        )
-        return annotator_biases.set_index("annotator_id").sort_index().fillna(0)
-
-    def train_dataloader(self) -> DataLoader:
-        """Returns dataloader for training part of the dataset.
-
-        Returns:
-            DataLoader: training dataloader for the dataset.
-        """
-        return self._get_dataloader("train", True)
-
-    def val_dataloader(self) -> DataLoader:
-        """Returns dataloader for validation part of the dataset.
-
-        Returns:
-            DataLoader: validation dataloader for the dataset.
-        """
-        return self._get_dataloader("val", False)
-
-    def test_dataloader(self) -> DataLoader:
-        """Returns dataloader for testing part of the dataset.
-
-        Returns:
-            DataLoader: testing dataloader for the dataset.
-        """
-        return self._get_dataloader("test", False)
-
-    def custom_dataloader(
-        self,
-        split_name: str = "none",
-        shuffle: bool = False,
-    ) -> DataLoader:
-        """Get a custom dataloader.
-
-        Used purely to obtain a dataloader with split `none`.
-
-        Args:
-            split_name: The name of selected split. Must be one of:
-                train, val, test, none.
-            shuffle: Whether to shuffle data.
-
-        Returns:
-            A dataloader with specified parameters.
-
-        """
-        return self._get_dataloader(split_name, shuffle)
-
-    def _get_dataloader(self, split: str, shuffle: bool) -> DataLoader:
-        """Get a dataloader.
-
-        Args:
-            split_name: The name of selected split. Must be one of:
-                train, val, test, none.
-            shuffle: Whether to shuffle data.
-
-        Returns:
-            A dataloader with specified parameters.
-
-        """
-        annotations = self.annotations
-        annotations = annotations.loc[annotations.split == split]
-
-        data, y = self._get_data_and_labels(annotations)
-        # TODO: X shouldn't be an array to avoid magic numbers
-        text_ids = data["text_id"]
-        annotator_ids = data["annotator_id"]
-        dataset = TextFeaturesBatchDataset(
-            text_ids=text_ids.values,
-            annotator_ids=annotator_ids.values,
-            embeddings=self.text_embeddings,
-            raw_texts=self.data["text"].values,
-            annotator_biases=self.annotator_biases.values.astype(float),
-            y=y,
-        )
-
-        if shuffle:
-            sampler = torch.utils.data.sampler.RandomSampler(dataset)
-        else:
-            sampler = torch.utils.data.sampler.SequentialSampler(dataset)
-
-        batch_size = self.batch_size
-        num_annotations = len(annotations.index)
-        batch_size = min(batch_size, int(num_annotations / 15))
-        batch_size = max(batch_size, 1)
-
-        batch_sampler = torch.utils.data.sampler.BatchSampler(
-            sampler=sampler,
-            batch_size=batch_size,
-            drop_last=False,
-        )
-
-        return torch.utils.data.DataLoader(
-            dataset,
-            sampler=batch_sampler,
-            batch_size=None,
-            num_workers=4,  # TODO: Number of workers shouldn't be hardcoded
-        )
-
     def _get_data_and_labels(
         self, annotations: pd.DataFrame
     ) -> Tuple[pd.DataFrame, np.ndarray]:
@@ -586,7 +586,7 @@ class BaseDataset(LightningDataModule, abc.ABC):
 
         return X, y
 
-    def limit_past_annotations(self, limit: int):
+    def _limit_past_annotations(self, limit: int):
         # TODO: What this method does?
         past_annotations = self.annotations.merge(self.data[self.data.split == "past"])
 
@@ -610,7 +610,7 @@ class BaseDataset(LightningDataModule, abc.ABC):
 
         self.annotations = pd.concat([non_past_annotations, controversial_annotations])
 
-    def filter_annotators(self) -> None:
+    def _filter_annotators(self) -> None:
         """Filter out annotators with insignificant number of annotations.
 
         TODO: Change it to return something instead of modifying class variable
