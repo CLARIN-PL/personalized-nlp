@@ -58,7 +58,7 @@ def train_test(
     )
     trainer.fit(model, train_loader, val_loader)
     train_metrics = trainer.logged_metrics
-    trainer.test(dataloaders=test_loader)
+    trainer.test(dataloaders=test_loader, ckpt_path="best")
 
     if advanced_output:
         return {"trainer": trainer, "train_metrics": train_metrics}

@@ -57,10 +57,10 @@ class ActiveLearningFlowBase(abc.ABC):
         annotations = self.dataset.annotations
         texts = self.dataset.data
 
-        annotated = annotations.loc[annotations["split"].isin(["train"])]
+        annotated = annotations.loc[annotations["split"].isin(["train"])].copy()
         not_annotated = annotations.loc[
             annotations["split"] == "none", ["text_id", "annotator_id"]
-        ]
+        ].copy()
 
         not_annotated["original_index"] = not_annotated.index.values
         annotated["original_index"] = annotated.index.values
@@ -143,7 +143,7 @@ class ActiveLearningFlowBase(abc.ABC):
         if any(dataset.annotations.split == "none"):
             # gather confidence levels
             not_annotated_dataloader = dataset.custom_dataloader("none", shuffle=False)
-            trainer.predict(dataloaders=not_annotated_dataloader)
+            trainer.predict(dataloaders=not_annotated_dataloader, ckpt_path="best")
 
             self.confidences = confidences_callback.predict_outputs
 

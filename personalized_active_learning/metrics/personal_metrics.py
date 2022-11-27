@@ -74,6 +74,7 @@ class PersonalizedMetricsCallback(Callback):
                     y[annotator_ids == annotator_id, cls_dim_idx].long().cpu().numpy()
                 )
 
+
                 personal_metrics = classification_report(
                     person_y_true,
                     person_y_pred,
