@@ -26,10 +26,6 @@ class UnhealthyDataset(BaseDataset):
         return "uc_texts_processed.csv"
 
     @property
-    def embeddings_path(self) -> Path:
-        return self.data_dir / f"embeddings/text_id_to_emb_{self.embeddings_type}.p"
-
-    @property
     def data_dir(self) -> Path:
         return DATA_DIR / "unhealthy_conversations"
 

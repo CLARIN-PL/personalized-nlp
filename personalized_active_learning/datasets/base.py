@@ -1,5 +1,4 @@
 import abc
-import pickle
 from enum import Enum
 from pathlib import Path
 from typing import List, Optional, Tuple
@@ -11,11 +10,10 @@ from pytorch_lightning import LightningDataModule, seed_everything
 from torch.utils.data import DataLoader
 
 from personalized_active_learning.datasets.types import TextFeaturesBatchDataset
+from personalized_active_learning.embeddings import EmbeddingsCreator
+from personalized_active_learning.embeddings.finetune import fine_tune_embeddings
 from personalized_nlp.utils.biases import get_annotator_biases
 from personalized_nlp.utils.data_splitting import split_texts
-from personalized_nlp.utils.embeddings import create_embeddings
-from personalized_nlp.utils.finetune import finetune_datamodule_embeddings
-from settings import EMBEDDINGS_SIZES, TRANSFORMER_MODEL_STRINGS
 
 
 class SplitMode(Enum):
@@ -40,9 +38,9 @@ class BaseDataset(LightningDataModule, abc.ABC):
 
     def __init__(
         self,
+        embeddings_creator: EmbeddingsCreator,
         batch_size: int = 3000,
         split_mode: SplitMode = SplitMode.TEXTS,
-        embeddings_type: str = "labse",  # TODO: Change to class
         major_voting: bool = False,  # TODO: Not sure if we need that
         test_major_voting: bool = False,  # TODO: Not sure if we need that
         folds_num: int = 10,
@@ -50,18 +48,18 @@ class BaseDataset(LightningDataModule, abc.ABC):
         split_sizes: Optional[
             List[str]
         ] = None,  # TODO: Used only when split mode is user, ugly
-        use_finetuned_embeddings: bool = False,  # TODO: I would like to eliminate that
+        use_finetuned_embeddings: bool = False,
         test_fold_index: int = 0,
         min_annotations_per_user_in_fold: Optional[int] = None,
         seed: int = 22,  # TODO: It shouldn't be use by datamodule but higher!!!
-        use_cuda: bool = False,  # TODO: Moved to class responsible for embeddings
     ):
         """Initialize object.
 
         Args:
+            embeddings_creator: The Embeddings creator.
+            use_finetuned_embeddings: If `True` the embeddings will be finetuned.
             batch_size: The size of batch.
             split_mode: The split mode used to divide data into training, val & test.
-            embeddings_type: Will be removed.
             major_voting: If `True` do not use personalization on training data.
                 I.E. Text annotated by 5 annotators will be transformed to single text.
             test_major_voting: If `True` do not use personalization on val & test data.
@@ -70,24 +68,25 @@ class BaseDataset(LightningDataModule, abc.ABC):
             past_annotations_limit: TODO: Not sure yet what it exactly does.
             split_sizes: Argument used only if `split_mode == SplitMode.Users`.
                 Defines a size of split to divide data into.
-            use_finetuned_embeddings: Whether to finetune embeddings.
             test_fold_index: The index of test fold.
             min_annotations_per_user_in_fold: If not none filter out annotators who:
                 have less than `min_annotations_per_user_in_fold` annotations in each fold
                 or have less than one annotations per each (class_dim, fold) pair
             seed: Will be removed.
-            use_cuda: Will be removed.
+
         """
         super().__init__()
-
+        # TODO: Ugly, needed for fine-tuning embeddings
+        self.init_kwargs = locals()
+        del self.init_kwargs["self"]
+        del self.init_kwargs["__class__"]
+        self.embeddings_creator = embeddings_creator
         self.batch_size = batch_size
         self.split_mode = split_mode
-        self.embeddings_type = embeddings_type
         self.major_voting = major_voting
         self.test_major_voting = test_major_voting
         self.folds_num = folds_num
         self.past_annotations_limit = past_annotations_limit
-        self.use_cuda = use_cuda
 
         self._test_fold_index = test_fold_index
         self.use_finetuned_embeddings = use_finetuned_embeddings
@@ -123,16 +122,6 @@ class BaseDataset(LightningDataModule, abc.ABC):
 
         Each collum corresponds to separated supervised task, e.g.:
         [`humor`, `sarcasm`]
-
-        """
-
-    @property
-    @abc.abstractmethod
-    def embeddings_path(self) -> Path:
-        """Get the path to texts' embeddings.
-
-        Returns:
-            The embeddings path to texts' embeddings.
 
         """
 
@@ -240,19 +229,6 @@ class BaseDataset(LightningDataModule, abc.ABC):
         return self._test_fold_index
 
     @property
-    def text_embedding_dim(self) -> int:
-        """Get the dimension of text embeddings.
-
-        Returns:
-            The dimension of text embeddings.
-
-        """
-        if self.embeddings_type not in EMBEDDINGS_SIZES:
-            raise NotImplementedError()
-
-        return EMBEDDINGS_SIZES[self.embeddings_type]
-
-    @property
     def annotations_with_data(self) -> pd.DataFrame:
         """Get the annotations and data merged to single `DataFrame`.
 
@@ -291,29 +267,12 @@ class BaseDataset(LightningDataModule, abc.ABC):
         if self.major_voting:
             self.compute_major_votes()
 
-        if not self.embeddings_path.exists():
-            self._create_embeddings()
-
-        embeddings_path = self.embeddings_path
-
         if self.use_finetuned_embeddings:
-            finetune_datamodule_embeddings(self)
-            embeddings_path = (
-                f"{self.data_dir}/embeddings/{self.embeddings_type}_{self.test_fold}.p"
-            )
-
-        with open(embeddings_path, "rb") as f:
-            text_idx_to_emb = pickle.load(f)
-
-        embeddings = []
-        for text_id in range(len(text_idx_to_emb.keys())):
-            embeddings.append(text_idx_to_emb[text_id])
-
-        embeddings = np.array(embeddings)
-
-        assert len(self.data.index) == len(embeddings)
-
-        self.text_embeddings = torch.tensor(embeddings)
+            # TODO: Ugly hack but we probably don't have time to change that
+            fine_tune_embeddings(self)
+        texts = self.data["text"].tolist()
+        self.text_embeddings = self.embeddings_creator.get_embeddings(texts=texts)
+        assert len(self.data.index) == len(self.text_embeddings)
 
     def compute_major_votes(self) -> None:
         """Computes mean votes for texts in train folds."""
@@ -471,22 +430,6 @@ class BaseDataset(LightningDataModule, abc.ABC):
             sampler=batch_sampler,
             batch_size=None,
             num_workers=4,  # TODO: Number of workers shouldn't be hardcoded
-        )
-
-    # TODO: Rewrite embeddings
-    def _create_embeddings(self) -> None:
-        texts = self.data["text"].tolist()
-        embeddings_path = self.embeddings_path
-
-        if self.embeddings_type in TRANSFORMER_MODEL_STRINGS:
-            model_name = TRANSFORMER_MODEL_STRINGS[self.embeddings_type]
-        else:
-            model_name = self.embeddings_type
-
-        use_cuda = self.use_cuda and torch.cuda.is_available()
-
-        create_embeddings(
-            texts, embeddings_path, model_name=model_name, use_cuda=use_cuda
         )
 
     def _split_data(self) -> None:

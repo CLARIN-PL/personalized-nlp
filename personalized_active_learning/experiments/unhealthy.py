@@ -8,6 +8,7 @@ import active_learning.algorithms as algorithms
 from personalized_active_learning.active_learning_flows import StandardActiveLearningFlow
 from personalized_active_learning.datasets import UnhealthyDataset
 from personalized_active_learning.datasets.base import SplitMode
+from personalized_active_learning.embeddings import EmbeddingsCreator
 from personalized_active_learning.metrics.personal_metrics import (
     PersonalizedMetricsCallback,
 )
@@ -15,7 +16,7 @@ from personalized_active_learning.models import Baseline
 from personalized_nlp.utils import seed_everything
 from personalized_nlp.utils.experiments import product_kwargs
 import warnings
-
+from settings import DATA_DIR
 
 # False positive https://github.com/Lightning-AI/lightning/issues/11856
 warnings.filterwarnings("ignore", category=PossibleUserWarning)
@@ -25,7 +26,7 @@ os.environ["WANDB_START_METHOD"] = "thread"
 if __name__ == "__main__":
     wandb_project_name = "PNW_AL_Unhealthy"
     datamodule_cls = UnhealthyDataset
-
+    use_cuda = True
     activelearning_kwargs_list = product_kwargs(
         {
             "text_selector_cls": [
@@ -47,7 +48,13 @@ if __name__ == "__main__":
     )
     datamodule_kwargs_list = product_kwargs(
         {
-            "embeddings_type": ["labse"],
+            "embeddings_creator": [
+                EmbeddingsCreator(
+                    directory=DATA_DIR / "unhealthy_conversations" / "embeddings",
+                    embeddings_type="labse",
+                    use_cuda=use_cuda,
+                ),
+            ],
             "past_annotations_limit": [None],
             "split_mode": [SplitMode.TEXTS],
             "folds_num": [5],
@@ -71,7 +78,7 @@ if __name__ == "__main__":
         {
             "epochs": [20],
             "lr": [0.008],
-            "use_cuda": [True],
+            "use_cuda": [use_cuda],
             "monitor_metric": ["valid_loss"],
             "monitor_mode": ["max"],
         }
