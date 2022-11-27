@@ -51,7 +51,6 @@ class BaseDataset(LightningDataModule, abc.ABC):
         Returns:
             List of class dimensions, each one corresponds to separated supervised task.
         """
-        # TODO: Consider returning int instead (I.E. single task per datamodule).
 
     @property
     @abc.abstractmethod
@@ -62,7 +61,6 @@ class BaseDataset(LightningDataModule, abc.ABC):
         [`humor`, `sarcasm`]
 
         """
-        # TODO: Consider returning string instead (I.E. single task per datamodule).
 
     @property
     @abc.abstractmethod
@@ -169,11 +167,22 @@ class BaseDataset(LightningDataModule, abc.ABC):
 
     @property
     def test_fold_index(self) -> int:
+        """Get the index of test fold.
+
+        Returns:
+            The index of test fold.
+
+        """
         return self._test_fold_index
 
-    # TODO: Rewrite embeddings
     @property
     def text_embedding_dim(self) -> int:
+        """Get the dimension of text embeddings.
+
+        Returns:
+            The dimension of text embeddings.
+
+        """
         if self.embeddings_type not in EMBEDDINGS_SIZES:
             raise NotImplementedError()
 
@@ -181,6 +190,12 @@ class BaseDataset(LightningDataModule, abc.ABC):
 
     @property
     def annotations_with_data(self) -> pd.DataFrame:
+        """Get the annotations and data merged to single `DataFrame`.
+
+        Returns:
+            The `DataFrame` containing both data & annotations.
+
+        """
         return self.annotations.merge(self.data)
 
     def __init__(
@@ -242,8 +257,6 @@ class BaseDataset(LightningDataModule, abc.ABC):
         self.split_sizes = (
             split_sizes if split_sizes is not None else [0.55, 0.15, 0.15, 0.15]
         )
-
-        # TODO: Shouldn't be called here
         seed_everything(seed)
 
         self.data, self.annotations = self.load_data_and_annotations()
@@ -266,6 +279,20 @@ class BaseDataset(LightningDataModule, abc.ABC):
         )
 
     def setup(self, stage: Optional[str] = None) -> None:
+        """Setup DataSet.
+
+        Args:
+            stage: Left for compatibility with pytorch lighting.
+
+        Prepare data to use. Currently this method:
+            1. Splits data into training, validation, test sets.
+            2. Limits annotations if needed.
+            3. Filters annotations if needed.
+            4. Computes annotators biases.
+            5. Applies major voting mechanism if needed.
+            6. Finetunes text embeddings if needed.
+
+        """
         self._original_annotations = self.annotations.copy()
         self._split_data()
 
@@ -464,11 +491,37 @@ class BaseDataset(LightningDataModule, abc.ABC):
         return self._get_dataloader("test", False)
 
     def custom_dataloader(
-        self, split_name: str = "none", shuffle: bool = False
+        self,
+        split_name: str = "none",
+        shuffle: bool = False,
     ) -> DataLoader:
+        """Get a custom dataloader.
+
+        Used purely to obtain a dataloader with split `none`.
+
+        Args:
+            split_name: The name of selected split. Must be one of:
+                train, val, test, none.
+            shuffle: Whether to shuffle data.
+
+        Returns:
+            A dataloader with specified parameters.
+
+        """
         return self._get_dataloader(split_name, shuffle)
 
     def _get_dataloader(self, split: str, shuffle: bool) -> DataLoader:
+        """Get a dataloader.
+
+        Args:
+            split_name: The name of selected split. Must be one of:
+                train, val, test, none.
+            shuffle: Whether to shuffle data.
+
+        Returns:
+            A dataloader with specified parameters.
+
+        """
         annotations = self.annotations
         annotations = annotations.loc[annotations.split == split]
 
@@ -502,22 +555,24 @@ class BaseDataset(LightningDataModule, abc.ABC):
         )
 
         return torch.utils.data.DataLoader(
-            dataset, sampler=batch_sampler, batch_size=None, num_workers=4
+            dataset,
+            sampler=batch_sampler,
+            batch_size=None,
+            num_workers=4,  # TODO: Number of workers shouldn't be hardcoded
         )
 
     def _get_data_by_split(
         self, annotations: pd.DataFrame
     ) -> Tuple[np.ndarray, np.ndarray]:
-        """Returns annotations (coded indices of annotators and texts), and
-        their labels in the dataset for given splits. Used during training.
-        :param annotations: DataFrame of annotations from which the data will
-        be extracted.
-        :type annotations: pd.DataFrame
-        :param splits: List of names of splits to be extracted
-        :type splits: List[str]
-        :return: tuple (X, y), where X is numpy array of (annotator_idx, text_idx)
-        tuples and y is numpy array of labels for the annotations.
-        :rtype: [type]
+        """
+
+        Args:
+            annotations: The annotations of texts.
+
+        Returns: Pair of:
+            Data: I.E. DataFrame containing text ids and annotator ids.
+            Labels: I.E. Numpy array containing labels.
+
         """
         df = annotations
 
@@ -532,6 +587,7 @@ class BaseDataset(LightningDataModule, abc.ABC):
         return X, y
 
     def limit_past_annotations(self, limit: int):
+        # TODO: What this method does?
         past_annotations = self.annotations.merge(self.data[self.data.split == "past"])
 
         text_stds = (
@@ -555,8 +611,15 @@ class BaseDataset(LightningDataModule, abc.ABC):
         self.annotations = pd.concat([non_past_annotations, controversial_annotations])
 
     def filter_annotators(self) -> None:
-        """Filters annotators with less than `min_annotations_per_user_in_fold` annotations
-        in each fold and with less than one annotations per each (class_dim, fold) pair.
+        """Filter out annotators with insignificant number of annotations.
+
+        TODO: Change it to return something instead of modifying class variable
+        IMPORTANT: This method modifies `self.annotations`.
+
+        Filter out annotators who:
+            have less than `min_annotations_per_user_in_fold` annotations in fold.
+            have zero annotations in one of pairs (class_dim, fold).
+
         """
         if self.split_mode == SplitMode.USERS:
             raise Exception("Cannot use user folds with min_annotations_per_user_in_fold")
