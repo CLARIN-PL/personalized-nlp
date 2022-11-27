@@ -2,6 +2,8 @@
 import os
 from itertools import product
 
+from pytorch_lightning.utilities.warnings import PossibleUserWarning
+
 import active_learning.algorithms as algorithms
 from personalized_active_learning.active_learning_flows import StandardActiveLearningFlow
 from personalized_active_learning.datasets import UnhealthyDataset
@@ -12,7 +14,11 @@ from personalized_active_learning.metrics.personal_metrics import (
 from personalized_active_learning.models import Baseline
 from personalized_nlp.utils import seed_everything
 from personalized_nlp.utils.experiments import product_kwargs
+import warnings
 
+
+# False positive https://github.com/Lightning-AI/lightning/issues/11856
+warnings.filterwarnings("ignore", category=PossibleUserWarning)
 os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 os.environ["WANDB_START_METHOD"] = "thread"
 
