@@ -38,6 +38,70 @@ class SplitMode(Enum):
 class BaseDataset(LightningDataModule, abc.ABC):
     """The base class from each dataset class should derive."""
 
+    def __init__(
+        self,
+        batch_size: int = 3000,
+        split_mode: SplitMode = SplitMode.TEXTS,
+        embeddings_type: str = "labse",  # TODO: Change to class
+        major_voting: bool = False,  # TODO: Not sure if we need that
+        test_major_voting: bool = False,  # TODO: Not sure if we need that
+        folds_num: int = 10,
+        past_annotations_limit: Optional[int] = None,  # TODO: Not sure if we need that
+        split_sizes: Optional[
+            List[str]
+        ] = None,  # TODO: Used only when split mode is user, ugly
+        use_finetuned_embeddings: bool = False,  # TODO: I would like to eliminate that
+        test_fold_index: int = 0,
+        min_annotations_per_user_in_fold: Optional[int] = None,
+        seed: int = 22,  # TODO: It shouldn't be use by datamodule but higher!!!
+        use_cuda: bool = False,  # TODO: Moved to class responsible for embeddings
+    ):
+        """Initialize object.
+
+        Args:
+            batch_size: The size of batch.
+            split_mode: The split mode used to divide data into training, val & test.
+            embeddings_type: Will be removed.
+            major_voting: If `True` do not use personalization on training data.
+                I.E. Text annotated by 5 annotators will be transformed to single text.
+            test_major_voting: If `True` do not use personalization on val & test data.
+                I.E. Text annotated by 5 annotators will be transformed to single text.
+            folds_num: The number of folds into which data are split.
+            past_annotations_limit: TODO: Not sure yet what it exactly does.
+            split_sizes: Argument used only if `split_mode == SplitMode.Users`.
+                Defines a size of split to divide data into.
+            use_finetuned_embeddings: Whether to finetune embeddings.
+            test_fold_index: The index of test fold.
+            min_annotations_per_user_in_fold: If not none filter out annotators who:
+                have less than `min_annotations_per_user_in_fold` annotations in each fold
+                or have less than one annotations per each (class_dim, fold) pair
+            seed: Will be removed.
+            use_cuda: Will be removed.
+        """
+        super().__init__()
+
+        self.batch_size = batch_size
+        self.split_mode = split_mode
+        self.embeddings_type = embeddings_type
+        self.major_voting = major_voting
+        self.test_major_voting = test_major_voting
+        self.folds_num = folds_num
+        self.past_annotations_limit = past_annotations_limit
+        self.use_cuda = use_cuda
+
+        self._test_fold_index = test_fold_index
+        self.use_finetuned_embeddings = use_finetuned_embeddings
+        self.min_annotations_per_user_in_fold = min_annotations_per_user_in_fold
+
+        # TODO: Move default value to same constants
+        self.split_sizes = (
+            split_sizes if split_sizes is not None else [0.55, 0.15, 0.15, 0.15]
+        )
+        seed_everything(seed)
+
+        self.data, self.annotations = self.load_data_and_annotations()
+        self.setup()
+
     @property
     @abc.abstractmethod
     def classes_dimensions(self) -> List[int]:
@@ -197,70 +261,6 @@ class BaseDataset(LightningDataModule, abc.ABC):
 
         """
         return self.annotations.merge(self.data)
-
-    def __init__(
-        self,
-        batch_size: int = 3000,
-        split_mode: SplitMode = SplitMode.TEXTS,
-        embeddings_type: str = "labse",  # TODO: Change to class
-        major_voting: bool = False,  # TODO: Not sure if we need that
-        test_major_voting: bool = False,  # TODO: Not sure if we need that
-        folds_num: int = 10,
-        past_annotations_limit: Optional[int] = None,  # TODO: Not sure if we need that
-        split_sizes: Optional[
-            List[str]
-        ] = None,  # TODO: Used only when split mode is user, ugly
-        use_finetuned_embeddings: bool = False,  # TODO: I would like to eliminate that
-        test_fold_index: int = 0,
-        min_annotations_per_user_in_fold: Optional[int] = None,
-        seed: int = 22,  # TODO: It shouldn't be use by datamodule but higher!!!
-        use_cuda: bool = False,  # TODO: Moved to class responsible for embeddings
-    ):
-        """Initialize object.
-
-        Args:
-            batch_size: The size of batch.
-            split_mode: The split mode used to divide data into training, val & test.
-            embeddings_type: Will be removed.
-            major_voting: If `True` do not use personalization on training data.
-                I.E. Text annotated by 5 annotators will be transformed to single text.
-            test_major_voting: If `True` do not use personalization on val & test data.
-                I.E. Text annotated by 5 annotators will be transformed to single text.
-            folds_num: The number of folds into which data are split.
-            past_annotations_limit: TODO: Not sure yet what it exactly does.
-            split_sizes: Argument used only if `split_mode == SplitMode.Users`.
-                Defines a size of split to divide data into.
-            use_finetuned_embeddings: Whether to finetune embeddings.
-            test_fold_index: The index of test fold.
-            min_annotations_per_user_in_fold: If not none filter out annotators who:
-                have less than `min_annotations_per_user_in_fold` annotations in each fold
-                or have less than one annotations per each (class_dim, fold) pair
-            seed: Will be removed.
-            use_cuda: Will be removed.
-        """
-        super().__init__()
-
-        self.batch_size = batch_size
-        self.split_mode = split_mode
-        self.embeddings_type = embeddings_type
-        self.major_voting = major_voting
-        self.test_major_voting = test_major_voting
-        self.folds_num = folds_num
-        self.past_annotations_limit = past_annotations_limit
-        self.use_cuda = use_cuda
-
-        self._test_fold_index = test_fold_index
-        self.use_finetuned_embeddings = use_finetuned_embeddings
-        self.min_annotations_per_user_in_fold = min_annotations_per_user_in_fold
-
-        # TODO: Move default value to same constants
-        self.split_sizes = (
-            split_sizes if split_sizes is not None else [0.55, 0.15, 0.15, 0.15]
-        )
-        seed_everything(seed)
-
-        self.data, self.annotations = self.load_data_and_annotations()
-        self.setup()
 
     # TODO: Rewrite embeddings
     def _create_embeddings(self) -> None:
