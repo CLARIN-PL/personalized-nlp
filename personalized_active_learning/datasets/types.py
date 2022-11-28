@@ -35,7 +35,7 @@ class TextFeaturesBatchDataset(torch.utils.data.Dataset):
         y: np.ndarray,
         text_ids: np.ndarray,
         raw_texts: np.ndarray,
-        embeddings: np.ndarray,
+        embeddings: torch.Tensor,
         annotator_ids: np.ndarray,
         annotator_biases: np.ndarray,
     ) -> None:
