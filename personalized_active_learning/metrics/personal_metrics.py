@@ -44,7 +44,7 @@ class PersonalizedMetricsCallback(Callback):
 
     def on_test_epoch_end(self, trainer, pl_module, *args, **kwargs):
         annotator_ids = torch.cat(
-            [o["x"]["annotator_ids"] for o in self._test_outputs], dim=0
+            [o["x"].annotator_ids for o in self._test_outputs], dim=0
         )
         y_pred = torch.cat([o["y_pred"] for o in self._test_outputs], dim=0)
         y_true = torch.cat([o["y"] for o in self._test_outputs], dim=0)
@@ -74,8 +74,12 @@ class PersonalizedMetricsCallback(Callback):
                     y[annotator_ids == annotator_id, cls_dim_idx].long().cpu().numpy()
                 )
 
+
                 personal_metrics = classification_report(
-                    person_y_true, person_y_pred, output_dict=True
+                    person_y_true,
+                    person_y_pred,
+                    output_dict=True,
+                    zero_division=0,  # We don't our output to be filled with warnings
                 )
 
                 class_name = class_names[cls_dim_idx] if class_names else str(cls_dim_idx)

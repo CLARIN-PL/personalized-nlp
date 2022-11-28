@@ -486,23 +486,23 @@ class BaseDataset(LightningDataModule, abc.ABC):
         )
 
         if shuffle:
-            order_sampler_cls = torch.utils.data.sampler.RandomSampler
+            sampler = torch.utils.data.sampler.RandomSampler(dataset)
         else:
-            order_sampler_cls = torch.utils.data.sampler.SequentialSampler
+            sampler = torch.utils.data.sampler.SequentialSampler(dataset)
 
         batch_size = self.batch_size
         num_annotations = len(annotations.index)
         batch_size = min(batch_size, int(num_annotations / 15))
         batch_size = max(batch_size, 1)
 
-        sampler = torch.utils.data.sampler.BatchSampler(
-            order_sampler_cls(dataset),
+        batch_sampler = torch.utils.data.sampler.BatchSampler(
+            sampler=sampler,
             batch_size=batch_size,
             drop_last=False,
         )
 
         return torch.utils.data.DataLoader(
-            dataset, sampler=sampler, batch_size=None, num_workers=4
+            dataset, sampler=batch_sampler, batch_size=None, num_workers=4
         )
 
     def _get_data_by_split(

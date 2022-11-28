@@ -72,7 +72,7 @@ class ActiveLearningModule:
         self._assign_train_val_splits(annotated, selected)
 
     def _assign_train_val_splits(
-        self, old_annotations, selected_annotations: pd.DataFrame
+        self, old_annotations, selected_annotations
     ):
         """Mark selected annotated data as training data.
 
