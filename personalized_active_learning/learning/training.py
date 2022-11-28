@@ -5,13 +5,12 @@ import pytorch_lightning as pl
 import torch
 from pytorch_lightning.callbacks import ModelCheckpoint, TQDMProgressBar
 
-from personalized_active_learning.datasets import BaseDataset
 from personalized_nlp.learning.classifier import Classifier
 from settings import CHECKPOINTS_DIR
 
 
 def train_test(
-    datamodule: BaseDataset,
+    datamodule,  # type is BaseDataset, cannot be imported due to circular import
     model,
     epochs=6,
     lr=1e-2,
