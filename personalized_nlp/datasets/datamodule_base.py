@@ -17,6 +17,7 @@ from pytorch_lightning import LightningDataModule, seed_everything
 from settings import EMBEDDINGS_SIZES, TRANSFORMER_MODEL_STRINGS
 from torch.utils.data import DataLoader
 
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 # TODO specify types!
 # TODO add docstring!
@@ -219,9 +220,7 @@ class BaseDataModule(LightningDataModule, abc.ABC):
 
         if self.use_finetuned_embeddings:
             finetune_datamodule_embeddings(self)
-            embeddings_path = (
-                f"{self.data_dir}/embeddings/{self.embeddings_type}_{self.test_fold}.p"
-            )
+            embeddings_path = f"{self.data_dir}/embeddings/{self.embeddings_type}_{self.test_fold}_{self.stratify_folds_by}.p"
 
         with open(embeddings_path, "rb") as f:
             text_idx_to_emb = pickle.load(f)
