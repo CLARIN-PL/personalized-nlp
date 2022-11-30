@@ -74,11 +74,14 @@ class Classifier(pl.LightningModule):
 
     def training_step(self, batch, batch_idx, optimizer_idx=None):
         x, y = batch
+        batch_size = y.size()[0]
 
         output = self.forward(x)
         loss = self.step(output=output, y=y)
 
-        self.log("train_loss", loss, on_epoch=True, prog_bar=True)
+        self.log(
+            "train_loss", loss, on_epoch=True, prog_bar=True, batch_size=batch_size
+        )
         preds = torch.argmax(output, dim=1)
 
         return {
@@ -92,11 +95,12 @@ class Classifier(pl.LightningModule):
 
     def validation_step(self, batch, batch_idx):
         x, y = batch
+        batch_size = y.size()[0]
 
         output = self.forward(x)
         loss = self.step(output=output, y=y)
 
-        self.log("valid_loss", loss, prog_bar=True)
+        self.log("valid_loss", loss, prog_bar=True, batch_size=batch_size)
         if self.log_valid_metrics:
             self.log_all_metrics(output=output, y=y, split="valid")
 
@@ -112,13 +116,19 @@ class Classifier(pl.LightningModule):
 
     def test_step(self, batch, batch_idx):
         x, y = batch
+        batch_size = y.size()[0]
 
         output = self.forward(x)
         loss = self.step(output=output, y=y)
 
-        self.log("test_loss", loss, prog_bar=True)
+        self.log("test_loss", loss, prog_bar=True, batch_size=batch_size)
         self.log_all_metrics(
-            output=output, y=y, split="test", on_step=False, on_epoch=True
+            output=output,
+            y=y,
+            split="test",
+            on_step=False,
+            on_epoch=True,
+            batch_size=batch_size,
         )
 
         return {
@@ -140,7 +150,9 @@ class Classifier(pl.LightningModule):
         optimizer = torch.optim.Adam(self.parameters(), lr=self.lr)
         return optimizer
 
-    def log_all_metrics(self, output, y, split, on_step=None, on_epoch=None):
+    def log_all_metrics(
+        self, output, y, split, on_step=None, on_epoch=None, batch_size=None
+    ):
         class_dims = self.class_dims
         class_names = self.class_names
 
@@ -174,7 +186,13 @@ class Classifier(pl.LightningModule):
 
                     log_dict["valid_macro_f1_mean"] = np.mean(f1_macros)
 
-            self.log_dict(log_dict, on_step=on_step, on_epoch=on_epoch, prog_bar=True)
+            self.log_dict(
+                log_dict,
+                on_step=on_step,
+                on_epoch=on_epoch,
+                prog_bar=True,
+                batch_size=batch_size,
+            )
 
     def decode_predictions(self, probabs: torch.Tensor) -> torch.Tensor:
         class_dims = self.class_dims
