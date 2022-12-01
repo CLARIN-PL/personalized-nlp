@@ -3,3 +3,5 @@
 Most of experimental features goes here.
 
 """
+
+from unsupervised_pretraining import IUnsupervisedPretrainer
