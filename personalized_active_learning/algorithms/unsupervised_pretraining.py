@@ -4,39 +4,38 @@ from typing import Optional
 import numpy as np
 import pytorch_lightning as pl
 import torch
-from torch.utils.data import DataLoader, BatchSampler, RandomSampler
+from pytorch_lightning import loggers as pl_loggers
+from pytorch_lightning.callbacks import ModelCheckpoint, TQDMProgressBar
 from sklearn.cluster import KMeans
 from sklearn.preprocessing import StandardScaler
+from torch import nn
+from torch.utils.data import DataLoader, BatchSampler, RandomSampler
+from torchmetrics import Accuracy, F1Score
 
 from personalized_active_learning.datasets import BaseDataset
 from personalized_active_learning.datasets.types import TextFeaturesBatchDataset
 from personalized_active_learning.models import IModel
+from settings import CHECKPOINTS_DIR
+from utils import PrecisionClass, RecallClass, F1Class
 
 
 class IUnsupervisedPretrainer(abc.ABC):
-    """Perform unsupervised pre-training.
-
-    As defined in paper "Rethinking deep active learning:
-    Using unlabeled data at model training".
-
-    """
+    """Perform unsupervised pre-training."""
 
     @abc.abstractmethod
     def pretrain(
         self,
         dataset: BaseDataset,
         model: IModel,
-        seed: Optional[int] = None,
-    ) -> pl.Trainer:
-        """
+    ) -> IModel:
+        """Pretrain model.
 
         Args:
             dataset: Dataset containing data used for pretraining.
             model: Model that will be pretrained.
-            seed: Random seed.
 
         Returns:
-            Trainer used to train model. Can be used to load model weights.
+            Pretrained model.
 
         """
         raise NotImplementedError
@@ -150,3 +149,225 @@ class _KmeansScheduler(pl.Callback):
 
         """
         trainer.datamodule.reinitialize_pseudo_labels()
+
+
+# TODO: Docstrings & typing
+class _KmeansClassifier(pl.LightningModule):
+    """Custom classifier for KMeans training."""
+
+    def __init__(
+        self,
+        model: IModel,
+        number_of_classes: int,
+        lr: float,
+    ) -> None:
+
+        super().__init__()
+        self.save_hyperparameters()
+
+        self.model = model
+        self.lr = lr
+
+        self.metric_types = ("accuracy", "precision", "recall", "f1", "macro_f1")
+        task_name = "kmeans"
+
+        metrics = {}
+
+        for split in ["train"]:
+            metrics[f"{split}_accuracy_{task_name}"] = Accuracy()
+            for class_idx in range(number_of_classes):
+                metrics[f"{split}_precision_{task_name}_{class_idx}"] = PrecisionClass(
+                    num_classes=number_of_classes, average=None, class_idx=class_idx
+                )
+                metrics[f"{split}_recall_{task_name}_{class_idx}"] = RecallClass(
+                    num_classes=number_of_classes, average=None, class_idx=class_idx
+                )
+                metrics[f"{split}_f1_{task_name}_{class_idx}"] = F1Class(
+                    average="none", num_classes=number_of_classes, class_idx=class_idx
+                )
+                metrics[f"{split}_macro_f1_{task_name}"] = F1Score(
+                    average="macro", num_classes=number_of_classes
+                )
+
+        self.metrics = nn.ModuleDict(metrics)
+
+    def forward(self, x):
+        x = self.model(x)
+        return x
+
+    @staticmethod
+    def step(output, y):
+        return nn.CrossEntropyLoss()(output, y.long())
+
+    def training_step(self, batch, batch_idx, optimizer_idx=None):
+        X, y = batch
+
+        output = self.forward(X)
+        loss = self.step(output=output, y=y)
+
+        self.log("train_loss", loss, on_epoch=True, prog_bar=True)
+        preds = torch.argmax(output, dim=1)
+
+        return {
+            "loss": loss,
+            "output": output,
+            "preds": preds,
+            "y": y,
+            "X": X,
+        }
+
+    def configure_optimizers(self):
+        optimizer = torch.optim.Adam(self.parameters(), lr=self.lr)
+        return optimizer
+
+    def log_all_metrics(self, output, y, split, on_step=None, on_epoch=None):
+        output = torch.softmax(output, dim=1)
+        log_dict = {}
+        for metric_type in self.metric_types:
+            metric_key_prefix = f"{split}_{metric_type}_{self.task_name}"
+
+            metric_keys = [
+                k for k in self.metrics.keys() if k.startswith(metric_key_prefix)
+            ]
+            for metric_key in metric_keys:
+                self.metrics[metric_key](output.float(), y.long())
+
+                log_dict[metric_key] = self.metrics[metric_key]
+
+            # Dunno why
+            if split == "valid" and metric_type == "macro_f1":
+                f1_macros = [
+                    log_dict[metric_key].compute().cpu() for metric_key in metric_keys
+                ]
+                log_dict["valid_macro_f1_mean"] = np.mean(f1_macros)
+
+        self.log_dict(log_dict, on_step=on_step, on_epoch=on_epoch, prog_bar=True)
+
+
+def _train_kmeans_classifier(
+    datamodule: _KmeansDataModule,
+    model: IModel,
+    number_of_classes: int,
+    logger: pl_loggers.WandbLogger,
+    epochs: int,
+    lr: float,
+    use_cuda: bool = False,
+    monitor_metric: str = "train_loss",
+    monitor_mode: str = "min",
+):
+
+    classifier = _KmeansClassifier(
+        model=model, lr=lr, number_of_classes=number_of_classes
+    )
+    checkpoint_dir = CHECKPOINTS_DIR / logger.experiment.name / "kmeans"
+
+    checkpoint_callback = ModelCheckpoint(
+        dirpath=checkpoint_dir, save_top_k=1, monitor=monitor_metric, mode=monitor_mode
+    )
+    progressbar_checkpoint = TQDMProgressBar(refresh_rate=20)
+
+    # Safety check
+    use_cuda = use_cuda and torch.cuda.is_available()
+
+    callbacks = [
+        checkpoint_callback,
+        progressbar_checkpoint,
+        _KmeansScheduler(),
+    ]
+
+    trainer = pl.Trainer(
+        gpus=1 if use_cuda else 0,
+        max_epochs=epochs,
+        logger=logger,
+        callbacks=callbacks,
+    )
+    trainer.fit(classifier, datamodule)
+    return classifier.model
+
+
+class KmeansPretrainer(IUnsupervisedPretrainer):
+    """Perform unsupervised pre-training based on K-Means clustering.
+
+    As defined in paper "Rethinking deep active learning:
+    Using unlabeled data at model training".
+
+    """
+
+    def __init__(
+        self,
+        num_clusters: int,
+        batch_size: int,
+        logger: pl_loggers.WandbLogger,
+        random_seed: Optional[int] = None,
+        use_text_ids_during_clustering: bool = True,
+        use_annotator_ids_during_clustering: bool = True,
+        num_workers: int = 4,
+        lr: float = 1e-2,
+        number_of_epochs: int = 6,
+        use_cuda: bool = False,
+        seed: Optional[int] = None,
+    ) -> None:
+        self._num_clusters = num_clusters
+        self._batch_size = batch_size
+        self._logger = logger
+        self._random_seed = random_seed
+        self._use_text_ids_during_clustering = use_text_ids_during_clustering
+        self._use_annotator_ids_during_clustering = use_annotator_ids_during_clustering
+        self._num_workers = num_workers
+        self._lr = lr
+        self._number_of_epochs = number_of_epochs
+        self._use_cuda = use_cuda
+        self._random_seed = seed
+
+    def pretrain(
+        self,
+        dataset: BaseDataset,
+        model: IModel,
+    ) -> IModel:
+        """Pretrain model.
+
+        Args:
+            dataset: Dataset containing data used for pretraining.
+            model: Model that will be pretrained.
+
+        Returns:
+            Pretrained model.
+
+        """
+        # Create dataset
+        annotations = dataset.annotations
+        annotations = annotations.loc[annotations.split == "train"]
+        data, y = dataset.get_data_and_labels(annotations)
+        text_ids = data["text_id"]
+        annotator_ids = data["annotator_id"]
+        kmeans_data_module = _KmeansDataModule(
+            text_ids=text_ids.values,
+            annotator_ids=annotator_ids.values,
+            text_embeddings=dataset.text_embeddings,
+            raw_texts=dataset.data["text"].values,
+            annotator_biases=dataset.annotator_biases.values.astype(float),
+            num_clusters=self._num_clusters,
+            batch_size=self._batch_size,
+            random_seed=self._random_seed,
+            use_text_ids_during_clustering=self._use_text_ids_during_clustering,
+            use_annotator_ids_during_clustering=self._use_annotator_ids_during_clustering,
+            num_workers=self._num_workers,
+        )
+        # Swap model head
+        original_model_head = model.head
+        model.head = nn.Linear(
+            in_features=original_model_head.in_features, out_features=self._num_clusters
+        )
+        # Train model
+        model = _train_kmeans_classifier(
+            model=model,
+            datamodule=kmeans_data_module,
+            number_of_classes=self._num_clusters,
+            logger=self._logger,
+            epochs=self._number_of_epochs,
+            lr=self._lr,
+            use_cuda=self._use_cuda,
+        )
+        # Swap back model head
+        model.head = original_model_head
+        return model
