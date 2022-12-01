@@ -25,3 +25,17 @@ class IModel(nn.Module, abc.ABC):
             tensor that can be processed by further layers or used as output.
 
         """
+
+    @property
+    @abc.abstractmethod
+    def head(self) -> nn.Module:
+        """Get the model's head.
+
+        Returns: The model's head (I.E. last layer).
+
+        """
+
+    @head.setter
+    @abc.abstractmethod
+    def head(self, new_head: nn.Module):
+        """Set the model's head."""
