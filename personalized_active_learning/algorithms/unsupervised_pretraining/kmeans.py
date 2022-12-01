@@ -1,4 +1,3 @@
-import abc
 from typing import Optional
 
 import numpy as np
@@ -12,18 +11,49 @@ from torch import nn
 from torch.utils.data import DataLoader, BatchSampler, RandomSampler
 from torchmetrics import Accuracy, F1Score
 
+from .interface import IUnsupervisedPretrainer
 from personalized_active_learning.datasets import BaseDataset
 from personalized_active_learning.datasets.types import TextFeaturesBatchDataset
 from personalized_active_learning.models import IModel
-from settings import CHECKPOINTS_DIR
 from personalized_nlp.utils import PrecisionClass, RecallClass, F1Class
+from settings import CHECKPOINTS_DIR
 from settings import LOGS_DIR
 
 
-class IUnsupervisedPretrainer(abc.ABC):
-    """Perform unsupervised pre-training."""
+class KmeansPretrainer(IUnsupervisedPretrainer):
+    """Perform unsupervised pre-training based on K-Means clustering.
 
-    @abc.abstractmethod
+    As defined in paper "Rethinking deep active learning:
+    Using unlabeled data at model training".
+
+    """
+
+    def __init__(
+        self,
+        num_clusters: int,
+        batch_size: int,
+        wandb_project_name: str,
+        random_seed: Optional[int] = None,
+        use_text_ids_during_clustering: bool = True,
+        use_annotator_ids_during_clustering: bool = True,
+        num_workers: int = 4,
+        lr: float = 1e-2,
+        number_of_epochs: int = 6,
+        use_cuda: bool = False,
+        seed: Optional[int] = None,
+    ) -> None:
+        self._wandb_project_name = wandb_project_name
+        self._num_clusters = num_clusters
+        self._batch_size = batch_size
+        self._random_seed = random_seed
+        self._use_text_ids_during_clustering = use_text_ids_during_clustering
+        self._use_annotator_ids_during_clustering = use_annotator_ids_during_clustering
+        self._num_workers = num_workers
+        self._lr = lr
+        self._number_of_epochs = number_of_epochs
+        self._use_cuda = use_cuda
+        self._random_seed = seed
+
     def pretrain(
         self,
         dataset: BaseDataset,
@@ -39,7 +69,44 @@ class IUnsupervisedPretrainer(abc.ABC):
             Pretrained model.
 
         """
-        raise NotImplementedError
+        # Create dataset
+        annotations = dataset.annotations
+        is_annotation_for_training = annotations.split == "none"
+        annotations = annotations.loc[is_annotation_for_training]
+        data, y = dataset.get_data_and_labels(annotations)
+        text_ids = data["text_id"]
+        annotator_ids = data["annotator_id"]
+        kmeans_data_module = _KmeansDataModule(
+            text_ids=text_ids.values,
+            annotator_ids=annotator_ids.values,
+            text_embeddings=dataset.text_embeddings,
+            raw_texts=dataset.data["text"].values,
+            annotator_biases=dataset.annotator_biases.values.astype(float),
+            num_clusters=self._num_clusters,
+            batch_size=self._batch_size,
+            random_seed=self._random_seed,
+            use_text_ids_during_clustering=self._use_text_ids_during_clustering,
+            use_annotator_ids_during_clustering=self._use_annotator_ids_during_clustering,
+            num_workers=self._num_workers,
+        )
+        # Swap model head
+        original_model_head = model.head
+        model.head = nn.Linear(
+            in_features=original_model_head.in_features, out_features=self._num_clusters
+        )
+        # Train model
+        model = _train_kmeans_classifier(
+            model=model,
+            datamodule=kmeans_data_module,
+            number_of_classes=self._num_clusters,
+            wandb_project_name=self._wandb_project_name,
+            epochs=self._number_of_epochs,
+            lr=self._lr,
+            use_cuda=self._use_cuda,
+        )
+        # Swap back model head
+        model.head = original_model_head
+        return model
 
 
 class _KmeansDataModule(pl.LightningDataModule):
@@ -292,92 +359,3 @@ def _train_kmeans_classifier(
     )
     trainer.fit(classifier, datamodule)
     return classifier.model
-
-
-class KmeansPretrainer(IUnsupervisedPretrainer):
-    """Perform unsupervised pre-training based on K-Means clustering.
-
-    As defined in paper "Rethinking deep active learning:
-    Using unlabeled data at model training".
-
-    """
-
-    def __init__(
-        self,
-        num_clusters: int,
-        batch_size: int,
-        wandb_project_name: str,
-        random_seed: Optional[int] = None,
-        use_text_ids_during_clustering: bool = True,
-        use_annotator_ids_during_clustering: bool = True,
-        num_workers: int = 4,
-        lr: float = 1e-2,
-        number_of_epochs: int = 6,
-        use_cuda: bool = False,
-        seed: Optional[int] = None,
-    ) -> None:
-        self._wandb_project_name = wandb_project_name
-        self._num_clusters = num_clusters
-        self._batch_size = batch_size
-        self._random_seed = random_seed
-        self._use_text_ids_during_clustering = use_text_ids_during_clustering
-        self._use_annotator_ids_during_clustering = use_annotator_ids_during_clustering
-        self._num_workers = num_workers
-        self._lr = lr
-        self._number_of_epochs = number_of_epochs
-        self._use_cuda = use_cuda
-        self._random_seed = seed
-
-    def pretrain(
-        self,
-        dataset: BaseDataset,
-        model: IModel,
-    ) -> IModel:
-        """Pretrain model.
-
-        Args:
-            dataset: Dataset containing data used for pretraining.
-            model: Model that will be pretrained.
-
-        Returns:
-            Pretrained model.
-
-        """
-        # Create dataset
-        annotations = dataset.annotations
-        is_annotation_for_training = annotations.split == "none"
-        annotations = annotations.loc[is_annotation_for_training]
-        data, y = dataset.get_data_and_labels(annotations)
-        text_ids = data["text_id"]
-        annotator_ids = data["annotator_id"]
-        kmeans_data_module = _KmeansDataModule(
-            text_ids=text_ids.values,
-            annotator_ids=annotator_ids.values,
-            text_embeddings=dataset.text_embeddings,
-            raw_texts=dataset.data["text"].values,
-            annotator_biases=dataset.annotator_biases.values.astype(float),
-            num_clusters=self._num_clusters,
-            batch_size=self._batch_size,
-            random_seed=self._random_seed,
-            use_text_ids_during_clustering=self._use_text_ids_during_clustering,
-            use_annotator_ids_during_clustering=self._use_annotator_ids_during_clustering,
-            num_workers=self._num_workers,
-        )
-        # Swap model head
-        original_model_head = model.head
-        model.head = nn.Linear(
-            in_features=original_model_head.in_features, out_features=self._num_clusters
-        )
-        # Train model
-        model = _train_kmeans_classifier(
-            model=model,
-            datamodule=kmeans_data_module,
-            number_of_classes=self._num_clusters,
-            wandb_project_name=self._wandb_project_name,
-            epochs=self._number_of_epochs,
-            lr=self._lr,
-            use_cuda=self._use_cuda,
-        )
-        # Swap back model head
-        model.head = original_model_head
-        return model

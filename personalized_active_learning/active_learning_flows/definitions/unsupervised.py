@@ -4,7 +4,7 @@ from typing import Optional, Dict, Any
 
 from active_learning.callbacks.confidences import SaveConfidencesCallback
 from personalized_active_learning.active_learning_flows.base import ActiveLearningFlowBase
-from personalized_active_learning.algorithms import IUnsupervisedPretrainer
+from personalized_active_learning.algorithms.unsupervised_pretraining import IUnsupervisedPretrainer
 from pytorch_lightning import loggers as pl_loggers
 
 from personalized_active_learning.learning.training import train_test
