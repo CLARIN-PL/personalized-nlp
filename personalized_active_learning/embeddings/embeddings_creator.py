@@ -10,7 +10,7 @@ import numpy as np
 import torch
 
 from settings import EMBEDDINGS_SIZES, TRANSFORMER_MODEL_STRINGS
-from utils import create_embeddings
+from personalized_nlp.utils.embeddings import create_embeddings
 
 
 class EmbeddingsCreator:

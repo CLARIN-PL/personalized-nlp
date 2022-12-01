@@ -6,7 +6,7 @@ import torch
 from pytorch_lightning import Callback
 from tqdm import tqdm
 
-from models import TransformerUserId
+from personalized_nlp.models.transformer import TransformerUserId
 from personalized_active_learning.learning.training import train_test
 from settings import TRANSFORMER_MODEL_STRINGS
 
