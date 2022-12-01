@@ -356,7 +356,7 @@ class BaseDataset(LightningDataModule, abc.ABC):
         annotations = self.annotations
         annotations = annotations.loc[annotations.split == split]
 
-        data, y = self._get_data_and_labels(annotations)
+        data, y = self.get_data_and_labels(annotations)
         # TODO: X shouldn't be an array to avoid magic numbers
         text_ids = data["text_id"]
         annotator_ids = data["annotator_id"]
@@ -464,7 +464,7 @@ class BaseDataset(LightningDataModule, abc.ABC):
                 )
             )
 
-    def _get_data_and_labels(
+    def get_data_and_labels(
         self, annotations: pd.DataFrame
     ) -> Tuple[pd.DataFrame, np.ndarray]:
         """
