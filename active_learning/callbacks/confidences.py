@@ -20,3 +20,5 @@ class SaveConfidencesCallback(Callback):
         outputs = nn.Softmax(dim=1)(torch.cat(self._outputs))
 
         self.predict_outputs = outputs.cpu().numpy()
+        # Reset outputs - just one initialization of callback is needed
+        self._outputs = []

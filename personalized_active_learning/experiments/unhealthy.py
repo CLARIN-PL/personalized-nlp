@@ -13,6 +13,7 @@ from personalized_active_learning.metrics.personal_metrics import (
     PersonalizedMetricsCallback,
 )
 from personalized_active_learning.models import Baseline
+
 from personalized_nlp.utils import seed_everything
 from personalized_nlp.utils.experiments import product_kwargs
 import warnings
@@ -24,8 +25,9 @@ os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 os.environ["WANDB_START_METHOD"] = "thread"
 
 if __name__ == "__main__":
-    wandb_project_name = "PNW_AL_Unhealthy"
+    wandb_project_name = "test_s"
     datamodule_cls = UnhealthyDataset
+    model_cls = Baseline
     use_cuda = True
     activelearning_kwargs_list = product_kwargs(
         {
@@ -65,12 +67,9 @@ if __name__ == "__main__":
             "min_annotations_per_user_in_fold": [20],
         }
     )
-    # TODO: Needs to be changed
     model_kwargs_list = product_kwargs(
         {
             "embedding_dim": [50],
-            "dp_emb": [0.25],
-            "dp": [0.0],
             "hidden_dim": [100],
         }
     )
@@ -97,30 +96,32 @@ if __name__ == "__main__":
     ):
         seed_everything()
         data_module = datamodule_cls(**datamodule_kwargs)
+        class_dimensions = data_module.classes_dimensions
 
         text_selector_cls = activelearning_kwargs["text_selector_cls"]
         text_selector = text_selector_cls(
-            class_dims=data_module.classes_dimensions,
+            class_dims=class_dimensions,
             annotation_columns=data_module.annotation_columns,
             amount_per_user=activelearning_kwargs["amount_per_user"],
         )
         activelearning_kwargs["text_selector"] = text_selector
-
         trainer_kwargs["custom_callbacks"] = [
             PersonalizedMetricsCallback(),
         ]
-        # TODO: Parametrize, for now we don't have alternative
-        model = Baseline(
-            output_dim=sum(data_module.classes_dimensions),
-            embedding_dim=50,
-        )
+
         module = StandardActiveLearningFlow(
             dataset=data_module,
-            datamodule_kwargs=datamodule_kwargs,
-            model=model,
-            train_kwargs=trainer_kwargs,
+            model_cls=model_cls,
             wandb_project_name=wandb_project_name,
-            **activelearning_kwargs,
+            model_output_dim=sum(class_dimensions),
+            model_embedding_dim=model_kwargs["embedding_dim"],
+            text_selector=activelearning_kwargs["text_selector"],
+            stratify_by_user=activelearning_kwargs["stratify_by_user"],
+            logger_extra_metrics=dict(datamodule_kwargs),
+            **trainer_kwargs
         )
 
-        module.experiment(**activelearning_kwargs)
+        module.experiment(
+            max_amount=activelearning_kwargs["max_amount"],
+            step_size=activelearning_kwargs["step_size"]
+        )
