@@ -2,14 +2,14 @@
 import copy
 from typing import Optional, Dict, Any
 
-from callbacks.confidences import SaveConfidencesCallback
+from active_learning.callbacks.confidences import SaveConfidencesCallback
 from personalized_active_learning.active_learning_flows.base import ActiveLearningFlowBase
 from personalized_active_learning.algorithms import IUnsupervisedPretrainer
 from pytorch_lightning import loggers as pl_loggers
 
 from personalized_active_learning.learning.training import train_test
 from settings import LOGS_DIR
-from utils import seed_everything
+from personalized_nlp.utils import seed_everything
 
 
 class UnsupervisedActiveLearningFlow(ActiveLearningFlowBase):

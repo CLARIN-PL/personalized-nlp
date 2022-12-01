@@ -16,7 +16,8 @@ from personalized_active_learning.datasets import BaseDataset
 from personalized_active_learning.datasets.types import TextFeaturesBatchDataset
 from personalized_active_learning.models import IModel
 from settings import CHECKPOINTS_DIR
-from utils import PrecisionClass, RecallClass, F1Class
+from personalized_nlp.utils import PrecisionClass, RecallClass, F1Class
+from settings import LOGS_DIR
 
 
 class IUnsupervisedPretrainer(abc.ABC):
@@ -84,13 +85,17 @@ class _KmeansDataModule(pl.LightningDataModule):
         self.num_clusters = num_clusters
         self.batch_size = batch_size
         self.num_workers = num_workers
-        kmeans_features = self.text_embeddings.detach().cpu().numpy()
+        # NOTE: Single embedding might be used multiple times during training
+        # Personalization effect
+        kmeans_features = self.text_embeddings[text_ids.tolist()].detach().cpu().numpy()
         if use_text_ids_during_clustering:
             kmeans_features = np.column_stack([text_ids, kmeans_features])
         if use_annotator_ids_during_clustering:
             kmeans_features = np.column_stack([annotator_ids, kmeans_features])
         kmeans_features = StandardScaler().fit_transform(kmeans_features)
         self.kmeans_features = kmeans_features
+        # Initial pseudo labels
+        self.reinitialize_pseudo_labels()
 
     def _run_kmeans(
         self,
@@ -102,7 +107,6 @@ class _KmeansDataModule(pl.LightningDataModule):
 
     def reinitialize_pseudo_labels(self):
         """Reinitialize K-Means labels."""
-
         pseudo_labels = self._run_kmeans()
         dataset = TextFeaturesBatchDataset(
             text_ids=self.text_ids,
@@ -139,7 +143,7 @@ class _KmeansDataModule(pl.LightningDataModule):
 class _KmeansScheduler(pl.Callback):
     """Callback responsible of K-Means clusters reinitialization on each epoch start."""
 
-    def on_epoch_start(self, trainer: pl.Trainer, model: IModel):
+    def on_epoch_end(self, trainer: pl.Trainer, model: IModel):
         """Run KMeans.
 
         Args:
@@ -248,13 +252,18 @@ def _train_kmeans_classifier(
     datamodule: _KmeansDataModule,
     model: IModel,
     number_of_classes: int,
-    logger: pl_loggers.WandbLogger,
+    wandb_project_name: str,
     epochs: int,
     lr: float,
     use_cuda: bool = False,
     monitor_metric: str = "train_loss",
     monitor_mode: str = "min",
 ):
+    logger = pl_loggers.WandbLogger(
+        save_dir=str(LOGS_DIR),
+        project=wandb_project_name,
+        log_model=False,
+    )
 
     classifier = _KmeansClassifier(
         model=model, lr=lr, number_of_classes=number_of_classes
@@ -297,7 +306,7 @@ class KmeansPretrainer(IUnsupervisedPretrainer):
         self,
         num_clusters: int,
         batch_size: int,
-        logger: pl_loggers.WandbLogger,
+        wandb_project_name: str,
         random_seed: Optional[int] = None,
         use_text_ids_during_clustering: bool = True,
         use_annotator_ids_during_clustering: bool = True,
@@ -307,9 +316,9 @@ class KmeansPretrainer(IUnsupervisedPretrainer):
         use_cuda: bool = False,
         seed: Optional[int] = None,
     ) -> None:
+        self._wandb_project_name = wandb_project_name
         self._num_clusters = num_clusters
         self._batch_size = batch_size
-        self._logger = logger
         self._random_seed = random_seed
         self._use_text_ids_during_clustering = use_text_ids_during_clustering
         self._use_annotator_ids_during_clustering = use_annotator_ids_during_clustering
@@ -336,7 +345,8 @@ class KmeansPretrainer(IUnsupervisedPretrainer):
         """
         # Create dataset
         annotations = dataset.annotations
-        annotations = annotations.loc[annotations.split == "train"]
+        is_annotation_for_training = annotations.split == "none"
+        annotations = annotations.loc[is_annotation_for_training]
         data, y = dataset.get_data_and_labels(annotations)
         text_ids = data["text_id"]
         annotator_ids = data["annotator_id"]
@@ -363,7 +373,7 @@ class KmeansPretrainer(IUnsupervisedPretrainer):
             model=model,
             datamodule=kmeans_data_module,
             number_of_classes=self._num_clusters,
-            logger=self._logger,
+            wandb_project_name=self._wandb_project_name,
             epochs=self._number_of_epochs,
             lr=self._lr,
             use_cuda=self._use_cuda,
