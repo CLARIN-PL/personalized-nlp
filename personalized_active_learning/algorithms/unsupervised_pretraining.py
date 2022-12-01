@@ -101,7 +101,9 @@ class _KmeansDataModule(pl.LightningDataModule):
             random_state=self.random_state,
         ).fit_predict(self.kmeans_features)
 
-    def setup(self, stage: Optional[str] = None):
+    def reinitialize_pseudo_labels(self):
+        """Reinitialize K-Means labels."""
+
         pseudo_labels = self._run_kmeans()
         dataset = TextFeaturesBatchDataset(
             text_ids=self.text_ids,
@@ -133,3 +135,18 @@ class _KmeansDataModule(pl.LightningDataModule):
             DataLoader: training dataloader for the dataset.
         """
         return self.train_dl
+
+
+class _KmeansScheduler(pl.Callback):
+    """Callback responsible of K-Means clusters reinitialization on each epoch start."""
+
+    def on_epoch_start(self, trainer: pl.Trainer, model: IModel):
+        """Run KMeans.
+
+        Args:
+            trainer: The trainer.
+                IMPORTANT: Must contains datamodule of type _KmeansDataModule.
+            model: Model used during training.
+
+        """
+        trainer.datamodule.reinitialize_pseudo_labels()
