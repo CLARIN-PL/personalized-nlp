@@ -3,8 +3,16 @@ from personalized_active_learning.active_learning_flows.base import ActiveLearni
 
 
 class StandardActiveLearningFlow(ActiveLearningFlowBase):
-    def __init__(self, **kwargs) -> None:
+    def __init__(self, train_with_all_annotations: bool = True, **kwargs) -> None:
+        """Initialize object.
+
+        Args:
+            train_with_all_annotations: Whether model should be additionally trained
+                with all annotations as baseline.
+            kwargs: Keywords arguments for `ActiveLearningFlowBase`.
+        """
         super().__init__(**kwargs)
+        self.train_with_all_annotations = train_with_all_annotations
 
     def experiment(
         self,
@@ -14,7 +22,8 @@ class StandardActiveLearningFlow(ActiveLearningFlowBase):
         """Run AL.
 
         Args:
-            max_amount: Maximum number of texts that should be annotated before AL is stopped.
+            max_amount: Maximum number of texts that should be annotated before
+                AL is stopped.
             step_size: The number of texts that should be annotated in each AL cycle.
 
         """
