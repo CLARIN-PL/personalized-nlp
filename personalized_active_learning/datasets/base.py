@@ -1,6 +1,5 @@
 import abc
 from enum import Enum
-from pathlib import Path
 from typing import List, Optional, Tuple
 
 import numpy as np
@@ -122,45 +121,6 @@ class BaseDataset(LightningDataModule, abc.ABC):
 
         Each collum corresponds to separated supervised task, e.g.:
         [`humor`, `sarcasm`]
-
-        """
-
-    # TODO: Remove, will be used in load_data_and_annotations
-    @property
-    @abc.abstractmethod
-    def annotations_file_relative_path(self) -> str:
-        """Get the relative path to csv file containing annotations.
-
-        `self.data_dir / self.annotations_file_relative_path` should point
-        to the csv file containing annotations.
-
-        Returns:
-            the relative path to csv file containing annotations.
-
-        """
-
-    # TODO: Remove, will be used in load_data_and_annotations
-    @property
-    @abc.abstractmethod
-    def data_file_relative_path(self) -> str:
-        """Get the relative path to csv file containing data.
-
-        `self.data_dir / self.data_file_relative_path` should point
-        to the csv file containing data.
-
-        Returns:
-            the relative path to csv file containing data.
-
-        """
-
-    # TODO: Remove, will be used in load_data_and_annotations
-    @property
-    @abc.abstractmethod
-    def data_dir(self) -> Path:
-        """Get the path to directory containing data.
-
-        Returns:
-            The path to directory containing data.
 
         """
 

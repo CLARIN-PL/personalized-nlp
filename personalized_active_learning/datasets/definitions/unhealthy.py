@@ -1,8 +1,7 @@
+import os
 from typing import List, Tuple
 
 import pandas as pd
-import os
-from pathlib import Path
 
 from personalized_active_learning.datasets import BaseDataset
 from personalized_active_learning.datasets.base import SplitMode
@@ -20,14 +19,6 @@ class UnhealthyDataset(BaseDataset):
         else:
             raise Exception(f"Unsupported split mode {self.split_mode.value}")
         return f"uc_annotations_{stratification_type}_folds.csv"
-
-    @property
-    def data_file_relative_path(self) -> str:
-        return "uc_texts_processed.csv"
-
-    @property
-    def data_dir(self) -> Path:
-        return DATA_DIR / "unhealthy_conversations"
 
     @property
     def annotation_columns(self) -> List[str]:
@@ -55,8 +46,9 @@ class UnhealthyDataset(BaseDataset):
         os.makedirs(self.data_dir / "embeddings", exist_ok=True)
 
     def load_data_and_annotations(self) -> Tuple[pd.DataFrame, pd.DataFrame]:
+        self.data_dir = DATA_DIR / "unhealthy_conversations"
         columns_map = {"comment": "text"}
-        data = pd.read_csv(self.data_dir / self.data_file_relative_path).dropna()
+        data = pd.read_csv(self.data_dir / "uc_texts_processed.csv").dropna()
         data = data.rename(columns=columns_map)
 
         annotations = pd.read_csv(self.data_dir / self.annotations_file_relative_path)
