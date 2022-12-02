@@ -323,49 +323,46 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         """Computes mean votes for texts in train folds."""
         annotations = self.annotations
         annotation_columns = self.annotation_columns
+        id_col = "text_id" if self.stratify_folds_by == "text" else "annotator_id"
 
-        text_id_to_fold = (
-            annotations.loc[:, ["text_id", "fold"]]
+        id_to_fold = (
+            annotations.loc[:, [id_col, "fold"]]
             .drop_duplicates()
-            .set_index("text_id")
+            .set_index(id_col)
             .to_dict()["fold"]
         )
 
-        text_id_to_split = (
-            annotations.loc[:, ["text_id", "split"]]
-            .drop_duplicates()
-            .set_index("text_id")
-            .to_dict()["split"]
-        )
+        annotations_to_concat = []
+        for split in annotations.split.unique():
+            split_annotations = annotations.loc[annotations.split == split]
 
-        val_test_annotations = None
-        if not self.test_major_voting:
-            val_test_annotations = annotations.loc[
-                annotations.split.isin(["val", "test"])
-            ]
-            annotations = annotations.loc[~annotations.split.isin(["val", "test"])]
+            if split == "none":
+                annotations_to_concat.append(split_annotations)
+                continue
 
-        dfs = []
-        for col in annotation_columns:
-            if self.regression:
-                aggregate_lambda = lambda x: x.mean()
-            else:
-                aggregate_lambda = lambda x: pd.Series.mode(x)[0]
+            if split in ["val", "test"] and not self.test_major_voting:
+                annotations_to_concat.append(split_annotations)
+                continue
 
-            dfs.append(annotations.groupby("text_id")[col].apply(aggregate_lambda))
+            dfs = []
+            for col in annotation_columns:
+                if self.regression:
+                    aggregate_lambda = lambda x: x.mean()
+                else:
+                    aggregate_lambda = lambda x: pd.Series.mode(x)[0]
 
-        annotations = pd.concat(dfs, axis=1).reset_index()
-        annotations["annotator_id"] = 0
-        annotations["split"] = annotations["text_id"].map(text_id_to_split)
-        annotations["fold"] = annotations["text_id"].map(text_id_to_fold)
+                dfs.append(
+                    split_annotations.groupby("text_id")[col].apply(aggregate_lambda)
+                )
 
-        # annotations = annotations.sample(frac=0.3)
-        # val_test_annotations = val_test_annotations.sample(frac=0.7)
+            major_voted_annotations = pd.concat(dfs, axis=1).reset_index()
+            major_voted_annotations["annotator_id"] = 0
+            major_voted_annotations["split"] = split
+            major_voted_annotations["fold"] = annotations[id_col].map(id_to_fold)
 
-        if not self.test_major_voting:
-            self.annotations = pd.concat([annotations, val_test_annotations])
-        else:
-            self.annotations = annotations
+            annotations_to_concat.append(major_voted_annotations)
+
+            self.annotations = pd.concat(annotations_to_concat)
 
     def compute_annotator_biases(self):
         annotations_with_data = self.annotations_with_data
