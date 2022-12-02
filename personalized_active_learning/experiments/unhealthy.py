@@ -25,7 +25,7 @@ os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 os.environ["WANDB_START_METHOD"] = "thread"
 
 if __name__ == "__main__":
-    wandb_project_name = "test_s"
+    wandb_project_name = "PNW_AL_Unhealthy"
     datamodule_cls = UnhealthyDataset
     model_cls = Baseline
     use_cuda = True
