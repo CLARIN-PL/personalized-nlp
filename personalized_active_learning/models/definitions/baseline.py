@@ -9,7 +9,7 @@ class Baseline(IModel):
         self,
         output_dim=2,
         text_embedding_dim=768,
-        **kwargs,  # TODO: eliminate kwargs
+        **kwargs,  # TODO: eliminate kwargs / We need it to define different models
     ):
         super().__init__()
         self.text_embedding_dim = text_embedding_dim

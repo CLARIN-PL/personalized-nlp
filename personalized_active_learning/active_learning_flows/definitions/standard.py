@@ -10,7 +10,6 @@ class StandardActiveLearningFlow(ActiveLearningFlowBase):
         self,
         max_amount: int,
         step_size: int,
-        **kwargs,  # TODO: Leftover to not break compatibility with old code
     ):
         """Run AL.
 

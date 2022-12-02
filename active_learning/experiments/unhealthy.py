@@ -96,7 +96,6 @@ if __name__ == "__main__":
             amount_per_user=activelearning_kwargs["amount_per_user"],
         )
         activelearning_kwargs["text_selector"] = text_selector
-
         trainer_kwargs["custom_callbacks"] = [
             PersonalizedMetricsCallback(),
         ]
