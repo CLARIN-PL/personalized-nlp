@@ -26,16 +26,19 @@ class IModel(nn.Module, abc.ABC):
 
         """
 
-    @property
     @abc.abstractmethod
-    def head(self) -> nn.Module:
+    def get_head(self) -> nn.Module:
         """Get the model's head.
 
         Returns: The model's head (I.E. last layer).
 
         """
 
-    @head.setter
     @abc.abstractmethod
-    def head(self, new_head: nn.Module):
-        """Set the model's head."""
+    def set_head(self, new_head: nn.Module):
+        """Set the model's head.
+
+        Args:
+            new_head: The new model's head.
+
+        """

@@ -5,7 +5,11 @@ from itertools import product
 from pytorch_lightning.utilities.warnings import PossibleUserWarning
 
 import active_learning.algorithms as algorithms
-from personalized_active_learning.active_learning_flows import StandardActiveLearningFlow
+from personalized_active_learning.active_learning_flows import (
+    StandardActiveLearningFlow,
+    UnsupervisedActiveLearningFlow,
+)
+from personalized_active_learning.algorithms import KmeansPretrainer
 from personalized_active_learning.datasets import UnhealthyDataset
 from personalized_active_learning.datasets.base import SplitMode
 from personalized_active_learning.embeddings import EmbeddingsCreator
@@ -23,6 +27,7 @@ from settings import DATA_DIR
 warnings.filterwarnings("ignore", category=PossibleUserWarning)
 os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 os.environ["WANDB_START_METHOD"] = "thread"
+
 
 if __name__ == "__main__":
     wandb_project_name = "PNW_AL_Unhealthy"
@@ -82,17 +87,35 @@ if __name__ == "__main__":
             "monitor_mode": ["max"],
         }
     )
-
+    active_learning_flows = [
+        {
+            "flow_cls": StandardActiveLearningFlow,
+            "extra_kwargs": {},
+        },
+        {
+            "flow_cls": UnsupervisedActiveLearningFlow,
+            "extra_kwargs": {
+                "unsupervised_pretrainer": KmeansPretrainer(
+                    num_clusters=10,
+                    batch_size=32,
+                    wandb_project_name=wandb_project_name,  # TODO: Not sure about that
+                    number_of_epochs=9,
+                ),
+            },
+        },
+    ]
     for (
         activelearning_kwargs,
         datamodule_kwargs,
         model_kwargs,
         trainer_kwargs,
+        active_learning_flow,
     ) in product(
         activelearning_kwargs_list,
         datamodule_kwargs_list,
         model_kwargs_list,
         trainer_kwargs_list,
+        active_learning_flows,
     ):
         seed_everything()
         data_module = datamodule_cls(**datamodule_kwargs)
@@ -109,7 +132,7 @@ if __name__ == "__main__":
             PersonalizedMetricsCallback(),
         ]
 
-        module = StandardActiveLearningFlow(
+        module = active_learning_flow["flow_cls"](
             dataset=data_module,
             model_cls=model_cls,
             wandb_project_name=wandb_project_name,
@@ -118,10 +141,11 @@ if __name__ == "__main__":
             text_selector=activelearning_kwargs["text_selector"],
             stratify_by_user=activelearning_kwargs["stratify_by_user"],
             logger_extra_metrics=dict(datamodule_kwargs),
-            **trainer_kwargs
+            **trainer_kwargs,
+            **active_learning_flow["extra_kwargs"],
         )
 
         module.experiment(
             max_amount=activelearning_kwargs["max_amount"],
-            step_size=activelearning_kwargs["step_size"]
+            step_size=activelearning_kwargs["step_size"],
         )

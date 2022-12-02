@@ -15,8 +15,7 @@ class Baseline(IModel):
         self.text_embedding_dim = text_embedding_dim
         self.fc1 = nn.Linear(text_embedding_dim, output_dim)
 
-    @property
-    def head(self) -> nn.Module:
+    def get_head(self) -> nn.Module:
         """Get the model's head.
 
         Returns: The model's head (I.E. last layer).
@@ -24,9 +23,13 @@ class Baseline(IModel):
         """
         return self.fc1
 
-    @head.setter
-    def head(self, new_head: nn.Module):
-        """Set the model's head."""
+    def set_head(self, new_head: nn.Module):
+        """Set the model's head.
+
+        Args:
+            new_head: The new model's head.
+
+        """
         self.fc1 = new_head
 
     def forward(self, features: TextFeaturesBatch):

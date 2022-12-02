@@ -90,9 +90,12 @@ class KmeansPretrainer(IUnsupervisedPretrainer):
             num_workers=self._num_workers,
         )
         # Swap model head
-        original_model_head = model.head
-        model.head = nn.Linear(
-            in_features=original_model_head.in_features, out_features=self._num_clusters
+        original_model_head = model.get_head()
+        model.set_head(
+            nn.Linear(
+                in_features=original_model_head.in_features,
+                out_features=self._num_clusters,
+            )
         )
         # Train model
         model = _train_kmeans_classifier(
@@ -105,7 +108,7 @@ class KmeansPretrainer(IUnsupervisedPretrainer):
             use_cuda=self._use_cuda,
         )
         # Swap back model head
-        model.head = original_model_head
+        model.set_head(original_model_head)
         return model
 
 
