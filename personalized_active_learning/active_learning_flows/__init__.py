@@ -4,4 +4,4 @@ Currently each modification of AL flow (e.g. pretraining) requires dedicated cla
 
 """
 from .base import ActiveLearningFlowBase
-from .definitions import StandardActiveLearningFlow
+from .definitions import StandardActiveLearningFlow, UnsupervisedActiveLearningFlow
