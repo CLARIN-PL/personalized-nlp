@@ -10,6 +10,16 @@ from personalized_nlp.datasets.datamodule_base import BaseDataModule
 
 class CockamamieGobbledegookDataModule(BaseDataModule):
     @property
+    def annotations_file(self) -> str:
+        return (
+            f"cockamamie_gobbledegook_annotations_e_{self.stratify_folds_by}_folds.csv"
+        )
+
+    @property
+    def data_file(self) -> str:
+        return "cockamamie_gobbledegook_texts_e_processed.csv"
+
+    @property
     def embeddings_path(self) -> Path:
         return self.data_dir / f"embeddings/text_id_to_emb_{self.embeddings_type}.p"
 
@@ -26,7 +36,8 @@ class CockamamieGobbledegookDataModule(BaseDataModule):
         return [2]
 
     def __init__(
-        self, **kwargs,
+        self,
+        **kwargs,
     ):
         super().__init__(**kwargs)
 
