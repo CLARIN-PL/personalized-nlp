@@ -44,13 +44,9 @@ class CockamamieGobbledegookDataModule(BaseDataModule):
         os.makedirs(self.data_dir / "embeddings", exist_ok=True)
 
     def prepare_data(self) -> None:
-        self.data = pd.read_csv(
-            self.data_dir / "texts" / "cockamamie_gobbledegook_texts_e.csv"
-        )
+        self.data = pd.read_csv(self.data_dir / "texts" / self.data_file)
         self.data["text"] = self.data["text_english"]
 
         self.annotations = pd.read_csv(
-            self.data_dir
-            / "texts"
-            / "cockamamie_annotations_only_controversial_a_non_empty.csv"
+            self.data_dir / "texts" / self.annotations_file
         ).dropna()
