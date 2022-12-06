@@ -15,18 +15,24 @@ class SaveEmbeddingCallback(Callback):
         self.epoch_stats = []
 
     def on_test_end(self, trainer, pl_module) -> None:
-        print('on test end predictions')
-        model = pl_module.model._model 
-        tokenizer = pl_module.model._tokenizer
-        texts = self.datamodule.data['text'].tolist()
+        model_cls = type(pl_module)
+        pl_model_best = model_cls.load_from_checkpoint(
+            trainer.checkpoint_callback.best_model_path
+        )
 
-        embeddings = _get_embeddings(texts, tokenizer, model, use_cuda=True)
+        model = pl_model_best.model._model.to("cuda")
+        tokenizer = pl_model_best.model._tokenizer
+        texts = self.datamodule.data["text"].tolist()
+
+        embeddings = _get_embeddings(
+            texts, tokenizer, model, use_cuda=True, max_seq_len=128
+        )
         embeddings = embeddings.cpu().numpy()
 
         text_idx_to_emb = {}
         for i in range(embeddings.shape[0]):
             text_idx_to_emb[i] = embeddings[i]
-        
+
         embeddings_path = self.save_path
         if embeddings_path:
-            pickle.dump(text_idx_to_emb, open(embeddings_path, 'wb'))
+            pickle.dump(text_idx_to_emb, open(embeddings_path, "wb"))
