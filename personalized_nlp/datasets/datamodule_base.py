@@ -235,18 +235,6 @@ class BaseDataModule(LightningDataModule, abc.ABC):
 
         self.text_embeddings = torch.tensor(embeddings)
 
-        # self.text_id_idx_dict = (
-        #     data.loc[:, ["text_id"]]
-        #     .reset_index()
-        #     .set_index("text_id")
-        #     .to_dict()["index"]
-        # )
-
-        # annotator_id_category = annotations["annotator_id"].astype("category")
-        # self.annotator_id_idx_dict = {
-        #     a_id: idx for idx, a_id in enumerate(annotator_id_category.cat.categories)
-        # }
-
     def _assign_splits(self) -> None:
         if "split" in self.annotations.columns:
             return
@@ -349,7 +337,7 @@ class BaseDataModule(LightningDataModule, abc.ABC):
                 if self.regression:
                     aggregate_lambda = lambda x: x.mean()
                 else:
-                    aggregate_lambda = lambda x: pd.Series.mode(x)[0]
+                    aggregate_lambda = lambda x: pd.Series.mode(x).tolist()[-1]
 
                 dfs.append(
                     split_annotations.groupby("text_id")[col].apply(aggregate_lambda)
@@ -362,7 +350,7 @@ class BaseDataModule(LightningDataModule, abc.ABC):
 
             annotations_to_concat.append(major_voted_annotations)
 
-            self.annotations = pd.concat(annotations_to_concat)
+        self.annotations = pd.concat(annotations_to_concat)
 
     def compute_annotator_biases(self):
         annotations_with_data = self.annotations_with_data
@@ -514,7 +502,7 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         :rtype: Tuple[np.ndarray, np.ndarray]
         """
         annotations = self.annotations.copy()
-        annotations = annotations.merge(self.data)
+        annotations = annotations
         embeddings = self.text_embeddings.to("cpu").numpy()
 
         # annotations["text_idx"] = annotations["text_id"].apply(
@@ -524,7 +512,7 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         #     lambda w_id: self.annotator_id_idx_dict[w_id]
         # )
 
-        X = np.vstack([embeddings[i] for i in annotations["text_idx"].values])
+        X = np.vstack([embeddings[i] for i in annotations["text_id"].values])
         y = annotations[self.annotation_columns].values
 
         return X, y
