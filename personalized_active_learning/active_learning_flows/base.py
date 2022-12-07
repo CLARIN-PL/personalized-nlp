@@ -102,7 +102,7 @@ class ActiveLearningFlowBase(abc.ABC):
         self.model_params = {
             "output_dim": model_output_dim,
             "embeding_dim": model_embedding_dim,
-            "hidden_dims": model_hidden_dims  # Added for future
+            "hidden_dims": model_hidden_dims,  # Added for future
         }
 
         self.trainer_params = {
@@ -183,25 +183,21 @@ class ActiveLearningFlowBase(abc.ABC):
             "median_annotations_per_user": median_annotations_per_user,
             "stratify_by_user": self.stratify_by_user,
             **self.logger_extra_metrics,
-            **self.trainer_params
+            **self.trainer_params,
         }
 
         logger = pl_loggers.WandbLogger(
             save_dir=str(LOGS_DIR),
-            config=lparams,
             project=self.wandb_project_name,
             log_model=False,
         )
-
+        logger.experiment.config.update(lparams)
         seed_everything()  # Model's weights initialization
         model = self.model_cls(
             **self.model_params,
         )
         trainer = train_test(
-            model=model,
-            logger=logger,
-            **self.flow_params,
-            **self.trainer_params
+            model=model, logger=logger, **self.flow_params, **self.trainer_params
         )
 
         if any(dataset.annotations.split == "none"):
