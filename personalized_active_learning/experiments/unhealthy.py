@@ -31,7 +31,7 @@ os.environ["WANDB_START_METHOD"] = "thread"
 
 if __name__ == "__main__":
     wandb_project_name = "PNW_AL_Unhealthy"
-    wandb_entity_name = "be-active"
+    wandb_entity_name = "be-active"  # None if you don't want to use entity
     datamodule_cls = UnhealthyDataset
     model_cls = Baseline
     use_cuda = True
