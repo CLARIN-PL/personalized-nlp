@@ -61,11 +61,10 @@ class UnsupervisedActiveLearningFlow(ActiveLearningFlowBase):
 
         logger = pl_loggers.WandbLogger(
             save_dir=str(LOGS_DIR),
-            config=lparams,
             project=self.wandb_project_name,
             log_model=False,
         )
-
+        logger.experiment.config.update(lparams)
         seed_everything()  # Model's weights initialization
         model = self.model_cls(**self.model_params)
         # Load pretrained weights
