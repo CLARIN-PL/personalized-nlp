@@ -32,7 +32,7 @@ class SplitMode(Enum):
     PREDEFINED = "PREDEFINED"
 
 
-class BaseDataset(LightningDataModule, abc.ABC):
+class BaseDataModule(LightningDataModule, abc.ABC):
     """The base class from each dataset class should derive."""
 
     def __init__(

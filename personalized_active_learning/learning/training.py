@@ -12,7 +12,7 @@ from settings import CHECKPOINTS_DIR
 
 def train_test(
     model: IModel,
-    datamodule,  # type is BaseDataset, cannot be imported due to circular import-finetune
+    datamodule,  # type is BaseDataModule, cannot be imported due to circular import-finetune
     logger: WandbLogger,
     epochs: int = 6,
     lr: float = 1e-2,
