@@ -31,6 +31,7 @@ os.environ["WANDB_START_METHOD"] = "thread"
 
 if __name__ == "__main__":
     wandb_project_name = "PNW_AL_Unhealthy"
+    wandb_entity_name = "be-active"
     datamodule_cls = UnhealthyDataset
     model_cls = Baseline
     use_cuda = True
@@ -136,6 +137,7 @@ if __name__ == "__main__":
             dataset=data_module,
             model_cls=model_cls,
             wandb_project_name=wandb_project_name,
+            wandb_entity_name=wandb_entity_name,
             model_output_dim=sum(class_dimensions),
             model_embedding_dim=model_kwargs["embedding_dim"],
             text_selector=activelearning_kwargs["text_selector"],
