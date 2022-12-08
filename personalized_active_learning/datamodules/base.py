@@ -211,15 +211,17 @@ class BaseDataModule(LightningDataModule, abc.ABC):
             stage: Left for compatibility with pytorch lighting.
 
         Prepare data to use. Currently this method:
-            1. Create subset of data if needed
-            2. Splits data into training, validation, test sets.
-            3. Limits annotations if needed.
-            4. Filters annotations if needed.
-            5. Computes annotators biases.
-            6. Applies major voting mechanism if needed.
-            7. Finetunes text embeddings if needed.
-
+            1. Checks if split mode has valid parameters
+            2. Finetunes text embeddings if needed.
+            3. Creates subset of data if needed
+            4. Splits data into training, validation, test sets.
+            5. Limits annotations if needed.
+            6. Filters annotations if needed.
+            7. Computes annotators biases.
+            8. Applies major voting mechanism if needed.
         """
+
+        self._validate_split_mode()
 
         if self.use_finetuned_embeddings:
             # TODO: Ugly hack but we probably don't have time to change that
@@ -266,17 +268,8 @@ class BaseDataModule(LightningDataModule, abc.ABC):
             sampling_column = "fold"
         else:
             raise Exception(
-                "Split mode {0} is invalid".format(
+                "Split mode {0} has not configured sampling_column".format(
                     self.split_mode.value,
-                )
-            )
-
-        if sampling_column not in self.annotations.columns:
-            raise Exception(
-                "Split mode {0} is used but no column {1} in {2}".format(
-                    self.split_mode.value,
-                    sampling_column,
-                    self.annotations.columns,
                 )
             )
 
@@ -293,6 +286,42 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         ].reset_index(drop=True)
 
         return data, annotations
+
+    def _validate_split_mode(self) -> None:
+        """Validate if split parameters are valid
+
+        Check if `self.split_mode` has necessary columns in `self.annotations`
+        `SplitMode.PREDEFINED`: `split` column
+        `SplitMode.TEXTS`, `SplitMode.USERS`: `fold` column
+
+        Raises:
+            Exception: No split column in `self.annotations`
+            Exception: No fold column in `self.annotations`
+            Exception: Invalid split mode
+        """
+
+        if self.split_mode == SplitMode.PREDEFINED:
+            if "split" not in self.annotations.columns:
+                raise Exception(
+                    "Split mode {0} is used but no split column in {1}".format(
+                        self.split_mode.value,
+                        self.annotations.columns,
+                    )
+                )
+        elif self.split_mode == SplitMode.TEXTS or self.split_mode == SplitMode.USERS:
+            if "fold" not in self.annotations.columns:
+                raise Exception(
+                    "Split mode {0} is used but no fold column in {1}".format(
+                        self.split_mode.value,
+                        self.annotations.columns,
+                    )
+                )
+        else:
+            raise Exception(
+                "Split mode {0} is invalid".format(
+                    self.split_mode.value,
+                )
+            )
 
     def compute_major_votes(self) -> None:
         """Computes mean votes for texts in train folds."""
