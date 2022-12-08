@@ -10,8 +10,8 @@ from personalized_active_learning.active_learning_flows import (
     UnsupervisedActiveLearningFlow,
 )
 from personalized_active_learning.algorithms import KmeansPretrainer
-from personalized_active_learning.datasets import UnhealthyDataModule
-from personalized_active_learning.datasets.base import SplitMode
+from personalized_active_learning.datamodules import UnhealthyDataModule
+from personalized_active_learning.datamodules.base import SplitMode
 from personalized_active_learning.embeddings import EmbeddingsCreator
 from personalized_active_learning.metrics.personal_metrics import (
     PersonalizedMetricsCallback,

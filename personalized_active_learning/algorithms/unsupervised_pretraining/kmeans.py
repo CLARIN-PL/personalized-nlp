@@ -12,8 +12,8 @@ from torch.utils.data import DataLoader, BatchSampler, RandomSampler
 from torchmetrics import Accuracy, F1Score
 
 from .interface import IUnsupervisedPretrainer
-from personalized_active_learning.datasets import BaseDataModule
-from personalized_active_learning.datasets.types import TextFeaturesBatchDataset
+from personalized_active_learning.datamodules import BaseDataModule
+from personalized_active_learning.datamodules.types import TextFeaturesBatchDataset
 from personalized_active_learning.models import IModel
 from personalized_nlp.utils import PrecisionClass, RecallClass, F1Class
 from settings import CHECKPOINTS_DIR

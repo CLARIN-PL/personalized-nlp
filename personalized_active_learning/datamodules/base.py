@@ -8,7 +8,7 @@ import torch
 from pytorch_lightning import LightningDataModule, seed_everything
 from torch.utils.data import DataLoader
 
-from personalized_active_learning.datasets.types import TextFeaturesBatchDataset
+from personalized_active_learning.datamodules.types import TextFeaturesBatchDataset
 from personalized_active_learning.embeddings import EmbeddingsCreator
 from personalized_active_learning.embeddings.finetune import fine_tune_embeddings
 from personalized_nlp.utils.biases import get_annotator_biases

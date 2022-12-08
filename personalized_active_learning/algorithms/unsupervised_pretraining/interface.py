@@ -1,6 +1,6 @@
 import abc
 
-from personalized_active_learning.datasets import BaseDataModule
+from personalized_active_learning.datamodules import BaseDataModule
 from personalized_active_learning.models import IModel
 
 

@@ -3,8 +3,8 @@ from typing import List, Tuple
 
 import pandas as pd
 
-from personalized_active_learning.datasets import BaseDataModule
-from personalized_active_learning.datasets.base import SplitMode
+from personalized_active_learning.datamodules import BaseDataModule
+from personalized_active_learning.datamodules.base import SplitMode
 from settings import DATA_DIR
 
 

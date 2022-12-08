@@ -1,4 +1,4 @@
-"""Datasets used during experiments."""
+"""Datamodules used during experiments."""
 
 from .types import TextFeaturesBatch
 from .base import BaseDataModule

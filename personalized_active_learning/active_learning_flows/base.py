@@ -2,7 +2,7 @@ from typing import Optional, List
 
 import pandas as pd
 
-from personalized_active_learning.datasets import BaseDataModule
+from personalized_active_learning.datamodules import BaseDataModule
 from personalized_active_learning.learning.training import train_test
 from personalized_active_learning.models import IModel
 from personalized_nlp.utils import seed_everything
@@ -50,7 +50,7 @@ class ActiveLearningFlowBase(abc.ABC):
 
         Args:
             dataset (BaseDataModule): A dataset which derives from the
-                `personalized_active_learning.datasets.base` class.
+                `personalized_active_learning.datamodules.base` class.
             text_selector (TextSelectorBase): A text selector which derives from
                 `active_learning.algorithms.base` class. Selects annotations from dataset.
             model_cls (IModel): A model defined in `personalized_active_learning.models`
