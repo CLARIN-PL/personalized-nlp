@@ -37,6 +37,7 @@ class ActiveLearningFlowBase(abc.ABC):
         model_hidden_dims: Optional[List[int]] = None,
         custom_callbacks: Optional[List[Callback]] = None,
         stratify_by_user: bool = False,
+        wandb_entity_name: Optional[str] = None
     ) -> None:
         """Base class for AL algorithm.
 
@@ -75,15 +76,18 @@ class ActiveLearningFlowBase(abc.ABC):
             `SaveConfidencesCallback`, `ModelCheckpoint` and `TQDMProgressBar` are
             always added. Defaults to None.
             stratify_by_user (bool, optional): Stratify data by user. Defaults to False.
+            wandb_entity_name (str, optional): A name of group at wandb. Defaults to None
         """
 
         self.confidences = None
         self.dataset = dataset
         self.logger_extra_metrics = logger_extra_metrics
         self.wandb_project_name = wandb_project_name
+        self.wandb_entity_name = wandb_entity_name
         self.stratify_by_user = stratify_by_user
         self.text_selector = text_selector
         self.model_cls = model_cls
+
         annotations = dataset.annotations
 
         annotations.loc[annotations.split.isin(["train"]), "split"] = "none"
@@ -189,6 +193,7 @@ class ActiveLearningFlowBase(abc.ABC):
         logger = pl_loggers.WandbLogger(
             save_dir=str(LOGS_DIR),
             project=self.wandb_project_name,
+            entity=self.wandb_entity_name,
             log_model=False,
         )
         logger.experiment.config.update(lparams)
