@@ -42,7 +42,6 @@ class UnhealthyDataModule(BaseDataModule):
         **kwargs,
     ):
         super().__init__(**kwargs)
-
         os.makedirs(self.data_dir / "embeddings", exist_ok=True)
 
     def load_data_and_annotations(self) -> Tuple[pd.DataFrame, pd.DataFrame]:

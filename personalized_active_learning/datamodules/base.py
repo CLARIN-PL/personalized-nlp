@@ -40,6 +40,7 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         embeddings_creator: EmbeddingsCreator,
         batch_size: int = 3000,
         split_mode: SplitMode = SplitMode.TEXTS,
+        subset_ratio: float = 1.0,
         major_voting: bool = False,  # TODO: Not sure if we need that
         test_major_voting: bool = False,  # TODO: Not sure if we need that
         folds_num: int = 10,
@@ -59,6 +60,8 @@ class BaseDataModule(LightningDataModule, abc.ABC):
             use_finetuned_embeddings: If `True` the embeddings will be finetuned.
             batch_size: The size of batch.
             split_mode: The split mode used to divide data into training, val & test.
+            subset_ratio: Generate subset from the dataset with specified ratio.
+                Ratio should be in (0.0, 1.0>, where 1.0 means whole dataset.
             major_voting: If `True` do not use personalization on training data.
                 I.E. Text annotated by 5 annotators will be transformed to single text.
             test_major_voting: If `True` do not use personalization on val & test data.
@@ -89,6 +92,7 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         self.past_annotations_limit = past_annotations_limit
 
         self._test_fold_index = test_fold_index
+        self.subset_ratio = subset_ratio
         self.use_finetuned_embeddings = use_finetuned_embeddings
         self.min_annotations_per_user_in_fold = min_annotations_per_user_in_fold
 
@@ -99,6 +103,7 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         seed_everything(seed)
 
         self.data, self.annotations = self.load_data_and_annotations()
+        self._raw_text = self.data["text"].values
         self.setup()
 
     @property
@@ -206,14 +211,27 @@ class BaseDataModule(LightningDataModule, abc.ABC):
             stage: Left for compatibility with pytorch lighting.
 
         Prepare data to use. Currently this method:
-            1. Splits data into training, validation, test sets.
-            2. Limits annotations if needed.
-            3. Filters annotations if needed.
-            4. Computes annotators biases.
-            5. Applies major voting mechanism if needed.
-            6. Finetunes text embeddings if needed.
-
+            1. Checks if split mode has valid parameters
+            2. Finetunes text embeddings if needed.
+            3. Creates subset of data if needed
+            4. Splits data into training, validation, test sets.
+            5. Limits annotations if needed.
+            6. Filters annotations if needed.
+            7. Computes annotators biases.
+            8. Applies major voting mechanism if needed.
         """
+
+        self._validate_split_mode()
+
+        if self.use_finetuned_embeddings:
+            # TODO: Ugly hack but we probably don't have time to change that
+            fine_tune_embeddings(self)
+
+        texts = self.data["text"].tolist()
+        self.text_embeddings = self.embeddings_creator.get_embeddings(texts=texts)
+        assert len(self.data.index) == len(self.text_embeddings)
+
+        self.data, self.annotations = self._generate_subset()
         self._original_annotations = self.annotations.copy()
         self._split_data()
 
@@ -228,12 +246,82 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         if self.major_voting:
             self.compute_major_votes()
 
-        if self.use_finetuned_embeddings:
-            # TODO: Ugly hack but we probably don't have time to change that
-            fine_tune_embeddings(self)
-        texts = self.data["text"].tolist()
-        self.text_embeddings = self.embeddings_creator.get_embeddings(texts=texts)
-        assert len(self.data.index) == len(self.text_embeddings)
+    def _generate_subset(self) -> Tuple[pd.DataFrame, pd.DataFrame]:
+        """Generate subset of dataset
+
+        Sample `self.data` and `self.annotations` with `self.subset_ratio`.
+
+        Raises:
+            Exception: Invalid split mode
+            Exception: Missing column for a specific split mode
+
+        Returns:
+            Tuple[pd.DataFrame, pd.DataFrame]: New data and annotations
+        """
+
+        if self.subset_ratio < 0 or self.subset_ratio > 1:
+            return self.data, self.annotations
+
+        if self.split_mode == SplitMode.PREDEFINED:
+            sampling_column = "split"
+        elif self.split_mode == SplitMode.TEXTS or self.split_mode == SplitMode.USERS:
+            sampling_column = "fold"
+        else:
+            raise Exception(
+                "Split mode {0} has not configured sampling_column".format(
+                    self.split_mode.value,
+                )
+            )
+
+        sampling_column_values = self.annotations[sampling_column].unique()
+        sampled_annotations = [
+            self.annotations[
+                self.annotations[sampling_column] == sampling_value
+            ].sample(frac=self.subset_ratio)
+            for sampling_value in sampling_column_values
+        ]
+        annotations = pd.concat(sampled_annotations, ignore_index=True)
+        data = self.data[
+            self.data.text_id.isin(annotations.text_id.unique())
+        ].reset_index(drop=True)
+
+        return data, annotations
+
+    def _validate_split_mode(self) -> None:
+        """Validate if split parameters are valid
+
+        Check if `self.split_mode` has necessary columns in `self.annotations`
+        `SplitMode.PREDEFINED`: `split` column
+        `SplitMode.TEXTS`, `SplitMode.USERS`: `fold` column
+
+        Raises:
+            Exception: No split column in `self.annotations`
+            Exception: No fold column in `self.annotations`
+            Exception: Invalid split mode
+        """
+
+        if self.split_mode == SplitMode.PREDEFINED:
+            if "split" not in self.annotations.columns:
+                raise Exception(
+                    "Split mode {0} is used but no split column in {1}".format(
+                        self.split_mode.value,
+                        self.annotations.columns,
+                    )
+                )
+        elif self.split_mode == SplitMode.TEXTS or self.split_mode == SplitMode.USERS:
+            if "fold" not in self.annotations.columns:
+                raise Exception(
+                    "Split mode {0} is used but no fold column in {1}".format(
+                        self.split_mode.value,
+                        self.annotations.columns,
+                    )
+                )
+        else:
+            raise Exception(
+                "Split mode {0} is invalid".format(
+                    self.split_mode.value,
+                )
+            )
 
     def compute_major_votes(self) -> None:
         """Computes mean votes for texts in train folds."""
@@ -365,7 +453,7 @@ class BaseDataModule(LightningDataModule, abc.ABC):
             text_ids=text_ids.values,
             annotator_ids=annotator_ids.values,
             embeddings=self.text_embeddings,
-            raw_texts=self.data["text"].values,
+            raw_texts=self._raw_text,
             annotator_biases=self.annotator_biases.values.astype(float),
             y=y,
         )
@@ -405,22 +493,8 @@ class BaseDataModule(LightningDataModule, abc.ABC):
 
         """
         if self.split_mode == SplitMode.PREDEFINED:
-            if "split" not in self.annotations.columns:
-                raise Exception(
-                    "Split mode {0} is used but no column split in {1}".format(
-                        self.split_mode.value,
-                        self.annotations.columns,
-                    )
-                )
             return
         elif self.split_mode == SplitMode.TEXTS:
-            if "fold" not in self.annotations.columns:
-                raise Exception(
-                    "Split mode {0} is used but no column fold in {1}".format(
-                        self.split_mode.value,
-                        self.annotations.columns,
-                    )
-                )
             val_fold_index = self.val_fold_index
             test_fold_index = self.test_fold_index
             self.annotations["split"] = "train"
