@@ -10,8 +10,8 @@ from personalized_active_learning.active_learning_flows import (
     UnsupervisedActiveLearningFlow,
 )
 from personalized_active_learning.algorithms import KmeansPretrainer
-from personalized_active_learning.datasets import UnhealthyDataset
-from personalized_active_learning.datasets.base import SplitMode
+from personalized_active_learning.datamodules import UnhealthyDataModule
+from personalized_active_learning.datamodules.base import SplitMode
 from personalized_active_learning.embeddings import EmbeddingsCreator
 from personalized_active_learning.metrics.personal_metrics import (
     PersonalizedMetricsCallback,
@@ -32,7 +32,7 @@ os.environ["WANDB_START_METHOD"] = "thread"
 if __name__ == "__main__":
     wandb_project_name = "PNW_AL_Unhealthy"
     wandb_entity_name = "be-active"  # None if you don't want to use entity
-    datamodule_cls = UnhealthyDataset
+    datamodule_cls = UnhealthyDataModule
     model_cls = Baseline
     use_cuda = True
     activelearning_kwargs_list = product_kwargs(

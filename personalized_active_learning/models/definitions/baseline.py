@@ -1,6 +1,6 @@
 import torch.nn as nn
 
-from personalized_active_learning.datasets import TextFeaturesBatch
+from personalized_active_learning.datamodules import TextFeaturesBatch
 from personalized_active_learning.models.interface import IModel
 
 

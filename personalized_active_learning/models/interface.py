@@ -4,7 +4,7 @@ import abc
 
 import torch
 from torch import nn
-from personalized_active_learning.datasets import TextFeaturesBatch
+from personalized_active_learning.datamodules import TextFeaturesBatch
 
 
 class IModel(nn.Module, abc.ABC):

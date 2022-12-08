@@ -12,7 +12,7 @@ from settings import CHECKPOINTS_DIR
 
 def train_test(
     model: IModel,
-    datamodule,  # type is BaseDataset, cannot be imported due to circular import-finetune
+    datamodule,  # type is BaseDataModule, cannot be imported due to circular import-finetune
     logger: WandbLogger,
     epochs: int = 6,
     lr: float = 1e-2,
@@ -30,7 +30,7 @@ def train_test(
         model (IModel):  A model defined in `personalized_active_learning.models`
                 directory. Used for a main training. (Imorted definition, eg. `Baseline`).
         datamodule (_type_): A dataset which derives from the
-                `personalized_active_learning.datasets.base` class.
+                `personalized_active_learning.datamodules.base` class.
         logger (WandbLogger): Instantion of prepared `WandbLogger`.
         epochs (int, optional): Number of training epochs. Defaults to 6.
         lr (float, optional): Learning rate for a model. Defaults to 1e-2.
