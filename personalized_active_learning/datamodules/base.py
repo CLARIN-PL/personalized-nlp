@@ -8,7 +8,7 @@ import torch
 from pytorch_lightning import LightningDataModule, seed_everything
 from torch.utils.data import DataLoader
 
-from personalized_active_learning.datasets.types import TextFeaturesBatchDataset
+from personalized_active_learning.datamodules.types import TextFeaturesBatchDataset
 from personalized_active_learning.embeddings import EmbeddingsCreator
 from personalized_active_learning.embeddings.finetune import fine_tune_embeddings
 from personalized_nlp.utils.biases import get_annotator_biases
@@ -32,7 +32,7 @@ class SplitMode(Enum):
     PREDEFINED = "PREDEFINED"
 
 
-class BaseDataset(LightningDataModule, abc.ABC):
+class BaseDataModule(LightningDataModule, abc.ABC):
     """The base class from each dataset class should derive."""
 
     def __init__(
@@ -44,7 +44,7 @@ class BaseDataset(LightningDataModule, abc.ABC):
         major_voting: bool = False,  # TODO: Not sure if we need that
         test_major_voting: bool = False,  # TODO: Not sure if we need that
         folds_num: int = 10,
-        past_annotations_limit: Optional[int] = None,  # TODO: Not sure if we need that
+        past_annotations_limit: Optional[int] = None,
         split_sizes: Optional[
             List[str]
         ] = None,  # TODO: Used only when split mode is user, ugly
@@ -67,7 +67,8 @@ class BaseDataset(LightningDataModule, abc.ABC):
             test_major_voting: If `True` do not use personalization on val & test data.
                 I.E. Text annotated by 5 annotators will be transformed to single text.
             folds_num: The number of folds into which data are split.
-            past_annotations_limit: TODO: Not sure yet what it exactly does.
+            past_annotations_limit: This variable limits number of annotatinos per user
+                in `past` dataset. Used in SplitMode.Users.
             split_sizes: Argument used only if `split_mode == SplitMode.Users`.
                 Defines a size of split to divide data into.
             test_fold_index: The index of test fold.

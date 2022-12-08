@@ -9,7 +9,7 @@ import torch
 class TextFeaturesBatch:
     """Batch of texts with their features.
 
-    Defines contract between datasets & models. I.E. TextFeaturesBatch is a models input.
+    Defines contract between datamodules & models. I.E. TextFeaturesBatch is a models input.
 
     Args:
         text_ids: The IDs of text

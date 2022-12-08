@@ -15,7 +15,8 @@ First, preprocess selected dataset with `scripts.process_data` pipeline, to assi
 
 Then, you can run experiments with:
 
-`python -m personalized_nlp.experiments.uhnealthy`
+`python -m personalized_nlp.experiments.unhealthy`
+`python -m personalized_active_learning.experiments.unhealthy`
 
 ## How to add DataModule for a new dataset
 

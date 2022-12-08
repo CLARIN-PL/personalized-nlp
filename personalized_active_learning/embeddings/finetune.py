@@ -12,7 +12,7 @@ from settings import TRANSFORMER_MODEL_STRINGS
 
 
 def fine_tune_embeddings(
-    original_dataset,  # type is BaseDataset, cannot be imported due to circular import
+    original_dataset,  # type is BaseDataModule, cannot be imported due to circular import
     batch_size: int = 20,
     epochs=3,
     lr=2e-5,
@@ -65,7 +65,7 @@ def fine_tune_embeddings(
 class SaveEmbeddingCallback(Callback):
     def __init__(
         self,
-        dataset,  # type is BaseDataset, cannot be imported due to circular import
+        dataset,  # type is BaseDataModule, cannot be imported due to circular import
         save_path: Path,
     ):
         self.dataset = dataset

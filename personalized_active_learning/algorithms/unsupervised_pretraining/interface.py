@@ -1,6 +1,6 @@
 import abc
 
-from personalized_active_learning.datasets import BaseDataset
+from personalized_active_learning.datamodules import BaseDataModule
 from personalized_active_learning.models import IModel
 
 
@@ -10,7 +10,7 @@ class IUnsupervisedPretrainer(abc.ABC):
     @abc.abstractmethod
     def pretrain(
         self,
-        dataset: BaseDataset,
+        dataset: BaseDataModule,
         model: IModel,
     ) -> IModel:
         """Pretrain model.

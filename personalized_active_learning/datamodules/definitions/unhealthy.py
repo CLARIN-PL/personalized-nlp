@@ -3,12 +3,12 @@ from typing import List, Tuple
 
 import pandas as pd
 
-from personalized_active_learning.datasets import BaseDataset
-from personalized_active_learning.datasets.base import SplitMode
+from personalized_active_learning.datamodules import BaseDataModule
+from personalized_active_learning.datamodules.base import SplitMode
 from settings import DATA_DIR
 
 
-class UnhealthyDataset(BaseDataset):
+class UnhealthyDataModule(BaseDataModule):
     @property
     def annotations_file_relative_path(self) -> str:
         # TODO: Leftover of previous code

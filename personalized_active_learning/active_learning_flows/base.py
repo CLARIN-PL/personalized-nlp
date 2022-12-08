@@ -2,7 +2,7 @@ from typing import Optional, List
 
 import pandas as pd
 
-from personalized_active_learning.datasets import BaseDataset
+from personalized_active_learning.datamodules import BaseDataModule
 from personalized_active_learning.learning.training import train_test
 from personalized_active_learning.models import IModel
 from personalized_nlp.utils import seed_everything
@@ -22,7 +22,7 @@ class ActiveLearningFlowBase(abc.ABC):
 
     def __init__(
         self,
-        dataset: BaseDataset,
+        dataset: BaseDataModule,
         text_selector: TextSelectorBase,
         model_cls: IModel,
         wandb_project_name: str,
@@ -50,8 +50,8 @@ class ActiveLearningFlowBase(abc.ABC):
         trainer - `trainer_params`.
 
         Args:
-            dataset (BaseDataset): A dataset which derives from the
-                `personalized_active_learning.datasets.base` class.
+            dataset (BaseDataModule): A dataset which derives from the
+                `personalized_active_learning.datamodules.base` class.
             text_selector (TextSelectorBase): A text selector which derives from
                 `active_learning.algorithms.base` class. Selects annotations from dataset.
             model_cls (IModel): A model defined in `personalized_active_learning.models`
