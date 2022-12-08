@@ -72,9 +72,8 @@ class ActiveLearningFlowBase(abc.ABC):
             model_hidden_dims Optional[List[int]]: Hidden dimensions sizes used in
                 `model_cls`initialization. Defaults to None.
             custom_callbacks (Optional[List[Callback]]): A list with custom callbacks for
-                `Trainer`.
-            `SaveConfidencesCallback`, `ModelCheckpoint` and `TQDMProgressBar` are
-            always added. Defaults to None.
+                `Trainer`.`SaveConfidencesCallback`, `ModelCheckpoint`
+                and `TQDMProgressBar` are always added. Defaults to None.
             stratify_by_user (bool, optional): Stratify data by user. Defaults to False.
             wandb_entity_name (str, optional): A name of group at wandb. Defaults to None
         """
@@ -89,7 +88,7 @@ class ActiveLearningFlowBase(abc.ABC):
         self.model_cls = model_cls
 
         annotations = dataset.annotations
-
+        self.subset_ratio = dataset.subset_ratio
         annotations.loc[annotations.split.isin(["train"]), "split"] = "none"
 
         if not custom_callbacks:
@@ -179,6 +178,8 @@ class ActiveLearningFlowBase(abc.ABC):
 
         lparams = {
             "dataset": type(dataset).__name__,
+            "subset_ratio": self.subset_ratio,
+            "dataset_size": len(dataset.data),
             "annotation_amount": self.annotated_amount,
             "text_selector": type(self.text_selector).__name__,
             "unique_texts_number": annotated_texts_number,

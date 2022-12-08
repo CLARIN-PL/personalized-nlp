@@ -25,12 +25,12 @@ from settings import DATA_DIR
 
 # False positive https://github.com/Lightning-AI/lightning/issues/11856
 warnings.filterwarnings("ignore", category=PossibleUserWarning)
-os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 os.environ["WANDB_START_METHOD"] = "thread"
 
 
 if __name__ == "__main__":
-    wandb_project_name = "PNW_AL_Unhealthy"
+    wandb_project_name = "PNW_AL_Unhealthy_subset_20"
     wandb_entity_name = "be-active"  # None if you don't want to use entity
     datamodule_cls = UnhealthyDataset
     model_cls = Baseline
@@ -66,6 +66,7 @@ if __name__ == "__main__":
             "past_annotations_limit": [None],
             "split_mode": [SplitMode.TEXTS],
             "folds_num": [5],
+            "subset_ratio": [0.2],
             "batch_size": [3000],
             "test_fold_index": list(range(5)),  # This does cross-validation
             "use_finetuned_embeddings": [False],
