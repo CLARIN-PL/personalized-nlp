@@ -329,6 +329,8 @@ def _train_kmeans_classifier(
     monitor_metric: str = "train_loss",
     monitor_mode: str = "min",
 ):
+    # We don't want to mix these logs with actual classifier
+    wandb_project_name = wandb_project_name + "__kmeans_classifier"
     logger = pl_loggers.WandbLogger(
         save_dir=str(LOGS_DIR),
         project=wandb_project_name,
@@ -361,4 +363,7 @@ def _train_kmeans_classifier(
         callbacks=callbacks,
     )
     trainer.fit(classifier, datamodule)
+
+    logger.experiment.finish()
+
     return classifier.model
