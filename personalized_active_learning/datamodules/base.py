@@ -237,7 +237,6 @@ class BaseDataModule(LightningDataModule, abc.ABC):
 
         if self.past_annotations_limit is not None:
             self._limit_past_annotations(self.past_annotations_limit)
-
         if self.min_annotations_per_user_in_fold is not None:
             self._filter_annotators()
 
@@ -259,7 +258,7 @@ class BaseDataModule(LightningDataModule, abc.ABC):
             Tuple[pd.DataFrame, pd.DataFrame]: New data and annotations
         """
 
-        if self.subset_ratio < 0 or self.subset_ratio > 1:
+        if self.subset_ratio <= 0 or self.subset_ratio >= 1:
             return self.data, self.annotations
 
         if self.split_mode == SplitMode.PREDEFINED:
