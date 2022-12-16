@@ -14,6 +14,7 @@ class Mlp(IModel):
         output_dim: int = 2,
         text_embedding_dim: int = 768,
         hidden_sizes: Optional[list[int]] = None,
+        dropout: float = 0.2,
         **kwargs,
     ):
         super().__init__()
@@ -21,9 +22,10 @@ class Mlp(IModel):
         hidden_sizes = hidden_sizes or [text_embedding_dim]
         self.input_layer = nn.Linear(text_embedding_dim, hidden_sizes[0])
         self.input_relu = nn.ReLU()
+        self.input_dropout = nn.Dropout(dropout)
         self.output_layer = nn.Linear(hidden_sizes[-1], output_dim)
         hidden_layers = []
-        for index, first_hidden_size, second_hidden_size in enumerate(
+        for index, (first_hidden_size, second_hidden_size) in enumerate(
             pairwise(hidden_sizes)
         ):
             hidden_layers.append(
@@ -33,6 +35,7 @@ class Mlp(IModel):
                 )
             )
             hidden_layers.append((f"hidden_relu_{index}", nn.ReLU()))
+            hidden_layers.append((f"hidden_dropout_{index}", nn.Dropout(dropout)))
         self.hidden_layers = nn.Sequential(
             OrderedDict(
                 hidden_layers,
@@ -61,6 +64,7 @@ class Mlp(IModel):
         x = x.view(-1, self.text_embedding_dim)
         x = self.input_layer(x)
         x = self.input_relu(x)
+        x = self.input_dropout(x)
         x = self.hidden_layers(x)
         x = self.output_layer(x)
         return x
