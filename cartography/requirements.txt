@@ -1,0 +1,14 @@
+numpy
+pandas
+openpyxl
+seaborn
+scikit-learn
+torch
+torchmetrics
+toolz
+transformers
+sentence_transformers
+pytorch_lightning
+tqdm
+pyyaml
+wandb

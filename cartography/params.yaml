@@ -1,0 +1,50 @@
+method: baseline
+num_repeats: 10
+
+model:
+  gradient_checkpointing: false
+  freeze_backbone: false
+  name: roberta-base
+  seed: 42
+  learning_rate: 0.00005
+  warmup_steps: 1000
+
+datamodule:
+  dataset: sentiment140
+  seed: 42
+  max_length: 512
+  batch_size: 32
+  num_workers: 4
+
+trainer:
+  gpus: [ 0 ]
+  max_epochs: 50
+  accumulate_grad_batches: 1
+  precision: 32
+
+checkpoint:
+  monitor: &monitor 'val/f1_macro'
+  mode: &monitor_mode max
+  save_last: true
+  save_top_k: 1
+
+early_stopping:
+  monitor: *monitor
+  mode: *monitor_mode
+  patience: 10
+
+wandb_logger:
+  entity: 'amc'
+  project: 'retriever-wein-icdmw'
+
+baseline: { }
+
+user_identifier:
+  augmentations: random
+  prefix_length: 10
+
+retriever:
+  normalize_weights: false
+  feature_normalization: 'none'
+  encoder_name: 'cross-encoder/stsb-roberta-base'
+  top_k: 3
