@@ -194,7 +194,7 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         annotations = self.annotations
         self._original_annotations = annotations.copy()
 
-        # self._assign_folds()
+        self._assign_folds()
         self._assign_splits()
 
         if self.past_annotations_limit is not None:

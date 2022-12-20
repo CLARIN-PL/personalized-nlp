@@ -65,8 +65,10 @@ def train_test(datamodule,
     _use_cuda = use_cuda and torch.cuda.is_available()
 
     callbacks = [checkpoint_callback, progressbar_checkpoint]
+
     if custom_callbacks is not None:
         callbacks = callbacks + custom_callbacks
+        callbacks = custom_callbacks
 
     trainer = pl.Trainer(gpus=1 if _use_cuda else 0,
                          max_epochs=epochs,
