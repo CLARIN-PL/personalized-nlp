@@ -44,9 +44,12 @@ def _get_embeddings(texts, tokenizer, model, max_seq_len=256, use_cuda=False):
     return torch.cat(all_embeddings, axis=0).to('cpu')
 
 
-def create_embeddings(texts, embeddings_path=None,
-                      model_name='xlm-roberta-base',
-                      use_cuda=True):
+def create_embeddings(
+    texts,
+    embeddings_path: str,
+    model_name: str = 'xlm-roberta-base',
+    use_cuda: bool = True
+):
 
     if model_name == 'random':
         embeddings = torch.rand(len(texts), 768).numpy()
@@ -80,9 +83,9 @@ def create_fasttext_embeddings(texts: List[str], model_name: str):
         embeddings_path = SKIPGRAM_EMBEDDINGS_PATH
     else:
         embeddings_path = CBOW_EMBEDDINGS_PATH
-        
+
     ft = fasttext.load_model(str(embeddings_path))
-    
+
     embeddings = [ft.get_sentence_vector(t.replace('\n', ' ')) for t in texts]
     embeddings = np.array(embeddings)
     return embeddings

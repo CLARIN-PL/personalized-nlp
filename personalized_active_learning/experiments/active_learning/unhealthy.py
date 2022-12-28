@@ -1,5 +1,6 @@
 # TODO: REFACTOR!!!!
 import os
+import warnings
 from itertools import product
 
 from pytorch_lightning.utilities.warnings import PossibleUserWarning
@@ -7,9 +8,7 @@ from pytorch_lightning.utilities.warnings import PossibleUserWarning
 import active_learning.algorithms as algorithms
 from personalized_active_learning.active_learning_flows import (
     StandardActiveLearningFlow,
-    UnsupervisedActiveLearningFlow,
 )
-from personalized_active_learning.algorithms import KmeansPretrainer
 from personalized_active_learning.datamodules import UnhealthyDataModule
 from personalized_active_learning.datamodules.base import SplitMode
 from personalized_active_learning.embeddings import EmbeddingsCreator
@@ -20,11 +19,9 @@ from personalized_active_learning.embeddings.personalised import (
 from personalized_active_learning.metrics.personal_metrics import (
     PersonalizedMetricsCallback,
 )
-from personalized_active_learning.models import Baseline, PersonalizedBaseline
-
+from personalized_active_learning.models import PersonalizedBaseline
 from personalized_nlp.utils import seed_everything
 from personalized_nlp.utils.experiments import product_kwargs
-import warnings
 from settings import DATA_DIR
 
 # False positive https://github.com/Lightning-AI/lightning/issues/11856
@@ -34,16 +31,16 @@ os.environ["WANDB_START_METHOD"] = "thread"
 
 
 if __name__ == "__main__":
-    wandb_project_name = "Unhealthy_personalised_embeddings_text"
-    wandb_entity_name = None  # None if you don't want to use entity
+    wandb_project_name = "PNW_AL_Unhealthy_tests"
+    wandb_entity_name = "be-active"  # None if you don't want to use entity
     datamodule_cls = UnhealthyDataModule
     model_cls = PersonalizedBaseline
-    use_cuda = False
+    use_cuda = True
     activelearning_kwargs_list = product_kwargs(
         {
             "text_selector_cls": [
                 algorithms.RandomSelector,
-                # algorithms.BalancedConfidenceSelector,
+                algorithms.BalancedConfidenceSelector,
                 # algorithms.BalancedClassesPerUserSelector,
                 # algorithms.BalancedClassesPerTextSelector,
                 # algorithms.ConfidenceSelector,
@@ -72,13 +69,10 @@ if __name__ == "__main__":
             "folds_num": [10],
             "subset_ratio": [1],
             "batch_size": [32],
-            "test_fold_index": [0],  # This does cross-validation
+            "test_fold_index": [0],
             "use_finetuned_embeddings": [False],
             "major_voting": [False],
             "min_annotations_per_user_in_fold": [None],
-            "personalized_embeddings_cls": [
-                UserIdEmbeddings
-            ]
         }
     )
     model_kwargs_list = product_kwargs(
@@ -92,10 +86,10 @@ if __name__ == "__main__":
     trainer_kwargs_list = product_kwargs(
         {
             "epochs": [20],
-            "lr": [0.008],
+            "lr": [0.0001],
             "use_cuda": [use_cuda],
             "monitor_metric": ["valid_loss"],
-            "monitor_mode": ["max"],
+            "monitor_mode": ["min"],
         }
     )
     active_learning_flows = [
@@ -103,17 +97,6 @@ if __name__ == "__main__":
             "flow_cls": StandardActiveLearningFlow,
             "extra_kwargs": {},
         },
-        # {
-        #     "flow_cls": UnsupervisedActiveLearningFlow,
-        #     "extra_kwargs": {
-        #         "unsupervised_pretrainer": KmeansPretrainer(
-        #             num_clusters=10,
-        #             batch_size=32,
-        #             wandb_project_name=wandb_project_name,  # TODO: Not sure about that
-        #             number_of_epochs=9,
-        #         ),
-        #     },
-        # },
     ]
     for (
         activelearning_kwargs,
@@ -131,7 +114,9 @@ if __name__ == "__main__":
         seed_everything()
         data_module = datamodule_cls(**datamodule_kwargs)
         class_dimensions = data_module.classes_dimensions
-
+        embedding_dim = datamodule_kwargs[
+            "embeddings_creator"
+        ].text_embedding_dim
         text_selector_cls = activelearning_kwargs["text_selector_cls"]
         text_selector = text_selector_cls(
             class_dims=class_dimensions,
@@ -149,7 +134,9 @@ if __name__ == "__main__":
             wandb_project_name=wandb_project_name,
             wandb_entity_name=wandb_entity_name,
             model_output_dim=sum(class_dimensions),
-            model_embedding_dim=model_kwargs["embedding_dim"],
+            model_embedding_dim=embedding_dim,
+            model_hidden_dims=model_kwargs["hidden_sizes"],
+            model_dropout=model_kwargs["dropout"],
             text_selector=activelearning_kwargs["text_selector"],
             stratify_by_user=activelearning_kwargs["stratify_by_user"],
             logger_extra_metrics=dict(datamodule_kwargs),
