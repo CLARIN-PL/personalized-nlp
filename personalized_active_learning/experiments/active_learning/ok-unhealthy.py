@@ -31,16 +31,16 @@ os.environ["WANDB_START_METHOD"] = "thread"
 
 
 if __name__ == "__main__":
-    wandb_project_name = "PNW_AL_Unhealthy_tests"
-    wandb_entity_name = "be-active"  # None if you don't want to use entity
+    wandb_project_name = "personalised-embeddings-test"
+    wandb_entity_name = None # None if you don't want to use entity
     datamodule_cls = UnhealthyDataModule
     model_cls = PersonalizedBaseline
-    use_cuda = True
+    use_cuda = False
     activelearning_kwargs_list = product_kwargs(
         {
             "text_selector_cls": [
                 algorithms.RandomSelector,
-                algorithms.BalancedConfidenceSelector,
+                # algorithms.BalancedConfidenceSelector,
                 # algorithms.BalancedClassesPerUserSelector,
                 # algorithms.BalancedClassesPerTextSelector,
                 # algorithms.ConfidenceSelector,
@@ -73,7 +73,7 @@ if __name__ == "__main__":
             "use_finetuned_embeddings": [False],
             "major_voting": [False],
             "min_annotations_per_user_in_fold": [None],
-            "personalized_embeddings_cls": [None]
+            "personalized_embeddings_cls": [UserIdEmbeddings]
         }
     )
     model_kwargs_list = product_kwargs(
