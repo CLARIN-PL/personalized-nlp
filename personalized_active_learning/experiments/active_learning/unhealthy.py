@@ -16,7 +16,7 @@ from personalized_active_learning.embeddings import EmbeddingsCreator
 from personalized_active_learning.metrics.personal_metrics import (
     PersonalizedMetricsCallback,
 )
-from personalized_active_learning.models import Baseline
+from personalized_active_learning.models import PersonalizedBaseline
 
 from personalized_nlp.utils import seed_everything
 from personalized_nlp.utils.experiments import product_kwargs
@@ -30,18 +30,18 @@ os.environ["WANDB_START_METHOD"] = "thread"
 
 
 if __name__ == "__main__":
-    wandb_project_name = "PNW_AL_Unhealthy_subset_20"
+    wandb_project_name = "PNW_AL_Unhealthy_tests"
     wandb_entity_name = "be-active"  # None if you don't want to use entity
     datamodule_cls = UnhealthyDataModule
-    model_cls = Baseline
+    model_cls = PersonalizedBaseline
     use_cuda = True
     activelearning_kwargs_list = product_kwargs(
         {
             "text_selector_cls": [
                 algorithms.RandomSelector,
                 algorithms.BalancedConfidenceSelector,
-                algorithms.BalancedClassesPerUserSelector,
-                algorithms.BalancedClassesPerTextSelector,
+                #algorithms.BalancedClassesPerUserSelector,
+                #algorithms.BalancedClassesPerTextSelector,
                 # algorithms.ConfidenceSelector,
                 # algorithms.MaxPositiveClassSelector,
                 # algorithms.ConfidenceAllDimsSelector,
@@ -50,7 +50,7 @@ if __name__ == "__main__":
             ],
             "max_amount": [50_000],
             "step_size": [2_000],
-            "amount_per_user": [2],
+            "amount_per_user": [2**8],
             "stratify_by_user": [True],
         }
     )
@@ -65,13 +65,13 @@ if __name__ == "__main__":
             ],
             "past_annotations_limit": [None],
             "split_mode": [SplitMode.TEXTS],
-            "folds_num": [5],
-            "subset_ratio": [0.2],
-            "batch_size": [3000],
-            "test_fold_index": list(range(5)),  # This does cross-validation
+            "folds_num": [10],
+            "subset_ratio": [1],
+            "batch_size": [32],
+            "test_fold_index": [0],
             "use_finetuned_embeddings": [False],
             "major_voting": [False],
-            "min_annotations_per_user_in_fold": [20],
+            "min_annotations_per_user_in_fold": [None],
         }
     )
     model_kwargs_list = product_kwargs(
@@ -83,27 +83,16 @@ if __name__ == "__main__":
     trainer_kwargs_list = product_kwargs(
         {
             "epochs": [20],
-            "lr": [0.008],
+            "lr": [0.0001],
             "use_cuda": [use_cuda],
             "monitor_metric": ["valid_loss"],
-            "monitor_mode": ["max"],
+            "monitor_mode": ["min"],
         }
     )
     active_learning_flows = [
         {
             "flow_cls": StandardActiveLearningFlow,
             "extra_kwargs": {},
-        },
-        {
-            "flow_cls": UnsupervisedActiveLearningFlow,
-            "extra_kwargs": {
-                "unsupervised_pretrainer": KmeansPretrainer(
-                    num_clusters=10,
-                    batch_size=32,
-                    wandb_project_name=wandb_project_name,  # TODO: Not sure about that
-                    number_of_epochs=9,
-                ),
-            },
         },
     ]
     for (
