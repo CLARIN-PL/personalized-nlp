@@ -52,6 +52,7 @@ if __name__ == "__main__":
             "step_size": [2_000],
             "amount_per_user": [2],
             "stratify_by_user": [True],
+            "personalized_embeddings_type": [""]
         }
     )
     datamodule_kwargs_list = product_kwargs(

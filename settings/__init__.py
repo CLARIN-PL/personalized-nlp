@@ -9,7 +9,7 @@ CHECKPOINTS_DIR = STORAGE_DIR / 'checkpoints'
 DATA_DIR = STORAGE_DIR / 'data'
 
 # path for all outputs ex. Cartography outputs, save predictions outputs etc.
-OUTPUTS_DIR_NAME =  STORAGE_DIR / 'outputs'
+OUTPUTS_DIR_NAME = STORAGE_DIR / 'outputs'
 CARTOGRAPHY_OUTPUTS_DIR_NAME = OUTPUTS_DIR_NAME / 'cartography_outputs'
 CARTOGRAPHY_TRAIN_DYNAMICS_DIR_NAME = 'train_dynamics'
 CARTOGRAPHY_PLOTS_DIR_NAME = 'plots'
@@ -31,7 +31,7 @@ SKIPGRAM_EMBEDDINGS_PATH = STORAGE_DIR / 'word2vec' / 'kgr10.plain.skipgram.dim3
 EMBEDDINGS_SIZES = {
     'xlmr': 768,
     'bert': 768,
-    'labse': 768, 
+    'labse': 768,
     'mpnet': 768,
     'random': 768,
     'skipgram': 300,

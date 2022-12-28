@@ -51,6 +51,7 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         use_finetuned_embeddings: bool = False,
         test_fold_index: int = 0,
         min_annotations_per_user_in_fold: Optional[int] = None,
+        personalized_embeddings_type: str = "",
         seed: int = 22,  # TODO: It shouldn't be use by datamodule but higher!!!
     ):
         """Initialize object.
@@ -75,6 +76,10 @@ class BaseDataModule(LightningDataModule, abc.ABC):
             min_annotations_per_user_in_fold: If not none filter out annotators who:
                 have less than `min_annotations_per_user_in_fold` annotations in each fold
                 or have less than one annotations per each (class_dim, fold) pair
+            personalized_embeddings_type: Value indicates usage of personalized data 
+                in embeddings. Currently available options are:
+                    - "": no personalisation.
+                    - "annotator_id": add `annotator_id` to texts.
             seed: Will be removed.
 
         """
@@ -95,6 +100,7 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         self.subset_ratio = subset_ratio
         self.use_finetuned_embeddings = use_finetuned_embeddings
         self.min_annotations_per_user_in_fold = min_annotations_per_user_in_fold
+        self.personalized_embeddings_type = personalized_embeddings_type
 
         # TODO: Move default value to same constants
         self.split_sizes = (
@@ -222,13 +228,19 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         """
 
         self._validate_split_mode()
+        self._apply_personalised_embeddings()
 
-        if self.use_finetuned_embeddings:
+        if self.use_finetuned_embeddings:  # TODO: move to embedings?
+            # TODO: Remember to add personalization here!
             # TODO: Ugly hack but we probably don't have time to change that
             fine_tune_embeddings(self)
 
         texts = self.data["text"].tolist()
-        self.text_embeddings = self.embeddings_creator.get_embeddings(texts=texts)
+
+        self.text_embeddings = self.embeddings_creator.get_embeddings(
+            texts=texts,
+            annotations=self.annotations["text_id"].isin()
+        )
         assert len(self.data.index) == len(self.text_embeddings)
 
         self.data, self.annotations = self._generate_subset()
@@ -244,6 +256,14 @@ class BaseDataModule(LightningDataModule, abc.ABC):
 
         if self.major_voting:
             self.compute_major_votes()
+
+    def _apply_personalised_embeddings(self) -> pd.DataFrame:
+        if self.personalized_embeddings_type == "":
+            return self.data
+
+        self.embeddings_creator.set_personalised_embeddings_type(
+            self.personalized_embeddings_type
+        )
 
     def _generate_subset(self) -> Tuple[pd.DataFrame, pd.DataFrame]:
         """Generate subset of dataset

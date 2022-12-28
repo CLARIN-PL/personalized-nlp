@@ -20,7 +20,7 @@ class EmbeddingsCreator:
         self,
         directory: Path,
         embeddings_type: str,
-        use_cuda: bool,
+        use_cuda: bool
     ) -> None:
         """Initialize object.
 
@@ -33,11 +33,18 @@ class EmbeddingsCreator:
         if embeddings_type not in EMBEDDINGS_SIZES:
             raise Exception(f"Embedding type {embeddings_type} is invalid.")
         self.directory = directory
-        self.path = self.directory / f"text_id_to_emb_{embeddings_type}.p"
         # TODO: Not sure why but CUDA might not be available here
         # That was the same in original code
         self.use_cuda = use_cuda and torch.cuda.is_available()
         self.embeddings_type = embeddings_type
+        self.personalised_embeddings_type = ""
+
+    @property
+    def embeddings_path(self):
+        file_name = f"text_id_to_emb_{self.embeddings_type}.p"
+        if self.personalised_embeddings_type != "":
+            file_name = f"personalised_{self.personalised_embeddings_type}_{file_name}"
+        return file_name
 
     @property
     def text_embedding_dim(self) -> int:
@@ -51,6 +58,22 @@ class EmbeddingsCreator:
             raise NotImplementedError()
 
         return EMBEDDINGS_SIZES[self.embeddings_type]
+
+    def set_personalised_embeddings_type(
+        self,
+        personalisation_type: str
+    ):
+        """Set value of `personalized_embeddings_type` field.
+
+        Value indicates usage of personalized data in embeddings.
+        Currently available options are:
+            - "": no personalisation.
+            - "annotator_id": add `annotator_id` to texts.
+        Args:
+            personalisation_type (str, optional): Personalisation type.
+        """
+
+        self.personalised_embeddings_type = personalisation_type
 
     def get_embeddings(self, texts: List[str]) -> torch.Tensor:
         """Get the texts embeddings.
@@ -84,7 +107,7 @@ class EmbeddingsCreator:
 
         create_embeddings(
             texts,
-            self.path,
+            self.embeddings_path,
             model_name=model_name,
             use_cuda=self.use_cuda,
         )
