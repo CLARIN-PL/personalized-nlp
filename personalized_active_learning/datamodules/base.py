@@ -1,16 +1,21 @@
 import abc
 from enum import Enum
 from typing import List, Optional, Tuple
+import swifter
 
 import numpy as np
 import pandas as pd
 import torch
 from pytorch_lightning import LightningDataModule, seed_everything
+
 from torch.utils.data import DataLoader
 
 from personalized_active_learning.datamodules.types import TextFeaturesBatchDataset
 from personalized_active_learning.embeddings import EmbeddingsCreator
 from personalized_active_learning.embeddings.finetune import fine_tune_embeddings
+from personalized_active_learning.embeddings.personalised.base import (
+    PersonalisedEmbeddings
+)
 from personalized_nlp.utils.biases import get_annotator_biases
 from personalized_nlp.utils.data_splitting import split_texts
 
@@ -38,6 +43,7 @@ class BaseDataModule(LightningDataModule, abc.ABC):
     def __init__(
         self,
         embeddings_creator: EmbeddingsCreator,
+        personalized_embeddings_cls: Optional[PersonalisedEmbeddings] = None,
         batch_size: int = 3000,
         split_mode: SplitMode = SplitMode.TEXTS,
         subset_ratio: float = 1.0,
@@ -51,7 +57,6 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         use_finetuned_embeddings: bool = False,
         test_fold_index: int = 0,
         min_annotations_per_user_in_fold: Optional[int] = None,
-        personalized_embeddings_type: str = "",
         seed: int = 22,  # TODO: It shouldn't be use by datamodule but higher!!!
     ):
         """Initialize object.
@@ -100,7 +105,7 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         self.subset_ratio = subset_ratio
         self.use_finetuned_embeddings = use_finetuned_embeddings
         self.min_annotations_per_user_in_fold = min_annotations_per_user_in_fold
-        self.personalized_embeddings_type = personalized_embeddings_type
+        self.personalized_embeddings_cls = personalized_embeddings_cls
 
         # TODO: Move default value to same constants
         self.split_sizes = (
@@ -218,29 +223,26 @@ class BaseDataModule(LightningDataModule, abc.ABC):
 
         Prepare data to use. Currently this method:
             1. Checks if split mode has valid parameters
-            2. Finetunes text embeddings if needed.
-            3. Creates subset of data if needed
-            4. Splits data into training, validation, test sets.
-            5. Limits annotations if needed.
-            6. Filters annotations if needed.
-            7. Computes annotators biases.
-            8. Applies major voting mechanism if needed.
+            2. Apply personalisation to the text dataset
+            3. Finetunes text embeddings if needed.
+            4. Creates subset of data if needed
+            5. Splits data into training, validation, test sets.
+            6. Limits annotations if needed.
+            7. Filters annotations if needed.
+            8. Computes annotators biases.
+            9. Applies major voting mechanism if needed.
         """
 
         self._validate_split_mode()
-        self._apply_personalised_embeddings()
+        self.data, self.annotations = self._apply_personalised_embeddings()
 
         if self.use_finetuned_embeddings:  # TODO: move to embedings?
-            # TODO: Remember to add personalization here!
             # TODO: Ugly hack but we probably don't have time to change that
             fine_tune_embeddings(self)
 
         texts = self.data["text"].tolist()
+        self.text_embeddings = self.embeddings_creator.get_embeddings(texts=texts)
 
-        self.text_embeddings = self.embeddings_creator.get_embeddings(
-            texts=texts,
-            annotations=self.annotations["text_id"].isin()
-        )
         assert len(self.data.index) == len(self.text_embeddings)
 
         self.data, self.annotations = self._generate_subset()
@@ -257,13 +259,30 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         if self.major_voting:
             self.compute_major_votes()
 
-    def _apply_personalised_embeddings(self) -> pd.DataFrame:
-        if self.personalized_embeddings_type == "":
+    def _apply_personalised_embeddings(self) -> Tuple[pd.DataFrame, pd.DataFrame]:
+        """Apply personalisation to text data with `self.personalized_embeddings_cls`
+
+        Modify `self.data.text` with user informations with rules defined in
+        `PersonalisedEmbedings` based classes. Modify `self.annotations` if neccessary
+
+        Returns:
+            pd.DataFrame: Personalised texts in `self.data` and modified 
+                `self.annotations`
+        """
+
+        if not self.personalized_embeddings_cls:
             return self.data
 
-        self.embeddings_creator.set_personalised_embeddings_type(
-            self.personalized_embeddings_type
+        personalised_embeddings = self.personalized_embeddings_cls(
+            self.data,
+            self.annotations
         )
+
+        self.embeddings_creator.set_personalised_embeddings_name(
+            personalised_embeddings.name
+        )
+
+        return personalised_embeddings.apply_personalisation()
 
     def _generate_subset(self) -> Tuple[pd.DataFrame, pd.DataFrame]:
         """Generate subset of dataset

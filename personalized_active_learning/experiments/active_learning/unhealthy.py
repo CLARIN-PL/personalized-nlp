@@ -13,10 +13,14 @@ from personalized_active_learning.algorithms import KmeansPretrainer
 from personalized_active_learning.datamodules import UnhealthyDataModule
 from personalized_active_learning.datamodules.base import SplitMode
 from personalized_active_learning.embeddings import EmbeddingsCreator
+from personalized_active_learning.embeddings.personalised import (
+    MultipleUserIdsEmbeddings,
+    UserIdEmbeddings
+)
 from personalized_active_learning.metrics.personal_metrics import (
     PersonalizedMetricsCallback,
 )
-from personalized_active_learning.models import Baseline
+from personalized_active_learning.models import Baseline, PersonalizedBaseline
 
 from personalized_nlp.utils import seed_everything
 from personalized_nlp.utils.experiments import product_kwargs
@@ -30,18 +34,18 @@ os.environ["WANDB_START_METHOD"] = "thread"
 
 
 if __name__ == "__main__":
-    wandb_project_name = "PNW_AL_Unhealthy_subset_20"
-    wandb_entity_name = "be-active"  # None if you don't want to use entity
+    wandb_project_name = "Unhealthy_personalised_embeddings_text"
+    wandb_entity_name = None  # None if you don't want to use entity
     datamodule_cls = UnhealthyDataModule
-    model_cls = Baseline
-    use_cuda = True
+    model_cls = PersonalizedBaseline
+    use_cuda = False
     activelearning_kwargs_list = product_kwargs(
         {
             "text_selector_cls": [
                 algorithms.RandomSelector,
-                algorithms.BalancedConfidenceSelector,
-                algorithms.BalancedClassesPerUserSelector,
-                algorithms.BalancedClassesPerTextSelector,
+                # algorithms.BalancedConfidenceSelector,
+                # algorithms.BalancedClassesPerUserSelector,
+                # algorithms.BalancedClassesPerTextSelector,
                 # algorithms.ConfidenceSelector,
                 # algorithms.MaxPositiveClassSelector,
                 # algorithms.ConfidenceAllDimsSelector,
@@ -50,9 +54,8 @@ if __name__ == "__main__":
             ],
             "max_amount": [50_000],
             "step_size": [2_000],
-            "amount_per_user": [2],
+            "amount_per_user": [2**8],
             "stratify_by_user": [True],
-            "personalized_embeddings_type": [""]
         }
     )
     datamodule_kwargs_list = product_kwargs(
@@ -66,19 +69,24 @@ if __name__ == "__main__":
             ],
             "past_annotations_limit": [None],
             "split_mode": [SplitMode.TEXTS],
-            "folds_num": [5],
-            "subset_ratio": [0.2],
-            "batch_size": [3000],
-            "test_fold_index": list(range(5)),  # This does cross-validation
+            "folds_num": [10],
+            "subset_ratio": [1],
+            "batch_size": [32],
+            "test_fold_index": [0],  # This does cross-validation
             "use_finetuned_embeddings": [False],
             "major_voting": [False],
-            "min_annotations_per_user_in_fold": [20],
+            "min_annotations_per_user_in_fold": [None],
+            "personalized_embeddings_cls": [
+                UserIdEmbeddings
+            ]
         }
     )
     model_kwargs_list = product_kwargs(
         {
-            "embedding_dim": [50],
-            "hidden_dim": [100],
+            "hidden_sizes": [
+                [400, 800, 1600, 800, 400],
+            ],  # used by MLP
+            "dropout": [0.2],  # used by MLP
         }
     )
     trainer_kwargs_list = product_kwargs(
@@ -95,17 +103,17 @@ if __name__ == "__main__":
             "flow_cls": StandardActiveLearningFlow,
             "extra_kwargs": {},
         },
-        {
-            "flow_cls": UnsupervisedActiveLearningFlow,
-            "extra_kwargs": {
-                "unsupervised_pretrainer": KmeansPretrainer(
-                    num_clusters=10,
-                    batch_size=32,
-                    wandb_project_name=wandb_project_name,  # TODO: Not sure about that
-                    number_of_epochs=9,
-                ),
-            },
-        },
+        # {
+        #     "flow_cls": UnsupervisedActiveLearningFlow,
+        #     "extra_kwargs": {
+        #         "unsupervised_pretrainer": KmeansPretrainer(
+        #             num_clusters=10,
+        #             batch_size=32,
+        #             wandb_project_name=wandb_project_name,  # TODO: Not sure about that
+        #             number_of_epochs=9,
+        #         ),
+        #     },
+        # },
     ]
     for (
         activelearning_kwargs,
