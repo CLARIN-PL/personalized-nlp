@@ -1,5 +1,6 @@
 # TODO: REFACTOR!!!!
 import os
+import warnings
 from itertools import product
 
 from pytorch_lightning.utilities.warnings import PossibleUserWarning
@@ -7,9 +8,7 @@ from pytorch_lightning.utilities.warnings import PossibleUserWarning
 import active_learning.algorithms as algorithms
 from personalized_active_learning.active_learning_flows import (
     StandardActiveLearningFlow,
-    UnsupervisedActiveLearningFlow,
 )
-from personalized_active_learning.algorithms import KmeansPretrainer
 from personalized_active_learning.datamodules import UnhealthyDataModule
 from personalized_active_learning.datamodules.base import SplitMode
 from personalized_active_learning.embeddings import EmbeddingsCreator
@@ -17,10 +16,8 @@ from personalized_active_learning.metrics.personal_metrics import (
     PersonalizedMetricsCallback,
 )
 from personalized_active_learning.models import PersonalizedBaseline
-
 from personalized_nlp.utils import seed_everything
 from personalized_nlp.utils.experiments import product_kwargs
-import warnings
 from settings import DATA_DIR
 
 # False positive https://github.com/Lightning-AI/lightning/issues/11856
@@ -40,8 +37,8 @@ if __name__ == "__main__":
             "text_selector_cls": [
                 algorithms.RandomSelector,
                 algorithms.BalancedConfidenceSelector,
-                #algorithms.BalancedClassesPerUserSelector,
-                #algorithms.BalancedClassesPerTextSelector,
+                # algorithms.BalancedClassesPerUserSelector,
+                # algorithms.BalancedClassesPerTextSelector,
                 # algorithms.ConfidenceSelector,
                 # algorithms.MaxPositiveClassSelector,
                 # algorithms.ConfidenceAllDimsSelector,
@@ -76,8 +73,10 @@ if __name__ == "__main__":
     )
     model_kwargs_list = product_kwargs(
         {
-            "embedding_dim": [50],
-            "hidden_dim": [100],
+            "hidden_sizes": [
+                [400, 800, 1600, 800, 400],
+            ],  # used by MLP
+            "dropout": [0.2],  # used by MLP
         }
     )
     trainer_kwargs_list = product_kwargs(
@@ -111,7 +110,9 @@ if __name__ == "__main__":
         seed_everything()
         data_module = datamodule_cls(**datamodule_kwargs)
         class_dimensions = data_module.classes_dimensions
-
+        embedding_dim = datamodule_kwargs[
+            "embeddings_creator"
+        ].text_embedding_dim
         text_selector_cls = activelearning_kwargs["text_selector_cls"]
         text_selector = text_selector_cls(
             class_dims=class_dimensions,
@@ -129,7 +130,9 @@ if __name__ == "__main__":
             wandb_project_name=wandb_project_name,
             wandb_entity_name=wandb_entity_name,
             model_output_dim=sum(class_dimensions),
-            model_embedding_dim=model_kwargs["embedding_dim"],
+            model_embedding_dim=embedding_dim,
+            model_hidden_dims=model_kwargs["hidden_sizes"],
+            model_dropout=model_kwargs["dropout"],
             text_selector=activelearning_kwargs["text_selector"],
             stratify_by_user=activelearning_kwargs["stratify_by_user"],
             logger_extra_metrics=dict(datamodule_kwargs),

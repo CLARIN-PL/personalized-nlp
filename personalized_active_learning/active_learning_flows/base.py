@@ -35,6 +35,7 @@ class ActiveLearningFlowBase(abc.ABC):
         model_output_dim: int,
         model_embedding_dim: int,
         model_hidden_dims: Optional[List[int]] = None,
+        model_dropout: float = 0.2,
         custom_callbacks: Optional[List[Callback]] = None,
         stratify_by_user: bool = False,
         wandb_entity_name: Optional[str] = None
@@ -71,6 +72,7 @@ class ActiveLearningFlowBase(abc.ABC):
                 initialization.
             model_hidden_dims Optional[List[int]]: Hidden dimensions sizes used in
                 `model_cls`initialization. Defaults to None.
+            model_dropout: (float): Model dropout rate.
             custom_callbacks (Optional[List[Callback]]): A list with custom callbacks for
                 `Trainer`.`SaveConfidencesCallback`, `ModelCheckpoint`
                 and `TQDMProgressBar` are always added. Defaults to None.
@@ -106,6 +108,7 @@ class ActiveLearningFlowBase(abc.ABC):
             "output_dim": model_output_dim,
             "embeding_dim": model_embedding_dim,
             "hidden_dims": model_hidden_dims,  # Added for future
+            "dropout": model_dropout,
         }
 
         self.trainer_params = {
