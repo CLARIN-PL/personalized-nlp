@@ -65,7 +65,7 @@ if __name__ == "__main__":
                 ),
             ],
             "past_annotations_limit": [None],
-            "split_mode": [SplitMode.TEXTS],
+            "split_mode": [SplitMode.USERS],
             "folds_num": [10],
             "subset_ratio": [1],
             "batch_size": [32],
