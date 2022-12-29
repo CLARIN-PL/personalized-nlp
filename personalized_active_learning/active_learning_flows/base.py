@@ -184,14 +184,26 @@ class ActiveLearningFlowBase(abc.ABC):
         if personalised_embeddings:
             personalised_embeddings = personalised_embeddings.__name__
 
+        logger = pl_loggers.WandbLogger(
+            save_dir=str(LOGS_DIR),
+            project=self.wandb_project_name,
+            entity=self.wandb_entity_name,
+            log_model=False,
+        )
+
+        seed_everything()  # Model's weights initialization
+        model = self.model_cls(
+            **self.model_params,
+        )
         lparams = {
             "dataset": type(dataset).__name__,
             "subset_ratio": self.subset_ratio,
             "dataset_size": len(dataset.data),
+            "total_annotations": len(annotations),
             "annotation_amount": self.annotated_amount,
             "text_selector": type(self.text_selector).__name__,
             "personalised_embeddings": personalised_embeddings,
-            "model": self.model_cls.__name__,
+            "model_name": type(model).__name__,
             "unique_texts_number": annotated_texts_number,
             "unique_annotator_number": annotator_number,
             "mean_positive": mean_positive,
@@ -201,17 +213,7 @@ class ActiveLearningFlowBase(abc.ABC):
             **self.trainer_params,
         }
 
-        logger = pl_loggers.WandbLogger(
-            save_dir=str(LOGS_DIR),
-            project=self.wandb_project_name,
-            entity=self.wandb_entity_name,
-            log_model=False,
-        )
         logger.experiment.config.update(lparams)
-        seed_everything()  # Model's weights initialization
-        model = self.model_cls(
-            **self.model_params,
-        )
         trainer = train_test(
             model=model, logger=logger, **self.flow_params, **self.trainer_params
         )

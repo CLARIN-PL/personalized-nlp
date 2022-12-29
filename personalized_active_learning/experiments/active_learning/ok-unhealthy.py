@@ -31,7 +31,7 @@ os.environ["WANDB_START_METHOD"] = "thread"
 
 
 if __name__ == "__main__":
-    wandb_project_name = "PNW_AL_Unhealthy_embeddings_debug"
+    wandb_project_name = "PNW_AL_Unhealthy_embeddings_debug_1"
     wandb_entity_name = None  # None if you don't want to use entity
     datamodule_cls = UnhealthyDataModule
     model_cls = PersonalizedBaseline
@@ -74,8 +74,8 @@ if __name__ == "__main__":
             "major_voting": [False],
             "min_annotations_per_user_in_fold": [None],
             "personalized_embeddings_cls": [
-                MultipleUserIdsEmbeddings,
-                UserIdEmbeddings,
+                # MultipleUserIdsEmbeddings,
+                # UserIdEmbeddings,
                 None
             ]
         }
