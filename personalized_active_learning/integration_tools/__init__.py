@@ -1,0 +1,1 @@
+from .pairwise_impl import pairwise
