@@ -93,7 +93,10 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         self.init_kwargs = locals()
         del self.init_kwargs["self"]
         del self.init_kwargs["__class__"]
+
         self.embeddings_creator = embeddings_creator
+        # Need to reset the name, because embeddings_creator is defined in a dict once
+        self.embeddings_creator.set_personalised_embeddings_name("")
         self.batch_size = batch_size
         self.split_mode = split_mode
         self.major_voting = major_voting
@@ -107,6 +110,8 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         self.min_annotations_per_user_in_fold = min_annotations_per_user_in_fold
         self.personalized_embeddings_cls = personalized_embeddings_cls
 
+        self._raw_text: np.ndarray  # Moved to self.setup
+
         # TODO: Move default value to same constants
         self.split_sizes = (
             split_sizes if split_sizes is not None else [0.55, 0.15, 0.15, 0.15]
@@ -114,7 +119,6 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         seed_everything(seed)
 
         self.data, self.annotations = self.load_data_and_annotations()
-        self._raw_text = self.data["text"].values
         self.setup()
 
     @property
@@ -235,6 +239,7 @@ class BaseDataModule(LightningDataModule, abc.ABC):
 
         self._validate_split_mode()
         self.data, self.annotations = self._apply_personalised_embeddings()
+        self._raw_text = self.data["text"].values  # I think that i can move it here
 
         if self.use_finetuned_embeddings:  # TODO: move to embedings?
             # TODO: Ugly hack but we probably don't have time to change that
@@ -242,7 +247,6 @@ class BaseDataModule(LightningDataModule, abc.ABC):
 
         texts = self.data["text"].tolist()
         self.text_embeddings = self.embeddings_creator.get_embeddings(texts=texts)
-
         assert len(self.data.index) == len(self.text_embeddings)
 
         self.data, self.annotations = self._generate_subset()
@@ -266,12 +270,12 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         `PersonalisedEmbedings` based classes. Modify `self.annotations` if neccessary
 
         Returns:
-            pd.DataFrame: Personalised texts in `self.data` and modified 
+            pd.DataFrame: Personalised texts in `self.data` and modified
                 `self.annotations`
         """
 
         if not self.personalized_embeddings_cls:
-            return self.data
+            return self.data, self.annotations
 
         personalised_embeddings = self.personalized_embeddings_cls(
             self.data,

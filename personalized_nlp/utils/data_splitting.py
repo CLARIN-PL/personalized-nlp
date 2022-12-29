@@ -18,7 +18,6 @@ def split_texts(df: pd.DataFrame, sizes: Sequence[float], split_column_name="tex
 
     df[split_column_name] = ""
     split_column_name_loc = df.columns.get_loc(split_column_name)
-    print(split_column_name)
 
     df.iloc[indexes[:present_idx], split_column_name_loc] = "present"
     df.iloc[indexes[present_idx:past_idx], split_column_name_loc] = "past"

@@ -102,7 +102,6 @@ class EmbeddingsCreator:
             model_name = TRANSFORMER_MODEL_STRINGS[self.embeddings_type]
         else:
             model_name = self.embeddings_type
-        print(f"Creating {self.embeddings_path}")
         create_embeddings(
             texts,
             self.embeddings_path,

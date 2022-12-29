@@ -179,12 +179,19 @@ class ActiveLearningFlowBase(abc.ABC):
             annotated_annotations["annotator_id"].value_counts().median()
         )
 
+        personalised_embeddings = self.dataset.personalized_embeddings_cls
+
+        if personalised_embeddings:
+            personalised_embeddings = personalised_embeddings.__name__
+
         lparams = {
             "dataset": type(dataset).__name__,
             "subset_ratio": self.subset_ratio,
             "dataset_size": len(dataset.data),
             "annotation_amount": self.annotated_amount,
             "text_selector": type(self.text_selector).__name__,
+            "personalised_embeddings": personalised_embeddings,
+            "model": self.model_cls.__name__,
             "unique_texts_number": annotated_texts_number,
             "unique_annotator_number": annotator_number,
             "mean_positive": mean_positive,
