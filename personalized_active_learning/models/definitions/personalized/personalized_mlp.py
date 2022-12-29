@@ -1,6 +1,5 @@
 from collections import OrderedDict
-from itertools import pairwise
-from typing import Optional
+from typing import Optional, List
 
 import torch
 import torch.nn as nn
@@ -8,13 +7,18 @@ import torch.nn as nn
 from personalized_active_learning.datamodules import TextFeaturesBatch
 from personalized_active_learning.models.interface import IModel
 
+try:
+    from itertools import pairwise
+except ImportError:
+    from personalized_active_learning.integration_tools import pairwise
+
 
 class PersonalizedMlp(IModel):
     def __init__(
         self,
         output_dim: int = 2,
         text_embedding_dim: int = 768,
-        hidden_sizes: Optional[list[int]] = None,
+        hidden_sizes: Optional[List[int]] = None,
         dropout: float = 0.2,
         **kwargs,
     ):
