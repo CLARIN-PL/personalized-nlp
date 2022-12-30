@@ -1,7 +1,6 @@
 import abc
 from enum import Enum
 from typing import List, Optional, Tuple
-import swifter
 
 import numpy as np
 import pandas as pd
@@ -81,7 +80,7 @@ class BaseDataModule(LightningDataModule, abc.ABC):
             min_annotations_per_user_in_fold: If not none filter out annotators who:
                 have less than `min_annotations_per_user_in_fold` annotations in each fold
                 or have less than one annotations per each (class_dim, fold) pair
-            personalized_embeddings_type: Value indicates usage of personalized data 
+            personalized_embeddings_type: Value indicates usage of personalized data
                 in embeddings. Currently available options are:
                     - "": no personalisation.
                     - "annotator_id": add `annotator_id` to texts.
@@ -239,7 +238,7 @@ class BaseDataModule(LightningDataModule, abc.ABC):
 
         self._validate_split_mode()
         self.data, self.annotations = self._apply_personalised_embeddings()
-        self._raw_text = self.data["text"].values  # I think that i can move it here
+        self._raw_text = self.data["text"].values
 
         if self.use_finetuned_embeddings:  # TODO: move to embedings?
             # TODO: Ugly hack but we probably don't have time to change that
