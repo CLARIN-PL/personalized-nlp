@@ -8,6 +8,7 @@ from typing import List
 
 import numpy as np
 import torch
+import logging
 
 from settings import EMBEDDINGS_SIZES, TRANSFORMER_MODEL_STRINGS
 from personalized_nlp.utils.embeddings import create_embeddings
@@ -85,6 +86,7 @@ class EmbeddingsCreator:
         return self._load_embeddings()
 
     def _load_embeddings(self) -> torch.Tensor:
+        logging.info("Loading embeddings from %s" % (self.embeddings_path))
         with open(self.embeddings_path, "rb") as f:
             text_idx_to_emb = pickle.load(f)
 

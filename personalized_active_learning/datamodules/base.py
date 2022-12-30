@@ -1,6 +1,7 @@
 import abc
 from enum import Enum
 from typing import List, Optional, Tuple
+import logging
 
 import numpy as np
 import pandas as pd
@@ -279,6 +280,10 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         personalised_embeddings = self.personalized_embeddings_cls(
             self.data,
             self.annotations
+        )
+
+        logging.info(
+            "Preparing personalised embeddings: %s" % personalised_embeddings.name
         )
 
         self.embeddings_creator.set_personalised_embeddings_name(
