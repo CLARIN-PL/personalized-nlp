@@ -9,7 +9,10 @@ from personalized_active_learning.active_learning_flows import (
     StandardActiveLearningFlow,
     UnsupervisedActiveLearningFlow,
 )
+from personalized_active_learning.active_learning_flows.definitions.self_supervised import \
+    SelfSupervisedActiveLearningFlow
 from personalized_active_learning.algorithms import KmeansPretrainer
+from personalized_active_learning.algorithms.label_propagation import RandomForestPropagator
 from personalized_active_learning.datamodules import UnhealthyDataModule
 from personalized_active_learning.datamodules.base import SplitMode
 from personalized_active_learning.embeddings import EmbeddingsCreator
@@ -27,7 +30,6 @@ from settings import DATA_DIR
 warnings.filterwarnings("ignore", category=PossibleUserWarning)
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 os.environ["WANDB_START_METHOD"] = "thread"
-
 
 if __name__ == "__main__":
     wandb_project_name = "PNW_AL_Unhealthy_subset_20"
@@ -91,18 +93,16 @@ if __name__ == "__main__":
     )
     active_learning_flows = [
         {
-            "flow_cls": StandardActiveLearningFlow,
-            "extra_kwargs": {},
-        },
-        {
-            "flow_cls": UnsupervisedActiveLearningFlow,
+            "flow_cls": SelfSupervisedActiveLearningFlow,
             "extra_kwargs": {
-                "unsupervised_pretrainer": KmeansPretrainer(
-                    num_clusters=10,
-                    batch_size=32,
+                "label_propagator": RandomForestPropagator(
                     wandb_project_name=wandb_project_name,  # TODO: Not sure about that
-                    number_of_epochs=9,
+                    random_seed=28,
+                    n_estimators=200
                 ),
+                # "self_supervised_trainer": RandomForestPropagator(
+                #
+                # ),
             },
         },
     ]
