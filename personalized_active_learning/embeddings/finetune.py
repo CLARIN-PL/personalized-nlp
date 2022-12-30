@@ -22,8 +22,12 @@ def fine_tune_embeddings(
     split_mode_str = original_dataset.split_mode.value
     data_dir = original_dataset.embeddings_creator.directory
     test_fold_index = original_dataset.test_fold_index
-
-    embeddings_path = data_dir / f"{embeddings_type}_{test_fold_index}_{split_mode_str}.p"
+    personalisation_type = \
+        original_dataset.embeddings_creator.personalised_embeddings_name
+    file_name = f"{embeddings_type}_{test_fold_index}_{split_mode_str}.p"
+    if personalisation_type != "":
+        file_name = f"personalised_{personalisation_type}_{file_name}"
+    embeddings_path = data_dir / file_name
     # IMPORTANT we need to change path in original creator
     original_dataset.embeddings_creator.path = embeddings_path
     # Embedding already created

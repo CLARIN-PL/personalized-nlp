@@ -6,11 +6,15 @@ import numpy as np
 import pandas as pd
 import torch
 from pytorch_lightning import LightningDataModule, seed_everything
+
 from torch.utils.data import DataLoader
 
 from personalized_active_learning.datamodules.types import TextFeaturesBatchDataset
 from personalized_active_learning.embeddings import EmbeddingsCreator
 from personalized_active_learning.embeddings.finetune import fine_tune_embeddings
+from personalized_active_learning.embeddings.personalised.base import (
+    PersonalisedEmbeddings
+)
 from personalized_nlp.utils.biases import get_annotator_biases
 from personalized_nlp.utils.data_splitting import split_texts
 
@@ -38,6 +42,7 @@ class BaseDataModule(LightningDataModule, abc.ABC):
     def __init__(
         self,
         embeddings_creator: EmbeddingsCreator,
+        personalized_embeddings_cls: Optional[PersonalisedEmbeddings] = None,
         batch_size: int = 3000,
         split_mode: SplitMode = SplitMode.TEXTS,
         subset_ratio: float = 1.0,
@@ -75,6 +80,10 @@ class BaseDataModule(LightningDataModule, abc.ABC):
             min_annotations_per_user_in_fold: If not none filter out annotators who:
                 have less than `min_annotations_per_user_in_fold` annotations in each fold
                 or have less than one annotations per each (class_dim, fold) pair
+            personalized_embeddings_type: Value indicates usage of personalized data
+                in embeddings. Currently available options are:
+                    - "": no personalisation.
+                    - "annotator_id": add `annotator_id` to texts.
             seed: Will be removed.
 
         """
@@ -83,7 +92,10 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         self.init_kwargs = locals()
         del self.init_kwargs["self"]
         del self.init_kwargs["__class__"]
+
         self.embeddings_creator = embeddings_creator
+        # Need to reset the name, because embeddings_creator is defined in a dict once
+        self.embeddings_creator.set_personalised_embeddings_name("")
         self.batch_size = batch_size
         self.split_mode = split_mode
         self.major_voting = major_voting
@@ -95,6 +107,9 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         self.subset_ratio = subset_ratio
         self.use_finetuned_embeddings = use_finetuned_embeddings
         self.min_annotations_per_user_in_fold = min_annotations_per_user_in_fold
+        self.personalized_embeddings_cls = personalized_embeddings_cls
+
+        self._raw_text: np.ndarray  # Moved to self.setup
 
         # TODO: Move default value to same constants
         self.split_sizes = (
@@ -103,7 +118,6 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         seed_everything(seed)
 
         self.data, self.annotations = self.load_data_and_annotations()
-        self._raw_text = self.data["text"].values
         self.setup()
 
     @property
@@ -212,18 +226,21 @@ class BaseDataModule(LightningDataModule, abc.ABC):
 
         Prepare data to use. Currently this method:
             1. Checks if split mode has valid parameters
-            2. Finetunes text embeddings if needed.
-            3. Creates subset of data if needed
-            4. Splits data into training, validation, test sets.
-            5. Limits annotations if needed.
-            6. Filters annotations if needed.
-            7. Computes annotators biases.
-            8. Applies major voting mechanism if needed.
+            2. Apply personalisation to the text dataset
+            3. Finetunes text embeddings if needed.
+            4. Creates subset of data if needed
+            5. Splits data into training, validation, test sets.
+            6. Limits annotations if needed.
+            7. Filters annotations if needed.
+            8. Computes annotators biases.
+            9. Applies major voting mechanism if needed.
         """
 
         self._validate_split_mode()
+        self.data, self.annotations = self._apply_personalised_embeddings()
+        self._raw_text = self.data["text"].values
 
-        if self.use_finetuned_embeddings:
+        if self.use_finetuned_embeddings:  # TODO: move to embedings?
             # TODO: Ugly hack but we probably don't have time to change that
             fine_tune_embeddings(self)
 
@@ -244,6 +261,31 @@ class BaseDataModule(LightningDataModule, abc.ABC):
 
         if self.major_voting:
             self.compute_major_votes()
+
+    def _apply_personalised_embeddings(self) -> Tuple[pd.DataFrame, pd.DataFrame]:
+        """Apply personalisation to text data with `self.personalized_embeddings_cls`
+
+        Modify `self.data.text` with user informations with rules defined in
+        `PersonalisedEmbedings` based classes. Modify `self.annotations` if neccessary
+
+        Returns:
+            pd.DataFrame: Personalised texts in `self.data` and modified
+                `self.annotations`
+        """
+
+        if not self.personalized_embeddings_cls:
+            return self.data, self.annotations
+
+        personalised_embeddings = self.personalized_embeddings_cls(
+            self.data,
+            self.annotations
+        )
+
+        self.embeddings_creator.set_personalised_embeddings_name(
+            personalised_embeddings.name
+        )
+
+        return personalised_embeddings.apply_personalisation()
 
     def _generate_subset(self) -> Tuple[pd.DataFrame, pd.DataFrame]:
         """Generate subset of dataset

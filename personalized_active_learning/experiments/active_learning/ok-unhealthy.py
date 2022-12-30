@@ -31,8 +31,8 @@ os.environ["WANDB_START_METHOD"] = "thread"
 
 
 if __name__ == "__main__":
-    wandb_project_name = "PNW_AL_Unhealthy_tests"
-    wandb_entity_name = "be-active"  # None if you don't want to use entity
+    wandb_project_name = "PNW_AL_Unhealthy_embeddings_debug_1"
+    wandb_entity_name = None  # None if you don't want to use entity
     datamodule_cls = UnhealthyDataModule
     model_cls = PersonalizedBaseline
     use_cuda = True
@@ -65,7 +65,7 @@ if __name__ == "__main__":
                 ),
             ],
             "past_annotations_limit": [None],
-            "split_mode": [SplitMode.TEXTS],
+            "split_mode": [SplitMode.USERS],
             "folds_num": [10],
             "subset_ratio": [1],
             "batch_size": [32],
@@ -73,7 +73,11 @@ if __name__ == "__main__":
             "use_finetuned_embeddings": [False],
             "major_voting": [False],
             "min_annotations_per_user_in_fold": [None],
-            "personalized_embeddings_cls": [None]
+            "personalized_embeddings_cls": [
+                # MultipleUserIdsEmbeddings,
+                # UserIdEmbeddings,
+                None
+            ]
         }
     )
     model_kwargs_list = product_kwargs(
@@ -86,8 +90,8 @@ if __name__ == "__main__":
     )
     trainer_kwargs_list = product_kwargs(
         {
-            "epochs": [20],
-            "lr": [0.0001],
+            "epochs": [1],
+            "lr": [0.001],
             "use_cuda": [use_cuda],
             "monitor_metric": ["valid_loss"],
             "monitor_mode": ["min"],

@@ -20,7 +20,7 @@ class EmbeddingsCreator:
         self,
         directory: Path,
         embeddings_type: str,
-        use_cuda: bool,
+        use_cuda: bool
     ) -> None:
         """Initialize object.
 
@@ -33,11 +33,18 @@ class EmbeddingsCreator:
         if embeddings_type not in EMBEDDINGS_SIZES:
             raise Exception(f"Embedding type {embeddings_type} is invalid.")
         self.directory = directory
-        self.path = self.directory / f"text_id_to_emb_{embeddings_type}.p"
         # TODO: Not sure why but CUDA might not be available here
         # That was the same in original code
         self.use_cuda = use_cuda and torch.cuda.is_available()
         self.embeddings_type = embeddings_type
+        self.personalised_embeddings_name = ""
+
+    @property
+    def embeddings_path(self) -> Path:
+        file_name = f"text_id_to_emb_{self.embeddings_type}.p"
+        if self.personalised_embeddings_name != "":
+            file_name = f"personalised_{self.personalised_embeddings_name}_{file_name}"
+        return self.directory / file_name
 
     @property
     def text_embedding_dim(self) -> int:
@@ -52,6 +59,20 @@ class EmbeddingsCreator:
 
         return EMBEDDINGS_SIZES[self.embeddings_type]
 
+    def set_personalised_embeddings_name(
+        self,
+        personalised_embeddings_name: str
+    ):
+        """Set value of `personalized_embeddings_type` field.
+
+        The name of personalized data in embeddings.
+
+        Args:
+            personalisation_name (str, optional): Personalisation type.
+        """
+
+        self.personalised_embeddings_name = personalised_embeddings_name
+
     def get_embeddings(self, texts: List[str]) -> torch.Tensor:
         """Get the texts embeddings.
 
@@ -59,12 +80,12 @@ class EmbeddingsCreator:
             The text embeddings.
 
         """
-        if not self.path.exists():
+        if not self.embeddings_path.exists():
             self._create_embeddings(texts)
         return self._load_embeddings()
 
     def _load_embeddings(self) -> torch.Tensor:
-        with open(self.path, "rb") as f:
+        with open(self.embeddings_path, "rb") as f:
             text_idx_to_emb = pickle.load(f)
 
         embeddings = []
@@ -81,10 +102,9 @@ class EmbeddingsCreator:
             model_name = TRANSFORMER_MODEL_STRINGS[self.embeddings_type]
         else:
             model_name = self.embeddings_type
-
         create_embeddings(
             texts,
-            self.path,
+            self.embeddings_path,
             model_name=model_name,
             use_cuda=self.use_cuda,
         )
