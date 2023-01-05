@@ -1,2 +1,4 @@
 from .multiple_user_ids import MultipleUserIdsEmbeddings
 from .user_id import UserIdEmbeddings
+from .tokenized_multiple_user_ids import TokenizedMultipleUserIdsEmbeddings
+from .tokenized_user_id import TokenizedUserIdEmbeddings

@@ -1,4 +1,4 @@
-from typing import List
+from typing import Dict, List, Optional
 from transformers import AutoTokenizer, AutoModel
 from sentence_transformers import SentenceTransformer
 import torch
@@ -48,7 +48,8 @@ def create_embeddings(
     texts,
     embeddings_path: str,
     model_name: str = 'xlm-roberta-base',
-    use_cuda: bool = True
+    use_cuda: bool = True,
+    additional_special_tokens: Dict[str, Optional[List[str]]] = None
 ):
 
     if model_name == 'random':
@@ -57,8 +58,9 @@ def create_embeddings(
         embeddings = create_fasttext_embeddings(texts, model_name)
     else:
         tokenizer = AutoTokenizer.from_pretrained(model_name)
+        tokenizer.add_special_tokens(additional_special_tokens)
         model = AutoModel.from_pretrained(model_name)
-
+        model.resize_token_embeddings(len(tokenizer))
         if use_cuda:
             model = model.to('cuda')
 

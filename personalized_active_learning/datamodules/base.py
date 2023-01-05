@@ -240,9 +240,10 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         self.data, self.annotations = self._apply_personalised_embeddings()
         self._raw_text = self.data["text"].values
 
-        if self.use_finetuned_embeddings:  # TODO: move to embedings?
-            # TODO: Ugly hack but we probably don't have time to change that
-            fine_tune_embeddings(self)
+        # if self.use_finetuned_embeddings:  # TODO: move to embedings?
+        #     # TODO: Ugly hack but we probably don't have time to change that
+        #     # TODO: I wanna die
+        #     fine_tune_embeddings(self)  # apply_personalised_embeddings way like here
 
         texts = self.data["text"].tolist()
         self.text_embeddings = self.embeddings_creator.get_embeddings(texts=texts)
@@ -285,7 +286,13 @@ class BaseDataModule(LightningDataModule, abc.ABC):
             personalised_embeddings.name
         )
 
-        return personalised_embeddings.apply_personalisation()
+        result = personalised_embeddings.apply_personalisation()
+
+        self.embeddings_creator.set_additional_special_tokens(
+            personalised_embeddings.get_special_tokens()
+        )
+
+        return result
 
     def _generate_subset(self) -> Tuple[pd.DataFrame, pd.DataFrame]:
         """Generate subset of dataset

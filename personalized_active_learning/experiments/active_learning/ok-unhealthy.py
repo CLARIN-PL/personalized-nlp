@@ -14,7 +14,9 @@ from personalized_active_learning.datamodules.base import SplitMode
 from personalized_active_learning.embeddings import EmbeddingsCreator
 from personalized_active_learning.embeddings.personalised import (
     MultipleUserIdsEmbeddings,
-    UserIdEmbeddings
+    UserIdEmbeddings,
+    TokenizedMultipleUserIdsEmbeddings,
+    TokenizedUserIdEmbeddings
 )
 from personalized_active_learning.metrics.personal_metrics import (
     PersonalizedMetricsCallback,
@@ -31,7 +33,7 @@ os.environ["WANDB_START_METHOD"] = "thread"
 
 
 if __name__ == "__main__":
-    wandb_project_name = "PNW_AL_Unhealthy_embeddings_debug_1"
+    wandb_project_name = "PNW_AL_Unhealthy_tokenized_embeddings"
     wandb_entity_name = None  # None if you don't want to use entity
     datamodule_cls = UnhealthyDataModule
     model_cls = PersonalizedBaseline
@@ -51,7 +53,7 @@ if __name__ == "__main__":
             ],
             "max_amount": [50_000],
             "step_size": [2_000],
-            "amount_per_user": [2**8],
+            "amount_per_user": [2**6],
             "stratify_by_user": [True],
         }
     )
@@ -76,7 +78,8 @@ if __name__ == "__main__":
             "personalized_embeddings_cls": [
                 # MultipleUserIdsEmbeddings,
                 # UserIdEmbeddings,
-                None
+                TokenizedMultipleUserIdsEmbeddings
+                # None
             ]
         }
     )

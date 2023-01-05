@@ -4,7 +4,7 @@
 """Single class responsible for creation of each possible embedding."""
 import pickle
 from pathlib import Path
-from typing import List
+from typing import Dict, List, Optional
 
 import numpy as np
 import torch
@@ -38,6 +38,7 @@ class EmbeddingsCreator:
         self.use_cuda = use_cuda and torch.cuda.is_available()
         self.embeddings_type = embeddings_type
         self.personalised_embeddings_name = ""
+        self._special_tokens = None
 
     @property
     def embeddings_path(self) -> Path:
@@ -73,7 +74,23 @@ class EmbeddingsCreator:
 
         self.personalised_embeddings_name = personalised_embeddings_name
 
-    def get_embeddings(self, texts: List[str]) -> torch.Tensor:
+    def set_additional_special_tokens(
+        self,
+        special_tokens: Dict[str, Optional[List[str]]]
+    ):
+        """Save `additional_special_tokens` for tokenizer.
+           Usually contains user id tokens.
+
+        Args:
+            special_tokens (Dict[str, Optional[List[str]]]): Additional tokens for
+                tokenizer
+        """
+        self._special_tokens = special_tokens
+
+    def get_embeddings(
+        self,
+        texts: List[str]
+    ) -> torch.Tensor:
         """Get the texts embeddings.
 
         Returns:
@@ -107,4 +124,5 @@ class EmbeddingsCreator:
             self.embeddings_path,
             model_name=model_name,
             use_cuda=self.use_cuda,
+            additional_special_tokens=self._special_tokens
         )

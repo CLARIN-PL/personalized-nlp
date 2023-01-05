@@ -1,7 +1,7 @@
 import pandas as pd
 
 from abc import ABC, abstractmethod, abstractproperty
-from typing import Tuple
+from typing import List, Optional, Tuple
 
 
 class PersonalisedEmbeddings(ABC):
@@ -22,6 +22,7 @@ class PersonalisedEmbeddings(ABC):
 
         self.data = texts_data
         self.annotations = annotations
+        self._special_tokens = None
 
     @abstractproperty
     def name(self) -> str:
@@ -43,3 +44,9 @@ class PersonalisedEmbeddings(ABC):
                 `annotations` and `text_data`
         """
         raise NotImplementedError()
+
+    def get_special_tokens(self) -> dict[str, Optional[List[str]]]:
+        """Return special tokens (usually used in tokenized methods"""
+        return {
+            "additional_special_tokens": self._special_tokens
+            }
