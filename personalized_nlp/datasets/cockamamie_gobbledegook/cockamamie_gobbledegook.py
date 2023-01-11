@@ -11,13 +11,11 @@ from personalized_nlp.datasets.datamodule_base import BaseDataModule
 class CockamamieGobbledegookDataModule(BaseDataModule):
     @property
     def annotations_file(self) -> str:
-        return (
-            f"cockamamie_gobbledegook_annotations_e_{self.stratify_folds_by}_folds.csv"
-        )
+        return f"cockamamie_annotations_only_controversial_a_non_empty_{self.stratify_folds_by}_folds.csv"
 
     @property
     def data_file(self) -> str:
-        return "cockamamie_gobbledegook_texts_e_processed.csv"
+        return "cockamamie_texts_only_controversial_a_non_empty_processed.csv"
 
     @property
     def embeddings_path(self) -> Path:
