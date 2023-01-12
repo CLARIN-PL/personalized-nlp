@@ -6,20 +6,10 @@ from typing import List
 import pandas as pd
 
 from settings import DATA_DIR
-from personalized_nlp.utils.data_splitting import split_texts
 from personalized_nlp.datasets.datamodule_base import BaseDataModule
 
 
 class MeasuringHateSpeechDataModule(BaseDataModule):
-
-    @property
-    def annotations_file(self) -> str:
-        return f'annotations.tsv'
-
-    @property
-    def data_file(self) -> str:
-        return f'data.tsv'
-
     @property
     def data_dir(self) -> Path:
         return DATA_DIR / "measuring_hate_speech"
@@ -49,11 +39,14 @@ class MeasuringHateSpeechDataModule(BaseDataModule):
     @property
     def annotation_columns(self) -> List[str]:
         return [
-            "sentiment", "respect", "insult", "humiliate", "status",
-            "dehumanize", "violence", "genocide", "attack_defend", "hatespeech"
+            "sentiment",
+            "respect",
+            "insult",
+            "humiliate",
+            "status",
+            "dehumanize",
+            "violence",
+            "genocide",
+            "attack_defend",
+            "hatespeech",
         ]
-
-    @property
-    def embeddings_path(self) -> Path:
-        return (self.data_dir /
-                f"embeddings/rev_id_to_emb_{self.embeddings_type}.p")

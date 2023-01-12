@@ -17,9 +17,6 @@ class CockamamieGobbledegookDataModule(BaseDataModule):
     def data_file(self) -> str:
         return "cockamamie_texts_only_controversial_a_non_empty_processed.csv"
 
-    @property
-    def embeddings_path(self) -> Path:
-        return self.data_dir / f"embeddings/text_id_to_emb_{self.embeddings_type}.p"
 
     @property
     def data_dir(self) -> Path:
@@ -42,9 +39,9 @@ class CockamamieGobbledegookDataModule(BaseDataModule):
         os.makedirs(self.data_dir / "embeddings", exist_ok=True)
 
     def prepare_data(self) -> None:
-        self.data = pd.read_csv(self.data_dir / "texts" / self.data_file)
+        self.data = pd.read_csv(self.data_dir /  self.data_file)
         self.data["text"] = self.data["text_english"]
 
         self.annotations = pd.read_csv(
-            self.data_dir / "texts" / self.annotations_file
+            self.data_dir /  self.annotations_file
         ).dropna()

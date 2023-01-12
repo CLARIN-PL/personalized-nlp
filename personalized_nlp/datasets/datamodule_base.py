@@ -30,17 +30,17 @@ class BaseDataModule(LightningDataModule, abc.ABC):
     def annotation_columns(self) -> List[str]:
         raise NotImplementedError()
 
-    @abc.abstractproperty
+    @property
     def embeddings_path(self) -> Path:
-        raise NotImplementedError()
+        return self.data_dir / f"embeddings/text_id_to_emb_{self.embeddings_type}.p"
 
-    @abc.abstractproperty
+    @property
     def annotations_file(self) -> str:
-        raise NotImplementedError()
+        return f"annotations_{self.stratify_folds_by}_folds.csv"
 
-    @abc.abstractproperty
+    @property
     def data_file(self) -> str:
-        raise NotImplementedError()
+        return f"data_processed.csv"
 
     @abc.abstractproperty
     def data_dir(self) -> Path:
@@ -111,7 +111,6 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         test_fold: Optional[int] = None,
         min_annotations_per_user_in_fold: Optional[int] = None,
         seed: int = 22,
-        filter_train_annotations_path: Optional[str] = None,
         use_cuda: bool = False,
         **kwargs,
     ):
@@ -163,19 +162,10 @@ class BaseDataModule(LightningDataModule, abc.ABC):
 
         seed_everything(seed)
 
+        os.makedirs(self.data_dir / "embeddings", exist_ok=True)
+
         self.prepare_data()
         self.setup()
-
-    #     self.filter_train_dict = self._setup_filter_train_annotations(filter_train_annotations_path)
-
-    # def _setup_filter_train_annotations(self, filter_annotations_path: str) -> Optional[Dict]:
-    #     if filter_annotations_path is None:
-    #         return None
-    #     filter_dict = {}
-    #     for file in glob.glob(os.path.join(filter_annotations_path, '*')):
-    #         fold = int(re.search("(?<=fold_)([0-9]+)(?=\_)", file).group())
-    #         filter_dict[fold] = file
-    #     return filter_dict
 
     def _create_embeddings(self) -> None:
         texts = self.data["text"].tolist()

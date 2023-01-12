@@ -9,19 +9,6 @@ from personalized_nlp.datasets.datamodule_base import BaseDataModule
 
 
 class JesterDataModule(BaseDataModule):
-    
-    @property 
-    def annotations_file(self) -> str:
-        return f'jester_annotations_{self.stratify_folds_by}_folds.csv'
-    
-    @property 
-    def data_file(self) -> str:
-        return f'data_processed.csv'
-    
-    @property
-    def embeddings_path(self) -> Path:
-        return self.data_dir / f"embeddings/text_id_to_emb_{self.embeddings_type}.p"
-
     @property
     def data_dir(self) -> Path:
         return DATA_DIR / "jester"
@@ -35,7 +22,9 @@ class JesterDataModule(BaseDataModule):
         return [2]
 
     def __init__(
-        self, binarize=False, **kwargs,
+        self,
+        binarize=False,
+        **kwargs,
     ):
         super().__init__(**kwargs)
 
@@ -46,9 +35,7 @@ class JesterDataModule(BaseDataModule):
     def prepare_data(self) -> None:
         self.data = pd.read_csv(self.data_dir / self.data_dir)
 
-        self.annotations = pd.read_csv(
-            self.data_dir / self.annotations_file
-        ).dropna()
+        self.annotations = pd.read_csv(self.data_dir / self.annotations_file).dropna()
         if self.binarize:
             self.binarize_labels()
 

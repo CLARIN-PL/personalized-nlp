@@ -1,0 +1,4 @@
+outs:
+- md5: db29a521680fea47d9bfc27281ec12f9
+  size: 174460
+  path: cockamamie_texts_only_controversial_a_non_empty.csv

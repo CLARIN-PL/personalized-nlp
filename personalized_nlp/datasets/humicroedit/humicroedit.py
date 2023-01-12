@@ -11,16 +11,6 @@ from personalized_nlp.datasets.datamodule_base import BaseDataModule
 
 
 class HumicroeditDataModule(BaseDataModule):
-
-
-    @property 
-    def annotations_file(self) -> str:
-        return f'annotations_{self.stratify_folds_by}_folds.csv'
-    
-    @property 
-    def data_file(self) -> str:
-        return f'data_processed.csv'
-    
     @property
     def data_dir(self) -> Path:
         return DATA_DIR / "humicroedit"
@@ -52,8 +42,3 @@ class HumicroeditDataModule(BaseDataModule):
     @property
     def annotation_columns(self) -> List[str]:
         return ["is_funny"]
-
-    @property
-    def embeddings_path(self) -> Path:
-        return (self.data_dir /
-                f"embeddings/rev_id_to_emb_{self.embeddings_type}.p")
