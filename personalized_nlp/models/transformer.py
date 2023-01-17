@@ -62,6 +62,10 @@ class TransformerUserId(nn.Module):
         if self.use_cuda:
             batch_encoding = batch_encoding.to("cuda")
 
-        emb = model(**batch_encoding).pooler_output
+        output = model(**batch_encoding)
+        if hasattr(output, 'pooler_output'):
+            emb = output.pooler_output
+        else:
+            emb = output.last_hidden_state[:, 0, :]
 
         return self.fc1(emb)
