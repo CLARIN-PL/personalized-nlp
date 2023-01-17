@@ -41,11 +41,11 @@ def _get_embeddings(texts, tokenizer, model, max_seq_len=256, use_cuda=False, me
             mask = batch_encoding["attention_mask"] > 0
 
             for i in range(emb[0].size()[0]):
-                emb = emb[0][i, mask[i] > 0, :].mean(axis=0)[None, :]
-                all_embeddings.append(emb)
+                emb_pooled = emb[0][i, mask[i] > 0, :].mean(axis=0)[None, :]
+                all_embeddings.append(emb_pooled)
         else:
-            emb = emb.last_hidden_state[:, 0, :].to("cpu")
-            all_embeddings.append(emb)
+            emb_pooled = emb.last_hidden_state[:, 0, :]
+            all_embeddings.append(emb_pooled)
             
 
     return torch.cat(all_embeddings, axis=0).to("cpu")

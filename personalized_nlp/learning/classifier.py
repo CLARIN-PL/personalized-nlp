@@ -10,7 +10,7 @@ from personalized_nlp.utils.metrics import F1Class, PrecisionClass, RecallClass
 
 class Classifier(pl.LightningModule):
     def __init__(
-        self, model, class_dims, lr: float, class_names=None, log_valid_metrics=False
+        self, model, class_dims, lr: float, class_names=None, log_valid_metrics=False, ignore_index=-1,
     ) -> None:
 
         super(Classifier, self).__init__()
@@ -24,6 +24,7 @@ class Classifier(pl.LightningModule):
 
         self.metric_types = ("accuracy", "precision", "recall", "f1", "macro_f1")
         self.log_valid_metrics = log_valid_metrics
+        self.ignore_index = ignore_index
 
         class_metrics = {}
 
@@ -66,7 +67,7 @@ class Classifier(pl.LightningModule):
             start_idx = sum(class_dims[:cls_idx])
             end_idx = start_idx + class_dims[cls_idx]
 
-            loss = loss + nn.CrossEntropyLoss()(
+            loss = loss + nn.CrossEntropyLoss(ignore_index=self.ignore_index)(
                 output[:, start_idx:end_idx], y[:, cls_idx].long()
             )
 
