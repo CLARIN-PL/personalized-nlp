@@ -24,14 +24,14 @@ class DoccanoDataModule(BaseDataModule):
 
     def __init__(
         self,
-        empty_annotations_strategy: Optional[str]=None,
+        empty_annotations_strategy: Optional[str] = None,
         **kwargs,
     ):
         """
         Args:
-            empty_annotations_strategy (str, optional): What to do with empty (-1) annotations. 
+            empty_annotations_strategy (str, optional): What to do with empty (-1) annotations.
             If None, the text with any number of empty task annotation is still used in learning process,
-            but it is ignored in loss/metric calculation. If "drop", the annotations with 
+            but it is ignored in loss/metric calculation. If "drop", the annotations with
             any empty task annotations in traning dataset are dropped. Defaults to None.
         """
         self.empty_annotations_strategy = empty_annotations_strategy
@@ -47,20 +47,22 @@ class DoccanoDataModule(BaseDataModule):
         if self.empty_annotations_strategy == "drop":
             any_empty_annotation_mask = (self.annotations == -1).any(axis=1)
             train_fold_mask = self.annotations.fold.isin(self.train_folds)
-            self.annotations = self.annotations.loc[~(any_empty_annotation_mask & train_fold_mask)].reset_index(drop=True)
+            self.annotations = self.annotations.loc[
+                ~(any_empty_annotation_mask & train_fold_mask)
+            ].reset_index(drop=True)
 
         if not self.regression:
+
             def get_class_label(val):
                 if val == 0:
                     return 0
-                elif val > 0 :
+                elif val > 0:
                     return 1
                 else:
                     return -1
 
             for col in self.annotation_columns:
                 self.annotations[col] = self.annotations[col].apply(get_class_label)
-            
 
     @property
     def class_dims(self) -> List[int]:
@@ -87,10 +89,10 @@ class DoccanoDataModule(BaseDataModule):
             "Polityczny",
             "Interesujący",
             "Zrozumiały",
-            "Zgadzam się z tekstem",
-            "Wierzę w tę informację",
+            # "Zgadzam się z tekstem",
+            # "Wierzę w tę informację",
             "Potrzebuję więcej informacji, aby ocenić ten tekst",
-            "Czuję sympatię do autora",
+            # "Czuję sympatię do autora",
             "Obraża mnie",
             "Może kogoś atakować / obrażać / lekceważyć",
             "Mnie bawi/śmieszy?",
