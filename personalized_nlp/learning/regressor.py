@@ -106,7 +106,6 @@ class Regressor(pl.LightningModule):
 
         log_dict = {}
         for metric_type in self.metric_types:
-            metric_values = []
             for class_idx, class_name in enumerate(class_names):
                 class_output = output[:, class_idx]
                 class_y = y[:, class_idx]
@@ -116,9 +115,8 @@ class Regressor(pl.LightningModule):
                     class_y = class_y[class_y != self.ignore_index]
 
                 metric_key = f"{split}_{metric_type}_{class_name}"
-                metric_value = self.metrics[metric_key].update(class_output, class_y)
+                self.metrics[metric_key].update(class_output, class_y)
 
-                metric_values.append(metric_value)
                 log_dict[metric_key] = self.metrics[metric_key]
 
             mean_metric_key = f"{split}_{metric_type}_mean"

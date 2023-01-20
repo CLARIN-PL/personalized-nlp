@@ -10,7 +10,13 @@ from personalized_nlp.utils.metrics import F1Class, PrecisionClass, RecallClass
 
 class Classifier(pl.LightningModule):
     def __init__(
-        self, model, class_dims, lr: float, class_names=None, log_valid_metrics=False, ignore_index=-1,
+        self,
+        model,
+        class_dims,
+        lr: float,
+        class_names=None,
+        log_valid_metrics=False,
+        ignore_index=-1,
     ) -> None:
 
         super(Classifier, self).__init__()
@@ -31,27 +37,43 @@ class Classifier(pl.LightningModule):
         for split in ["train", "valid", "test"]:
             for class_idx in range(len(class_dims)):
                 class_name = class_names[class_idx] if class_names else str(class_idx)
-
                 num_classes = class_dims[class_idx]
 
-                class_metrics[f"{split}_accuracy_{class_name}"] = Accuracy()
+                class_metrics[f"{split}_accuracy_{class_name}"] = Accuracy(
+                    task="multiclass", num_classes=num_classes, ignore_index=self.ignore_index
+                )
 
                 for class_dim in range(num_classes):
                     class_metrics[
                         f"{split}_precision_{class_name}_{class_dim}"
                     ] = PrecisionClass(
-                        num_classes=num_classes, average=None, class_idx=class_dim
+                        task='multiclass',
+                        num_classes=num_classes,
+                        average=None,
+                        class_idx=class_dim,
+                        ignore_index=self.ignore_index,
                     )
                     class_metrics[
                         f"{split}_recall_{class_name}_{class_dim}"
                     ] = RecallClass(
-                        num_classes=num_classes, average=None, class_idx=class_dim
+                        task='multiclass',
+                        num_classes=num_classes,
+                        average=None,
+                        class_idx=class_dim,
+                        ignore_index=self.ignore_index,
                     )
                     class_metrics[f"{split}_f1_{class_name}_{class_dim}"] = F1Class(
-                        average="none", num_classes=num_classes, class_idx=class_dim
+                        task='multiclass',
+                        average="none",
+                        num_classes=num_classes,
+                        class_idx=class_dim,
+                        ignore_index=self.ignore_index,
                     )
                 class_metrics[f"{split}_macro_f1_{class_name}"] = F1Score(
-                    average="macro", num_classes=num_classes
+                    task='multiclass',
+                    average="macro",
+                    num_classes=num_classes,
+                    ignore_index=self.ignore_index,
                 )
 
         self.metrics = nn.ModuleDict(class_metrics)
@@ -172,20 +194,22 @@ class Classifier(pl.LightningModule):
                 metric_keys = [
                     k for k in self.metrics.keys() if k.startswith(metric_key_prefix)
                 ]
+
+                class_output = output[:, start_idx:end_idx].float()
+                class_y = y[:, cls_idx].long()
+
                 for metric_key in metric_keys:
-                    self.metrics[metric_key](
-                        output[:, start_idx:end_idx].float(), y[:, cls_idx].long()
-                    )
+                    self.metrics[metric_key].update(class_output, class_y)
 
                     log_dict[metric_key] = self.metrics[metric_key]
 
-                if split == "valid" and metric_type == "macro_f1":
-                    f1_macros = [
-                        log_dict[metric_key].compute().cpu()
-                        for metric_key in metric_keys
-                    ]
+                # if split == "valid" and metric_type == "macro_f1":
+                #     f1_macros = [
+                #         log_dict[metric_key].compute().cpu()
+                #         for metric_key in metric_keys
+                #     ]
 
-                    log_dict["valid_macro_f1_mean"] = np.mean(f1_macros)
+                #     log_dict["valid_macro_f1_mean"] = np.mean(f1_macros)
 
             self.log_dict(
                 log_dict,
