@@ -27,7 +27,7 @@ if __name__ == "__main__":
             "stratify_folds_by": ["users", "texts"][1:],
             "folds_num": [5],
             "batch_size": [500],
-            "test_fold": list(range(5))[:1],
+            "test_fold": list(range(5)),
             "use_finetuned_embeddings": [False],
             "major_voting": [False],
             "empty_annotations_strategy": [None, "drop"],
@@ -48,7 +48,6 @@ if __name__ == "__main__":
             "regression": [False],
             "use_cuda": [False],
             "model_type": ["baseline", "onehot", "peb", "bias", "embedding"],
-            # "model_type": ["transformer_user_id"],
         }
     )
 
