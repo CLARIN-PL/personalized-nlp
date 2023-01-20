@@ -7,15 +7,14 @@ from personalized_nlp.learning.train import train_test
 from settings import LOGS_DIR
 from personalized_nlp.utils import seed_everything
 from personalized_nlp.utils.experiments import product_kwargs
-from settings import TRANSFORMER_MODEL_STRINGS
 from personalized_nlp.utils.callbacks.outputs import SaveOutputsLocal
 from pytorch_lightning import loggers as pl_loggers
 
-os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+os.environ["CUDA_VISIBLE_DEVICES"] = "99"
 os.environ["WANDB_START_METHOD"] = "thread"
 
 if __name__ == "__main__":
-    wandb_project_name = "DoccanoClassification"
+    wandb_project_name = "DoccanoClassificationFixed"
     datamodule_cls = DoccanoDataModule
 
     datamodule_kwargs_list = product_kwargs(
@@ -31,6 +30,7 @@ if __name__ == "__main__":
             "test_fold": list(range(5))[:1],
             "use_finetuned_embeddings": [False],
             "major_voting": [False],
+            "empty_annotations_strategy": [None, "drop"],
         }
     )
     model_kwargs_list = product_kwargs(
@@ -45,8 +45,8 @@ if __name__ == "__main__":
         {
             "epochs": [30],
             "lr_rate": [0.008],
-            "regression": [True],
-            "use_cuda": [True],
+            "regression": [False],
+            "use_cuda": [False],
             "model_type": ["baseline", "onehot", "peb", "bias", "embedding"],
             # "model_type": ["transformer_user_id"],
         }
