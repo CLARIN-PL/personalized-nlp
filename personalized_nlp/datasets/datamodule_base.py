@@ -17,6 +17,7 @@ from pytorch_lightning import LightningDataModule, seed_everything
 from settings import EMBEDDINGS_SIZES, TRANSFORMER_MODEL_STRINGS
 from torch.utils.data import DataLoader
 
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 # TODO specify types!
 # TODO add docstring!
@@ -29,17 +30,17 @@ class BaseDataModule(LightningDataModule, abc.ABC):
     def annotation_columns(self) -> List[str]:
         raise NotImplementedError()
 
-    @abc.abstractproperty
+    @property
     def embeddings_path(self) -> Path:
-        raise NotImplementedError()
+        return self.data_dir / f"embeddings/text_id_to_emb_{self.embeddings_type}.p"
 
-    @abc.abstractproperty
+    @property
     def annotations_file(self) -> str:
-        raise NotImplementedError()
+        return f"annotations_{self.stratify_folds_by}_folds.csv"
 
-    @abc.abstractproperty
+    @property
     def data_file(self) -> str:
-        raise NotImplementedError()
+        return f"data_processed.csv"
 
     @abc.abstractproperty
     def data_dir(self) -> Path:
@@ -110,7 +111,6 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         test_fold: Optional[int] = None,
         min_annotations_per_user_in_fold: Optional[int] = None,
         seed: int = 22,
-        filter_train_annotations_path: Optional[str] = None,
         use_cuda: bool = False,
         **kwargs,
     ):
@@ -162,19 +162,10 @@ class BaseDataModule(LightningDataModule, abc.ABC):
 
         seed_everything(seed)
 
+        os.makedirs(self.data_dir / "embeddings", exist_ok=True)
+
         self.prepare_data()
         self.setup()
-
-    #     self.filter_train_dict = self._setup_filter_train_annotations(filter_train_annotations_path)
-
-    # def _setup_filter_train_annotations(self, filter_annotations_path: str) -> Optional[Dict]:
-    #     if filter_annotations_path is None:
-    #         return None
-    #     filter_dict = {}
-    #     for file in glob.glob(os.path.join(filter_annotations_path, '*')):
-    #         fold = int(re.search("(?<=fold_)([0-9]+)(?=\_)", file).group())
-    #         filter_dict[fold] = file
-    #     return filter_dict
 
     def _create_embeddings(self) -> None:
         texts = self.data["text"].tolist()
@@ -219,9 +210,7 @@ class BaseDataModule(LightningDataModule, abc.ABC):
 
         if self.use_finetuned_embeddings:
             finetune_datamodule_embeddings(self)
-            embeddings_path = (
-                f"{self.data_dir}/embeddings/{self.embeddings_type}_{self.test_fold}.p"
-            )
+            embeddings_path = f"{self.data_dir}/embeddings/{self.embeddings_type}_{self.test_fold}_{self.stratify_folds_by}.p"
 
         with open(embeddings_path, "rb") as f:
             text_idx_to_emb = pickle.load(f)
@@ -235,18 +224,6 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         assert len(self.data.index) == len(embeddings)
 
         self.text_embeddings = torch.tensor(embeddings)
-
-        # self.text_id_idx_dict = (
-        #     data.loc[:, ["text_id"]]
-        #     .reset_index()
-        #     .set_index("text_id")
-        #     .to_dict()["index"]
-        # )
-
-        # annotator_id_category = annotations["annotator_id"].astype("category")
-        # self.annotator_id_idx_dict = {
-        #     a_id: idx for idx, a_id in enumerate(annotator_id_category.cat.categories)
-        # }
 
     def _assign_splits(self) -> None:
         if "split" in self.annotations.columns:
@@ -324,49 +301,46 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         """Computes mean votes for texts in train folds."""
         annotations = self.annotations
         annotation_columns = self.annotation_columns
+        id_col = "text_id" if self.stratify_folds_by == "text" else "annotator_id"
 
-        text_id_to_fold = (
-            annotations.loc[:, ["text_id", "fold"]]
+        id_to_fold = (
+            annotations.loc[:, [id_col, "fold"]]
             .drop_duplicates()
-            .set_index("text_id")
+            .set_index(id_col)
             .to_dict()["fold"]
         )
 
-        text_id_to_split = (
-            annotations.loc[:, ["text_id", "split"]]
-            .drop_duplicates()
-            .set_index("text_id")
-            .to_dict()["split"]
-        )
+        annotations_to_concat = []
+        for split in annotations.split.unique():
+            split_annotations = annotations.loc[annotations.split == split]
 
-        val_test_annotations = None
-        if not self.test_major_voting:
-            val_test_annotations = annotations.loc[
-                annotations.split.isin(["val", "test"])
-            ]
-            annotations = annotations.loc[~annotations.split.isin(["val", "test"])]
+            if split == "none":
+                annotations_to_concat.append(split_annotations)
+                continue
 
-        dfs = []
-        for col in annotation_columns:
-            if self.regression:
-                aggregate_lambda = lambda x: x.mean()
-            else:
-                aggregate_lambda = lambda x: pd.Series.mode(x)[0]
+            if split in ["val", "test"] and not self.test_major_voting:
+                annotations_to_concat.append(split_annotations)
+                continue
 
-            dfs.append(annotations.groupby("text_id")[col].apply(aggregate_lambda))
+            dfs = []
+            for col in annotation_columns:
+                if self.regression:
+                    aggregate_lambda = lambda x: x.mean()
+                else:
+                    aggregate_lambda = lambda x: pd.Series.mode(x).tolist()[-1]
 
-        annotations = pd.concat(dfs, axis=1).reset_index()
-        annotations["annotator_id"] = 0
-        annotations["split"] = annotations["text_id"].map(text_id_to_split)
-        annotations["fold"] = annotations["text_id"].map(text_id_to_fold)
+                dfs.append(
+                    split_annotations.groupby("text_id")[col].apply(aggregate_lambda)
+                )
 
-        # annotations = annotations.sample(frac=0.3)
-        # val_test_annotations = val_test_annotations.sample(frac=0.7)
+            major_voted_annotations = pd.concat(dfs, axis=1).reset_index()
+            major_voted_annotations["annotator_id"] = 0
+            major_voted_annotations["split"] = split
+            major_voted_annotations["fold"] = annotations[id_col].map(id_to_fold)
 
-        if not self.test_major_voting:
-            self.annotations = pd.concat([annotations, val_test_annotations])
-        else:
-            self.annotations = annotations
+            annotations_to_concat.append(major_voted_annotations)
+
+        self.annotations = pd.concat(annotations_to_concat)
 
     def compute_annotator_biases(self):
         annotations_with_data = self.annotations_with_data
@@ -518,7 +492,7 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         :rtype: Tuple[np.ndarray, np.ndarray]
         """
         annotations = self.annotations.copy()
-        annotations = annotations.merge(self.data)
+        annotations = annotations
         embeddings = self.text_embeddings.to("cpu").numpy()
 
         # annotations["text_idx"] = annotations["text_id"].apply(
@@ -528,7 +502,7 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         #     lambda w_id: self.annotator_id_idx_dict[w_id]
         # )
 
-        X = np.vstack([embeddings[i] for i in annotations["text_idx"].values])
+        X = np.vstack([embeddings[i] for i in annotations["text_id"].values])
         y = annotations[self.annotation_columns].values
 
         return X, y

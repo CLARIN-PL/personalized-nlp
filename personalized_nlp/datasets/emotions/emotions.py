@@ -10,6 +10,14 @@ from personalized_nlp.datasets.datamodule_base import BaseDataModule
 
 class EmotionsDataModule(BaseDataModule):
     @property
+    def annotations_file(self) -> str:
+        return f"cawi2_annotations_{self.stratify_folds_by}_folds.csv"
+
+    @property
+    def data_file(self) -> str:
+        return "cawi2_texts_multilang_processed.csv"
+
+    @property
     def embeddings_path(self) -> Path:
         return (
             self.data_dir
@@ -40,7 +48,9 @@ class EmotionsDataModule(BaseDataModule):
         return [5] * 8 + [7, 5]
 
     def __init__(
-        self, language: str = "english", **kwargs,
+        self,
+        language: str = "polish",
+        **kwargs,
     ):
         super().__init__(**kwargs)
 

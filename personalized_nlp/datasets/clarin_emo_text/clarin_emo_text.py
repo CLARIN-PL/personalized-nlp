@@ -6,19 +6,10 @@ from typing import List
 import pandas as pd
 
 from settings import DATA_DIR
-from personalized_nlp.utils.data_splitting import split_texts
 from personalized_nlp.datasets.datamodule_base import BaseDataModule
 
 
 class ClarinEmoTextDataModule(BaseDataModule):
-    @property
-    def annotations_file(self) -> str:
-        return f"annotations_{self.stratify_folds_by}_folds.csv"
-
-    @property
-    def data_file(self) -> str:
-        return f"data_processed.csv"
-
     @property
     def data_dir(self) -> Path:
         return DATA_DIR / "clarin_emo_text"
@@ -47,13 +38,6 @@ class ClarinEmoTextDataModule(BaseDataModule):
     def class_dims(self) -> List[int]:
         return [2, 2, 2, 2, 2, 2, 2]
 
-    # @property
-    # def annotation_columns(self) -> List[str]:
-    #     return [
-    #         'radość', 'zaufanie', 'przeczuwanie', 'zdziwienie', 'strach',
-    #         'smutek', 'wstręt', 'gniew', 'pozytywny', 'negatywny', 'neutralny'
-    #     ]
-
     @property
     def annotation_columns(self) -> List[str]:
         return [
@@ -69,10 +53,6 @@ class ClarinEmoTextDataModule(BaseDataModule):
             "negatywny",
             # "neutralny",
         ]
-
-    @property
-    def embeddings_path(self) -> Path:
-        return self.data_dir / f"embeddings/rev_id_to_emb_{self.embeddings_type}.p"
 
 
 class ClainEmoTextNoNoiseDataModule(ClarinEmoTextDataModule):

@@ -5,7 +5,9 @@ import pytorch_lightning as pl
 
 
 class Regressor(pl.LightningModule):
-    def __init__(self, model, lr, class_names, log_valid_metrics: bool = False):
+    def __init__(
+        self, model, lr, class_names, log_valid_metrics: bool = False, ignore_index=None
+    ):
         super().__init__()
         self.save_hyperparameters()
         self.model = model
@@ -27,8 +29,11 @@ class Regressor(pl.LightningModule):
 
             class_metrics[f"{split}_mae_mean"] = MeanAbsoluteError()
             class_metrics[f"{split}_mse_mean"] = MeanSquaredError()
-            class_metrics[f"{split}_r2_mean"] = R2Score()
+            class_metrics[f"{split}_r2_mean"] = R2Score(
+                num_outputs=len(self.class_names), multioutput="uniform_average"
+            )
 
+        self.ignore_index = ignore_index
         self.metrics = nn.ModuleDict(class_metrics)
 
     def forward(self, x):
@@ -40,6 +45,10 @@ class Regressor(pl.LightningModule):
         y = y.float()
 
         output = self.forward(x)
+
+        if self.ignore_index is not None:
+            output = output[y != self.ignore_index]
+            y = y[y != self.ignore_index]
 
         loss = nn.MSELoss()(output.float(), y.float())
 
@@ -59,7 +68,7 @@ class Regressor(pl.LightningModule):
         loss = nn.MSELoss()(output, y)
 
         self.log("valid_loss", loss, prog_bar=True)
-        
+
         if self.log_valid_metrics:
             self.log_all_metrics(output=output, y=y, split="valid")
 
@@ -97,18 +106,22 @@ class Regressor(pl.LightningModule):
 
         log_dict = {}
         for metric_type in self.metric_types:
-            metric_values = []
             for class_idx, class_name in enumerate(class_names):
-                metric_key = f"{split}_{metric_type}_{class_name}"
-                metric_value = self.metrics[metric_key](
-                    output[:, class_idx], y[:, class_idx]
-                )
+                class_output = output[:, class_idx]
+                class_y = y[:, class_idx]
 
-                metric_values.append(metric_value)
+                if self.ignore_index is not None:
+                    class_output = class_output[class_y != self.ignore_index]
+                    class_y = class_y[class_y != self.ignore_index]
+
+                metric_key = f"{split}_{metric_type}_{class_name}"
+                self.metrics[metric_key].update(class_output, class_y)
+
                 log_dict[metric_key] = self.metrics[metric_key]
 
             mean_metric_key = f"{split}_{metric_type}_mean"
-            self.metrics[mean_metric_key](output, y)
+
+            self.metrics[mean_metric_key].update(output, y)
             log_dict[mean_metric_key] = self.metrics[mean_metric_key]
 
             self.log_dict(log_dict, on_step=on_step, on_epoch=on_epoch)
