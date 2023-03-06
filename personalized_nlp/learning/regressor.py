@@ -1,6 +1,11 @@
 import torch
 import torch.nn as nn
-from torchmetrics import MeanAbsoluteError, MeanSquaredError, R2Score
+from torchmetrics import (
+    MeanAbsoluteError,
+    MeanSquaredError,
+    R2Score,
+    MeanAbsolutePercentageError,
+)
 import pytorch_lightning as pl
 
 
@@ -15,7 +20,7 @@ class Regressor(pl.LightningModule):
         self.log_valid_metrics = log_valid_metrics
         self.class_names = class_names
 
-        self.metric_types = ["r2"]
+        self.metric_types = ["r2", "mae", "mse", "mape"]
 
         class_metrics = {}
 
@@ -26,9 +31,13 @@ class Regressor(pl.LightningModule):
                 class_metrics[f"{split}_mae_{class_name}"] = MeanAbsoluteError()
                 class_metrics[f"{split}_mse_{class_name}"] = MeanSquaredError()
                 class_metrics[f"{split}_r2_{class_name}"] = R2Score()
+                class_metrics[
+                    f"{split}_mape_{class_name}"
+                ] = MeanAbsolutePercentageError()
 
             class_metrics[f"{split}_mae_mean"] = MeanAbsoluteError()
             class_metrics[f"{split}_mse_mean"] = MeanSquaredError()
+            class_metrics[f"{split}_mape_mean"] = MeanAbsolutePercentageError()
             class_metrics[f"{split}_r2_mean"] = R2Score(
                 num_outputs=len(self.class_names), multioutput="uniform_average"
             )

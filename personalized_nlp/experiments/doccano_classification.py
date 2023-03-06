@@ -14,15 +14,13 @@ os.environ["CUDA_VISIBLE_DEVICES"] = "99"
 os.environ["WANDB_START_METHOD"] = "thread"
 
 if __name__ == "__main__":
-    wandb_project_name = "DoccanoClassificationFixed"
+    wandb_project_name = "DoccanoClassification21Feb2023"
     datamodule_cls = DoccanoDataModule
 
     datamodule_kwargs_list = product_kwargs(
         {
             "regression": [False],
-            "embeddings_type": ["labse", "mpnet", "xlmr", "random", "skipgram", "cbow"][
-                :1
-            ],
+            "embeddings_type": ["labse", "herbert", "xlmr"],
             "limit_past_annotations_list": [None],
             "stratify_folds_by": ["users", "texts"][1:],
             "folds_num": [5],
@@ -30,7 +28,7 @@ if __name__ == "__main__":
             "test_fold": list(range(5)),
             "use_finetuned_embeddings": [False],
             "major_voting": [False],
-            "empty_annotations_strategy": [None, "drop"],
+            "empty_annotations_strategy": ["drop"],
         }
     )
     model_kwargs_list = product_kwargs(
