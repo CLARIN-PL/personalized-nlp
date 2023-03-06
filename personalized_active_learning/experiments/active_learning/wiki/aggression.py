@@ -18,12 +18,17 @@ from personalized_active_learning.models import Baseline
 from personalized_nlp.utils import seed_everything
 from personalized_nlp.utils.experiments import product_kwargs
 from settings import DATA_DIR
+import logging
 
 # False positive https://github.com/Lightning-AI/lightning/issues/11856
 warnings.filterwarnings("ignore", category=PossibleUserWarning)
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 os.environ["WANDB_START_METHOD"] = "thread"
 
+logging.basicConfig(
+    format="%(asctime)s %(filename)s %(lineno)d [%(levelname)s]: %(message)s",
+    level=logging.INFO
+)
 
 if __name__ == "__main__":
     wandb_project_name = "PNW_AL_Wiki_Aggression"

@@ -1,6 +1,8 @@
 # TODO: REFACTOR!!!!
 import os
 import warnings
+import logging
+
 from itertools import product
 
 from pytorch_lightning.utilities.warnings import PossibleUserWarning
@@ -29,6 +31,10 @@ warnings.filterwarnings("ignore", category=PossibleUserWarning)
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 os.environ["WANDB_START_METHOD"] = "thread"
 
+logging.basicConfig(
+    format="%(asctime)s %(filename)s %(lineno)d [%(levelname)s]: %(message)s",
+    level=logging.INFO
+)
 
 if __name__ == "__main__":
     wandb_project_name = "PNW_AL_Unhealthy_tests"
