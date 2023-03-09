@@ -22,6 +22,7 @@ def train_test(
     monitor_metric="valid_loss",
     monitor_mode="min",
     advanced_output=False,
+    round_outputs=False,
     **kwargs,
 ):
     """Train model and return predictions for test dataset"""
@@ -46,7 +47,7 @@ def train_test(
     if regression:
         class_names = datamodule.annotation_columns
 
-        model = Regressor(model=model, lr=lr, class_names=class_names)
+        model = Regressor(model=model, lr=lr, class_names=class_names, round_outputs=round_outputs)
     else:
         class_dims = datamodule.class_dims
         class_names = datamodule.annotation_columns

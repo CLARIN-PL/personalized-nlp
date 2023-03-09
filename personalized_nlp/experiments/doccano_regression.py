@@ -10,11 +10,11 @@ from personalized_nlp.utils.experiments import product_kwargs
 from personalized_nlp.utils.callbacks.outputs import SaveOutputsLocal
 from pytorch_lightning import loggers as pl_loggers
 
-os.environ["CUDA_VISIBLE_DEVICES"] = "99"
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 os.environ["WANDB_START_METHOD"] = "thread"
 
 if __name__ == "__main__":
-    wandb_project_name = "DoccanoRegression21Feb2023"
+    wandb_project_name = "DoccanoRegression07Mar2023"
     datamodule_cls = DoccanoDataModule
 
     datamodule_kwargs_list = product_kwargs(
@@ -29,6 +29,7 @@ if __name__ == "__main__":
             "use_finetuned_embeddings": [False],
             "major_voting": [False],
             "empty_annotations_strategy": ["drop"],
+            "use_cuda": [True]
         }
     )
     model_kwargs_list = product_kwargs(
@@ -42,10 +43,11 @@ if __name__ == "__main__":
     trainer_kwargs_list = product_kwargs(
         {
             "epochs": [30],
-            "lr_rate": [0.008],
+            "lr": [0.008],
             "regression": [True],
             "use_cuda": [False],
             "model_type": ["baseline", "onehot", "peb", "bias", "embedding"],
+            "round_outputs": [False, True]
         }
     )
 

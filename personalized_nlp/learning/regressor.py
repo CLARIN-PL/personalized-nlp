@@ -1,3 +1,4 @@
+from typing import List, Optional
 import torch
 import torch.nn as nn
 from torchmetrics import (
@@ -11,7 +12,13 @@ import pytorch_lightning as pl
 
 class Regressor(pl.LightningModule):
     def __init__(
-        self, model, lr, class_names, log_valid_metrics: bool = False, ignore_index=None
+        self,
+        model,
+        lr: float,
+        class_names: List[str],
+        log_valid_metrics: bool = False,
+        ignore_index: Optional[int] = None,
+        round_outputs: bool = False,
     ):
         super().__init__()
         self.save_hyperparameters()
@@ -19,6 +26,7 @@ class Regressor(pl.LightningModule):
         self.lr = lr
         self.log_valid_metrics = log_valid_metrics
         self.class_names = class_names
+        self.round_outputs = round_outputs
 
         self.metric_types = ["r2", "mae", "mse", "mape"]
 
@@ -122,6 +130,9 @@ class Regressor(pl.LightningModule):
                 if self.ignore_index is not None:
                     class_output = class_output[class_y != self.ignore_index]
                     class_y = class_y[class_y != self.ignore_index]
+
+                if self.round_outputs:
+                    class_output = class_output.round()
 
                 metric_key = f"{split}_{metric_type}_{class_name}"
                 self.metrics[metric_key].update(class_output, class_y)

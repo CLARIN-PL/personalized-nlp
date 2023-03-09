@@ -25,6 +25,8 @@ class DoccanoDataModule(BaseDataModule):
     def __init__(
         self,
         empty_annotations_strategy: Optional[str] = None,
+        annotations_number: Optional[int] = None,
+        texts_number: Optional[int] = None,
         **kwargs,
     ):
         """
@@ -35,6 +37,8 @@ class DoccanoDataModule(BaseDataModule):
             any empty task annotations in traning dataset are dropped. Defaults to None.
         """
         self.empty_annotations_strategy = empty_annotations_strategy
+        self.annotations_number = annotations_number
+        self.texts_number = texts_number
         super().__init__(**kwargs)
 
         os.makedirs(self.data_dir / "embeddings", exist_ok=True)
@@ -63,6 +67,37 @@ class DoccanoDataModule(BaseDataModule):
 
             for col in self.annotation_columns:
                 self.annotations[col] = self.annotations[col].apply(get_class_label)
+        else:
+            for col in self.annotation_columns:
+                self.annotations[col] = self.annotations[col].clip(0, 10)
+
+    def _after_setup(self):
+        if not self.annotations_number:
+            return
+
+        train_annotations = self.annotations.loc[self.annotations.split == "train"]
+
+        # train_annotations_subsampled = train_annotations.sample(n=self.annotations_number)
+        # subsampled_text_id = train_annotations['text_id'].drop_duplicates().sample(n=self.texts_number)
+
+        # train_annotations_subsampled = train_annotations_subsampled.loc[train_annotations_subsampled['text_id'].isin(subsampled_text_id)]
+        # self.annotations.loc[self.annotations.split == 'train', 'split'] = 'None'
+        # self.annotations.loc[train_annotations_subsampled.index.tolist(), 'split'] = 'train'
+
+        subsampled_text_id = (
+            train_annotations["text_id"].drop_duplicates().sample(n=self.texts_number)
+        )
+        train_annotations_subsampled = train_annotations.loc[
+            train_annotations["text_id"].isin(subsampled_text_id)
+        ]
+        train_annotations_subsampled = train_annotations_subsampled.sample(
+            n=self.annotations_number
+        )
+
+        self.annotations.loc[self.annotations.split == "train", "split"] = "None"
+        self.annotations.loc[
+            train_annotations_subsampled.index.tolist(), "split"
+        ] = "train"
 
     @property
     def class_dims(self) -> List[int]:
