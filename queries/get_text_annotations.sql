@@ -10,3 +10,8 @@ FROM (SELECT example_id, user_id, text AS question, CAST(scale AS TEXT) AS answe
           FROM auth_user) au ON au.id = labels.user_id
       JOIN (SELECT id, text
           FROM examples_example) ee ON labels.example_id = ee.id
+
+-- WHERE question LIKE '%Ze względu na co obraża%'
+-- WHERE question LIKE '%W jaki sposób%'
+-- WHERE question LIKE '%Autor śmieje się z%'
+-- WHERE question LIKE '%Charakter humoru%'
