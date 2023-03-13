@@ -75,29 +75,23 @@ class DoccanoDataModule(BaseDataModule):
         if not self.annotations_number:
             return
 
-        train_annotations = self.annotations.loc[self.annotations.split == "train"]
-
-        # train_annotations_subsampled = train_annotations.sample(n=self.annotations_number)
-        # subsampled_text_id = train_annotations['text_id'].drop_duplicates().sample(n=self.texts_number)
-
-        # train_annotations_subsampled = train_annotations_subsampled.loc[train_annotations_subsampled['text_id'].isin(subsampled_text_id)]
-        # self.annotations.loc[self.annotations.split == 'train', 'split'] = 'None'
-        # self.annotations.loc[train_annotations_subsampled.index.tolist(), 'split'] = 'train'
-
-        subsampled_text_id = (
-            train_annotations["text_id"].drop_duplicates().sample(n=self.texts_number)
+        df = self.annotations.copy()
+        df["original_index"] = df.reset_index()["index"]
+        df["annotation_idx_"] = (
+            df.groupby("text_id")
+            .apply(lambda rows: rows.reset_index().reset_index().sample(frac=1.0))[
+                "level_0"
+            ]
+            .values
         )
-        train_annotations_subsampled = train_annotations.loc[
-            train_annotations["text_id"].isin(subsampled_text_id)
+
+        text_ids = df["text_id"].drop_duplicates().sort_values()[: self.texts_number]
+
+        df = df.loc[df.text_id.isin(text_ids)].sort_values(by="annotation_idx_")[
+            : self.annotations_number
         ]
-        train_annotations_subsampled = train_annotations_subsampled.sample(
-            n=self.annotations_number
-        )
-
         self.annotations.loc[self.annotations.split == "train", "split"] = "None"
-        self.annotations.loc[
-            train_annotations_subsampled.index.tolist(), "split"
-        ] = "train"
+        self.annotations.loc[df["original_index"].tolist(), "split"] = "train"
 
     @property
     def class_dims(self) -> List[int]:
