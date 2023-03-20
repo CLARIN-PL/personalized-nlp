@@ -14,7 +14,7 @@ os.environ["CUDA_VISIBLE_DEVICES"] = "99"
 os.environ["WANDB_START_METHOD"] = "thread"
 
 if __name__ == "__main__":
-    wandb_project_name = "DoccanoClassification07Mar2023"
+    wandb_project_name = "DoccanoClassification14Mar2023"
     datamodule_cls = DoccanoDataModule
 
     datamodule_kwargs_list = product_kwargs(

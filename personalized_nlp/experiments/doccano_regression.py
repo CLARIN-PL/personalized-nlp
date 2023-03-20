@@ -14,7 +14,7 @@ os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 os.environ["WANDB_START_METHOD"] = "thread"
 
 if __name__ == "__main__":
-    wandb_project_name = "DoccanoRegression07Mar2023"
+    wandb_project_name = "DoccanoRegression14Mar2023"
     datamodule_cls = DoccanoDataModule
 
     datamodule_kwargs_list = product_kwargs(
@@ -29,7 +29,7 @@ if __name__ == "__main__":
             "use_finetuned_embeddings": [False],
             "major_voting": [False],
             "empty_annotations_strategy": ["drop"],
-            "use_cuda": [True]
+            "use_cuda": [True],
         }
     )
     model_kwargs_list = product_kwargs(
@@ -47,7 +47,7 @@ if __name__ == "__main__":
             "regression": [True],
             "use_cuda": [False],
             "model_type": ["baseline", "onehot", "peb", "bias", "embedding"],
-            "round_outputs": [False, True]
+            "round_outputs": [True],
         }
     )
 

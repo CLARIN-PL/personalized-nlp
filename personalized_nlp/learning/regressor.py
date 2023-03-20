@@ -132,7 +132,7 @@ class Regressor(pl.LightningModule):
                     class_y = class_y[class_y != self.ignore_index]
 
                 if self.round_outputs:
-                    class_output = class_output.round()
+                    class_output = class_output.round(decimals=1)
 
                 metric_key = f"{split}_{metric_type}_{class_name}"
                 self.metrics[metric_key].update(class_output, class_y)
