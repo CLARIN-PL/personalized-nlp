@@ -27,6 +27,7 @@ class DoccanoDataModule(BaseDataModule):
         empty_annotations_strategy: Optional[str] = None,
         annotations_number: Optional[int] = None,
         texts_number: Optional[int] = None,
+        min_annotations_per_text: Optional[int] = None,
         **kwargs,
     ):
         """
@@ -39,6 +40,7 @@ class DoccanoDataModule(BaseDataModule):
         self.empty_annotations_strategy = empty_annotations_strategy
         self.annotations_number = annotations_number
         self.texts_number = texts_number
+        self.min_annotations_per_text = min_annotations_per_text
         super().__init__(**kwargs)
 
         os.makedirs(self.data_dir / "embeddings", exist_ok=True)
@@ -54,6 +56,12 @@ class DoccanoDataModule(BaseDataModule):
             self.annotations = self.annotations.loc[
                 ~(any_empty_annotation_mask & train_fold_mask)
             ].reset_index(drop=True)
+
+        if self.min_annotations_per_text is not None:
+            text_id_value_counts = self.annotations.text_id.value_counts()
+            text_id_value_counts = text_id_value_counts[text_id_value_counts >= self.min_annotations_per_text]
+            good_text_ids = text_id_value_counts.index.tolist()
+            self.annotations = self.annotations.loc[self.annotations.text_id.isin(good_text_ids)]
 
         if not self.regression:
 
@@ -76,7 +84,7 @@ class DoccanoDataModule(BaseDataModule):
             return
 
         df = self.annotations.copy()
-        df["original_index"] = df.reset_index()["index"]
+        df["original_index"] = df.reset_index()["index"].values
         df["annotation_idx_"] = (
             df.groupby("text_id")
             .apply(lambda rows: rows.reset_index().reset_index().sample(frac=1.0))[
