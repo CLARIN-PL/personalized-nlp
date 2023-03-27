@@ -5,7 +5,7 @@ import logging
 import pandas as pd
 
 from scripts.process_data.assign_folds import assign_folds
-from scripts.process_data.reset_indexes import reindex_texts_and_annotations
+from scripts.process_data.reset_indexes import reindex_texts_and_annotations, deduplicate_texts
 
 
 logging.basicConfig(
@@ -38,11 +38,19 @@ def parse_args() -> argparse.Namespace:
         help='Path to texts csv/tsv. If not specified, enter single-file scenario.'   
     )
     parser.add_argument(
-        '--text_col',
-        '-tc',
+        '--text_id_col',
+        '-tic',
         type=str,
         required=True,
         help='Name of text idx column.'
+    )
+    parser.add_argument(
+        '--text_col',
+        '-tc',
+        type=str,
+        required=False,
+        default="text",
+        help='Name of text content column.'
     )
     parser.add_argument(
         '--annotator_col',
@@ -82,18 +90,20 @@ def main():
     texts_df = pd.read_csv(args.texts_df_path, sep='\t' if args.annotations_df_path.endswith('.tsv') else ',')
     logger.info(f"Loaded texts csv with {len(texts_df)} texts.")
 
+    deduplicate_texts(texts_df, annotations_df, args.text_col, args.text_id_col)
+
     
     annotations_df_reindex, texts_df_reindex = reindex_texts_and_annotations(
         annotations_df=annotations_df,
         texts_df=texts_df,
-        text_col=args.text_col,
+        text_id_col=args.text_id_col,
         annotator_col=args.annotator_col
     )
     logger.info(f"Reindexed annotations and texts.")
     
     annotations_text_folds = assign_folds(
         annotations_df=annotations_df_reindex.copy(),
-        stratify_by=args.text_col,
+        stratify_by=args.text_id_col,
         num_folds=args.num_folds
     )
     logger.info(f"Created text folds.")
