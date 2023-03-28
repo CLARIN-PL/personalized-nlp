@@ -59,9 +59,13 @@ class DoccanoDataModule(BaseDataModule):
 
         if self.min_annotations_per_text is not None:
             text_id_value_counts = self.annotations.text_id.value_counts()
-            text_id_value_counts = text_id_value_counts[text_id_value_counts >= self.min_annotations_per_text]
+            text_id_value_counts = text_id_value_counts[
+                text_id_value_counts >= self.min_annotations_per_text
+            ]
             good_text_ids = text_id_value_counts.index.tolist()
-            self.annotations = self.annotations.loc[self.annotations.text_id.isin(good_text_ids)]
+            self.annotations = self.annotations.loc[
+                self.annotations.text_id.isin(good_text_ids)
+            ]
 
         if not self.regression:
 
@@ -95,9 +99,8 @@ class DoccanoDataModule(BaseDataModule):
 
         text_ids = df["text_id"].drop_duplicates().sort_values()[: self.texts_number]
 
-        df = df.loc[df.text_id.isin(text_ids)].sort_values(by="annotation_idx_")[
-            : self.annotations_number
-        ]
+        df = df.loc[df.text_id.isin(text_ids)].sort_values(by="annotation_idx_")
+        df = df[: self.annotations_number]
         self.annotations.loc[self.annotations.split == "train", "split"] = "None"
         self.annotations.loc[df["original_index"].tolist(), "split"] = "train"
 
