@@ -7,6 +7,13 @@ import pandas as pd
 tqdm.pandas()
 logger = logging.getLogger(__name__)
 
+def deduplicate_texts(data_df: pd.DataFrame, annotations_df: pd.DataFrame, text_col: str, text_id_col: str):
+    deduplicated_text_col_dict = data_df.set_index(text_col)[text_id_col].to_dict()
+    data_df['duplicated_' + text_id_col] = data_df[text_id_col]
+    data_df[text_id_col] = data_df[text_col].map(deduplicated_text_col_dict)
+    duplicated_to_deduplicated_text_id_dict = data_df.set_index('duplicated_' + text_id_col)[text_id_col].to_dict()
+
+    annotations_df[text_id_col] = annotations_df[text_id_col].map(duplicated_to_deduplicated_text_id_dict)
 
 def get_annotator_id_map(
     annotations_df: pd.DataFrame, annotator_col: str
@@ -24,17 +31,17 @@ def get_annotator_id_map(
     return annotator_id_idx_dict
 
 
-def get_text_id_map(text_df: pd.DataFrame, text_col: str) -> Dict[int, int]:
+def get_text_id_map(text_df: pd.DataFrame, text_id_col: str) -> Dict[int, int]:
     """Creates a map for original text id to new text id.
     New indexing is required for embeddings to work.
     Args:
         text_df (pd.DataFrame): Dataframe containing texts.
-        text_col (str): Name of text id column.
+        text_id_col (str): Name of text id column.
     Returns:
         Dict[int, int]: Map: [old_id1, old_id2, ..., old_idN] -> [1, 2, ..., N]
     """
     text_id_idx_dict = (
-        text_df.loc[:, [text_col]].reset_index().set_index(text_col).to_dict()["index"]
+        text_df.loc[:, [text_id_col]].reset_index().set_index(text_id_col).to_dict()["index"]
     )
     return text_id_idx_dict
 
@@ -42,7 +49,7 @@ def get_text_id_map(text_df: pd.DataFrame, text_col: str) -> Dict[int, int]:
 def reindex_texts_and_annotations(
     annotations_df: pd.DataFrame,
     texts_df: pd.DataFrame,
-    text_col: str,
+    text_id_col: str,
     annotator_col: str,
 ) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """Reindexes texts and annotations using bijection [x1, x2, x3, ...] -> [1, 2, 3, ...]
@@ -51,24 +58,24 @@ def reindex_texts_and_annotations(
         texts_df (pd.DataFrame): Dataframe with texts.
     """
     # keep original indexes
-    annotations_df = annotations_df.drop_duplicates(subset=[text_col, annotator_col])
-    texts_df = texts_df.drop_duplicates(subset=[text_col])
-    annotations_df[f"{text_col}_original"] = annotations_df[text_col]
+    annotations_df = annotations_df.drop_duplicates(subset=[text_id_col, annotator_col])
+    texts_df = texts_df.drop_duplicates(subset=[text_id_col])
+    annotations_df[f"{text_id_col}_original"] = annotations_df[text_id_col]
     annotations_df[f"{annotator_col}_original"] = annotations_df[annotator_col]
-    texts_df[f"{text_col}_original"] = texts_df[text_col]
+    texts_df[f"{text_id_col}_original"] = texts_df[text_id_col]
 
     annotator_id_map = get_annotator_id_map(annotations_df, annotator_col)
     logger.info("Got annotator id dict.")
-    text_id_map = get_text_id_map(texts_df, text_col)
+    text_id_map = get_text_id_map(texts_df, text_id_col)
     logger.info("Got text id map")
 
-    texts_df[text_col] = texts_df[text_col].progress_apply(lambda x: text_id_map[x])
+    texts_df[text_id_col] = texts_df[text_id_col].progress_apply(lambda x: text_id_map[x])
     logger.info("Replaced ids of texts in texts_df")
     annotations_df[annotator_col] = annotations_df[annotator_col].progress_apply(
         lambda x: annotator_id_map[x]
     )
     logger.info("Replaced ids of annotations in annotations_df")
-    annotations_df[text_col] = annotations_df[text_col].progress_apply(
+    annotations_df[text_id_col] = annotations_df[text_id_col].progress_apply(
         lambda x: text_id_map[x]
     )
     logger.info("Replaced ids of texts in annotations_df")

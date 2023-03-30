@@ -225,6 +225,11 @@ class BaseDataModule(LightningDataModule, abc.ABC):
 
         self.text_embeddings = torch.tensor(embeddings)
 
+        self._after_setup()
+
+    def _after_setup(self):
+        pass
+
     def _assign_splits(self) -> None:
         if "split" in self.annotations.columns:
             return

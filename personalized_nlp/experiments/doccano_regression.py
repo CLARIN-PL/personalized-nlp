@@ -7,31 +7,29 @@ from personalized_nlp.learning.train import train_test
 from settings import LOGS_DIR
 from personalized_nlp.utils import seed_everything
 from personalized_nlp.utils.experiments import product_kwargs
-from settings import TRANSFORMER_MODEL_STRINGS
 from personalized_nlp.utils.callbacks.outputs import SaveOutputsLocal
 from pytorch_lightning import loggers as pl_loggers
 
-os.environ["CUDA_VISIBLE_DEVICES"] = "99"
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 os.environ["WANDB_START_METHOD"] = "thread"
 
 if __name__ == "__main__":
-    wandb_project_name = "DoccanoRegressionFixed"
+    wandb_project_name = "DoccanoRegression14Mar2023"
     datamodule_cls = DoccanoDataModule
 
     datamodule_kwargs_list = product_kwargs(
         {
             "regression": [True],
-            "embeddings_type": ["labse", "mpnet", "xlmr", "random", "skipgram", "cbow"][
-                :1
-            ],
+            "embeddings_type": ["herbert", "labse", "xlmr"],
             "limit_past_annotations_list": [None],
             "stratify_folds_by": ["users", "texts"][1:],
             "folds_num": [5],
             "batch_size": [500],
-            "test_fold": list(range(5))[:1],
+            "test_fold": list(range(5)),
             "use_finetuned_embeddings": [False],
             "major_voting": [False],
-            "empty_annotations_strategy": [None, "drop"],
+            "empty_annotations_strategy": ["drop"],
+            "use_cuda": [True],
         }
     )
     model_kwargs_list = product_kwargs(
@@ -45,10 +43,11 @@ if __name__ == "__main__":
     trainer_kwargs_list = product_kwargs(
         {
             "epochs": [30],
-            "lr_rate": [0.008],
+            "lr": [0.008],
             "regression": [True],
             "use_cuda": [False],
             "model_type": ["baseline", "onehot", "peb", "bias", "embedding"],
+            "round_outputs": [True],
         }
     )
 

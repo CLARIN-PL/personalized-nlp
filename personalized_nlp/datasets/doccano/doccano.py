@@ -25,6 +25,9 @@ class DoccanoDataModule(BaseDataModule):
     def __init__(
         self,
         empty_annotations_strategy: Optional[str] = None,
+        annotations_number: Optional[int] = None,
+        texts_number: Optional[int] = None,
+        min_annotations_per_text: Optional[int] = None,
         **kwargs,
     ):
         """
@@ -35,6 +38,9 @@ class DoccanoDataModule(BaseDataModule):
             any empty task annotations in traning dataset are dropped. Defaults to None.
         """
         self.empty_annotations_strategy = empty_annotations_strategy
+        self.annotations_number = annotations_number
+        self.texts_number = texts_number
+        self.min_annotations_per_text = min_annotations_per_text
         super().__init__(**kwargs)
 
         os.makedirs(self.data_dir / "embeddings", exist_ok=True)
@@ -51,6 +57,16 @@ class DoccanoDataModule(BaseDataModule):
                 ~(any_empty_annotation_mask & train_fold_mask)
             ].reset_index(drop=True)
 
+        if self.min_annotations_per_text is not None:
+            text_id_value_counts = self.annotations.text_id.value_counts()
+            text_id_value_counts = text_id_value_counts[
+                text_id_value_counts >= self.min_annotations_per_text
+            ]
+            good_text_ids = text_id_value_counts.index.tolist()
+            self.annotations = self.annotations.loc[
+                self.annotations.text_id.isin(good_text_ids)
+            ]
+
         if not self.regression:
 
             def get_class_label(val):
@@ -63,6 +79,30 @@ class DoccanoDataModule(BaseDataModule):
 
             for col in self.annotation_columns:
                 self.annotations[col] = self.annotations[col].apply(get_class_label)
+        else:
+            for col in self.annotation_columns:
+                self.annotations[col] = self.annotations[col].clip(0, 10)
+
+    def _after_setup(self):
+        if not self.annotations_number:
+            return
+
+        df = self.annotations.copy()
+        df["original_index"] = df.reset_index()["index"].values
+        df["annotation_idx_"] = (
+            df.groupby("text_id")
+            .apply(lambda rows: rows.reset_index().reset_index().sample(frac=1.0))[
+                "level_0"
+            ]
+            .values
+        )
+
+        text_ids = df["text_id"].drop_duplicates().sort_values()[: self.texts_number]
+
+        df = df.loc[df.text_id.isin(text_ids)].sort_values(by="annotation_idx_")
+        df = df[: self.annotations_number]
+        self.annotations.loc[self.annotations.split == "train", "split"] = "None"
+        self.annotations.loc[df["original_index"].tolist(), "split"] = "train"
 
     @property
     def class_dims(self) -> List[int]:

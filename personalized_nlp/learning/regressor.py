@@ -1,12 +1,24 @@
+from typing import List, Optional
 import torch
 import torch.nn as nn
-from torchmetrics import MeanAbsoluteError, MeanSquaredError, R2Score
+from torchmetrics import (
+    MeanAbsoluteError,
+    MeanSquaredError,
+    R2Score,
+    MeanAbsolutePercentageError,
+)
 import pytorch_lightning as pl
 
 
 class Regressor(pl.LightningModule):
     def __init__(
-        self, model, lr, class_names, log_valid_metrics: bool = False, ignore_index=None
+        self,
+        model,
+        lr: float,
+        class_names: List[str],
+        log_valid_metrics: bool = False,
+        ignore_index: Optional[int] = None,
+        round_outputs: bool = False,
     ):
         super().__init__()
         self.save_hyperparameters()
@@ -14,8 +26,9 @@ class Regressor(pl.LightningModule):
         self.lr = lr
         self.log_valid_metrics = log_valid_metrics
         self.class_names = class_names
+        self.round_outputs = round_outputs
 
-        self.metric_types = ["r2"]
+        self.metric_types = ["r2", "mae", "mse", "mape"]
 
         class_metrics = {}
 
@@ -26,9 +39,13 @@ class Regressor(pl.LightningModule):
                 class_metrics[f"{split}_mae_{class_name}"] = MeanAbsoluteError()
                 class_metrics[f"{split}_mse_{class_name}"] = MeanSquaredError()
                 class_metrics[f"{split}_r2_{class_name}"] = R2Score()
+                class_metrics[
+                    f"{split}_mape_{class_name}"
+                ] = MeanAbsolutePercentageError()
 
             class_metrics[f"{split}_mae_mean"] = MeanAbsoluteError()
             class_metrics[f"{split}_mse_mean"] = MeanSquaredError()
+            class_metrics[f"{split}_mape_mean"] = MeanAbsolutePercentageError()
             class_metrics[f"{split}_r2_mean"] = R2Score(
                 num_outputs=len(self.class_names), multioutput="uniform_average"
             )
@@ -113,6 +130,9 @@ class Regressor(pl.LightningModule):
                 if self.ignore_index is not None:
                     class_output = class_output[class_y != self.ignore_index]
                     class_y = class_y[class_y != self.ignore_index]
+
+                if self.round_outputs:
+                    class_output = class_output.round(decimals=1)
 
                 metric_key = f"{split}_{metric_type}_{class_name}"
                 self.metrics[metric_key].update(class_output, class_y)
