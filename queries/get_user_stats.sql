@@ -11,8 +11,6 @@ FROM
            MIN(DATE_TRUNC('second', CAST(min_updated_at AS timestamp))) AS min_updated_at,
            MAX(DATE_TRUNC('second', CAST(max_updated_at AS timestamp))) AS max_updated_at,
            COUNT(DISTINCT updated_at_truncated) AS unique_minutes
-
-
     FROM
         (SELECT example_id,
                 user_id,
@@ -30,8 +28,8 @@ FROM
                     DATE_TRUNC('minute', CAST(ls.updated_at AS timestamp)) AS updated_at_truncated
                   FROM labels_scale ls
                   JOIN label_types_scaletype lts ON ls.label_id = lts.id
-                  WHERE EXTRACT(YEAR FROM ls.updated_at) >= 2023
-                    AND EXTRACT(MONTH FROM ls.updated_at) >= 4
+--                   WHERE EXTRACT(YEAR FROM ls.updated_at) >= 2023
+--                     AND EXTRACT(MONTH FROM ls.updated_at) >= 4
                   UNION
                   SELECT example_id,
                          user_id,
@@ -40,8 +38,9 @@ FROM
                          updated_at,
                          DATE_TRUNC('minute', CAST(updated_at AS timestamp)) AS updated_at_truncated
                   FROM labels_textlabel
-                  WHERE EXTRACT(YEAR FROM updated_at) >= 2023
-                    AND EXTRACT(MONTH FROM updated_at) >= 4) labels
+--                   WHERE EXTRACT(YEAR FROM updated_at) >= 2023
+--                     AND EXTRACT(MONTH FROM updated_at) >= 4
+                  ) labels
         ) labels_agg_time
           JOIN (SELECT id, username
               FROM auth_user) au ON au.id = labels_agg_time.user_id
