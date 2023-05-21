@@ -27,10 +27,13 @@ def get_wandb_project_rows(project_name):
         {"summary": summary_list, "config": config_list, "name": name_list}
     )
 
-    return pd.concat(
+    all_runs_df = pd.concat(
         [
             pd.DataFrame(runs_df["summary"].tolist()),
             pd.DataFrame(runs_df["config"].tolist()),
         ],
         axis=1,
     )
+
+    all_runs_df["run_name"] = pd.DataFrame(runs_df["name"].tolist())
+    return all_runs_df
