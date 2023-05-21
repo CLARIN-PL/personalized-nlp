@@ -1,7 +1,7 @@
 import torch.nn as nn
 from transformers import AutoTokenizer, AutoModel
 
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 
 
 class TransformerUserId(nn.Module):
@@ -11,15 +11,18 @@ class TransformerUserId(nn.Module):
         output_dim: int,
         huggingface_model_name: str = "bert-base-cased",
         max_length: int = 128,
-        append_annotator_ids=False,
-        annotator_num=None,
-        use_cuda=True,
+        append_annotator_ids: bool = False,
+        add_annotator_special_tokens: bool = False,
+        annotator_num: Optional[int] = None,
+        use_cuda: bool = True,
         **kwargs,
     ):
         super().__init__()
 
         self.append_annotator_ids = append_annotator_ids
-        if append_annotator_ids:
+        self.add_annotator_special_tokens = add_annotator_special_tokens
+
+        if self.add_annotator_special_tokens:
             additional_special_tokens = [f"_#{a_id}#_" for a_id in range(annotator_num)]
             special_tokens_dict = {
                 "additional_special_tokens": additional_special_tokens
@@ -43,10 +46,12 @@ class TransformerUserId(nn.Module):
         texts_raw = features["raw_texts"].tolist()
         annotator_ids = features["annotator_ids"].tolist()
 
-        if self.append_annotator_ids:
+        if self.append_annotator_ids and self.add_annotator_special_tokens:
             texts_raw = [
                 f"_#{a_id}#_ " + t for t, a_id in zip(texts_raw, annotator_ids)
             ]
+        elif self.append_annotator_ids:
+            texts_raw = [f"{a_id} " + t for t, a_id in zip(texts_raw, annotator_ids)]
 
         tokenizer = self._tokenizer
         model = self._model
@@ -63,7 +68,8 @@ class TransformerUserId(nn.Module):
             batch_encoding = batch_encoding.to("cuda")
 
         output = model(**batch_encoding)
-        if hasattr(output, 'pooler_output'):
+
+        if hasattr(output, "pooler_output"):
             emb = output.pooler_output
         else:
             emb = output.last_hidden_state[:, 0, :]
