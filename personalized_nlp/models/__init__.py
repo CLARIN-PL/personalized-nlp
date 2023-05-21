@@ -4,6 +4,7 @@ from personalized_nlp.models.hubi_formula import HuBiFormula
 from personalized_nlp.models.hubi_simple import HuBiSimple
 from personalized_nlp.models.hubi_medium import HuBiMedium
 from personalized_nlp.models.transformer import TransformerUserId
+from personalized_nlp.models.transformer_multihead import TransformerMultiUserHead
 
 models = {
     "baseline": Baseline,
@@ -12,4 +13,5 @@ models = {
     "bias": HuBiSimple,
     "embedding": HuBiMedium,
     "transformer_user_id": TransformerUserId,
+    "transformer_multihead": TransformerMultiUserHead,
 }

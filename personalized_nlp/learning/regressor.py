@@ -82,6 +82,10 @@ class Regressor(pl.LightningModule):
 
         output = self.forward(x)
 
+        if self.ignore_index is not None:
+            output = output[y != self.ignore_index]
+            y = y[y != self.ignore_index]
+
         loss = nn.MSELoss()(output, y)
 
         self.log("valid_loss", loss, prog_bar=True)
