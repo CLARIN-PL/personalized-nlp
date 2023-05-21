@@ -14,6 +14,10 @@ class UnhealthyDataModule(BaseDataModule):
         return DATA_DIR / "unhealthy_conversations"
 
     @property
+    def data_file(self) -> str:
+        return f"texts_processed.csv"
+
+    @property
     def annotation_columns(self) -> List[str]:
         return [
             "antagonize",
