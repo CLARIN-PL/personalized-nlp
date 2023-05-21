@@ -26,9 +26,9 @@ class HumorDataModule(BaseDataModule):
         min_annotations_per_text=None,
         **kwargs,
     ):
-        super().__init__(**kwargs)
-
         self.min_annotations_per_text = min_annotations_per_text
+
+        super().__init__(**kwargs)
 
         os.makedirs(self.data_dir / "embeddings", exist_ok=True)
 
