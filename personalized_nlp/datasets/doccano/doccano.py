@@ -51,7 +51,9 @@ class DoccanoDataModule(BaseDataModule):
         self.annotations["annotator_id"] = self.annotations["user_id"]
 
         if self.empty_annotations_strategy == "drop":
-            any_empty_annotation_mask = (self.annotations == -1).any(axis=1)
+            any_empty_annotation_mask = (
+                self.annotations[self.annotation_columns] == -1
+            ).any(axis=1)
             train_fold_mask = self.annotations.fold.isin(self.train_folds)
             self.annotations = self.annotations.loc[
                 ~(any_empty_annotation_mask & train_fold_mask)
