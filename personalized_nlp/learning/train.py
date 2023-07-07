@@ -47,7 +47,8 @@ def train_test(
     if regression:
         class_names = datamodule.annotation_columns
 
-        model = Regressor(model=model, lr=lr, class_names=class_names, round_outputs=round_outputs)
+        model = Regressor(model=model, lr=lr,
+                          class_names=class_names, round_outputs=round_outputs)
     else:
         class_dims = datamodule.class_dims
         class_names = datamodule.annotation_columns
@@ -67,14 +68,14 @@ def train_test(
     )
     progressbar_checkpoint = TQDMProgressBar(refresh_rate=20)
 
-    _use_cuda = use_cuda and torch.cuda.is_available()
+    # _use_cuda = use_cuda and torch.cuda.is_available()
 
     callbacks = [checkpoint_callback, progressbar_checkpoint]
     if custom_callbacks is not None:
         callbacks = callbacks + custom_callbacks
 
     trainer = pl.Trainer(
-        gpus=1 if _use_cuda else 0,
+        # gpus=1 if _use_cuda else 0,
         max_epochs=epochs,
         logger=logger,
         callbacks=callbacks,
