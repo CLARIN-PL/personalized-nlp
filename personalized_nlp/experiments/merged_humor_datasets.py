@@ -86,7 +86,8 @@ if __name__ == "__main__":
                     SaveOutputsLocal(save_dir=str(LOGS_DIR),
                                      model=trainer_kwargs["model_type"],
                                      dataset=type(data_module).__name__,
-                                     seed=datamodule_kwargs["seed"])
+                                     seed=datamodule_kwargs["seed"],
+                                     test_fold=datamodule_kwargs["test_fold"])
                 ])
 
             logger.experiment.finish()
