@@ -22,7 +22,7 @@ def train_test(
     monitor_metric="valid_loss",
     monitor_mode="min",
     advanced_output=False,
-    round_outputs=False,
+    multi_annotator_output=False,
     **kwargs,
 ):
     """Train model and return predictions for test dataset"""
@@ -47,13 +47,23 @@ def train_test(
     if regression:
         class_names = datamodule.annotation_columns
 
-        model = Regressor(model=model, lr=lr, class_names=class_names, round_outputs=round_outputs)
+        model = Regressor(
+            model=model,
+            lr=lr,
+            class_names=class_names,
+            ignore_index=datamodule.ignore_index,
+            multi_annotator_output=multi_annotator_output,
+        )
     else:
         class_dims = datamodule.class_dims
         class_names = datamodule.annotation_columns
 
         model = Classifier(
-            model=model, lr=lr, class_dims=class_dims, class_names=class_names
+            model=model,
+            lr=lr,
+            class_dims=class_dims,
+            class_names=class_names,
+            ignore_index=datamodule.ignore_index,
         )
 
     if logger is not None:
@@ -78,7 +88,7 @@ def train_test(
         max_epochs=epochs,
         logger=logger,
         callbacks=callbacks,
-        reload_dataloaders_every_n_epochs=2,
+        reload_dataloaders_every_n_epochs=1,
     )
     trainer.fit(model, train_loader, val_loader)
     train_metrics = trainer.logged_metrics

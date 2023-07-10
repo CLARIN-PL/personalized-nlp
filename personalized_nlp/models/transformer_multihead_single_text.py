@@ -5,7 +5,7 @@ from transformers import AutoTokenizer, AutoModel
 from typing import Dict, Any
 
 
-class TransformerMultiUserHead(nn.Module):
+class TransformerMultiUserSingleTextHead(nn.Module):
     def __init__(
         self,
         text_embedding_dim: int,
@@ -30,9 +30,12 @@ class TransformerMultiUserHead(nn.Module):
         self.fc1 = nn.Linear(text_embedding_dim, annotator_num * output_dim)
         # self.fc1 = nn.Linear(text_embedding_dim, output_dim)
 
+        self.annotator_biases = torch.nn.Embedding(
+            num_embeddings=annotator_num + 1, embedding_dim=output_dim, padding_idx=0
+        ).to("cuda")
+
     def forward(self, features: Dict[str, Any]):
         texts_raw = features["raw_texts"].tolist()
-        annotator_ids = features["annotator_ids"].tolist()
 
         tokenizer = self._tokenizer
         model = self._model
@@ -56,7 +59,13 @@ class TransformerMultiUserHead(nn.Module):
             emb = output.last_hidden_state[:, 0, :]
 
         batch_size = len(texts_raw)
-        logits = self.fc1(emb).reshape(batch_size, -1, self.annotator_num)
-        # logits = self.fc1(emb)[:, :, None].expand(batch_size, -1, self.annotator_num)
+        # logits = self.fc1(emb).reshape(batch_size, -1, self.annotator_num)
+        logits = self.fc1(emb)[:, :, None].expand(batch_size, -1, self.annotator_num)
 
-        return logits[torch.arange(batch_size), :, annotator_ids]
+        # logits = (
+        #     logits
+        #     + self.annotator_biases(
+        #         torch.arange(self.annotator_num).to("cuda") + 1
+        #     ).transpose(0, 1)[None, :, :]
+        # )
+        return logits

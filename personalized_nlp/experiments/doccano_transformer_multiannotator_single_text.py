@@ -31,7 +31,7 @@ if __name__ == "__main__":
             "major_voting": [False],
             "empty_annotations_strategy": ["drop"],
             "min_annotations_per_text": [20],
-            "multi_annotator_output": [False],
+            "multi_annotator_output": [True],
             "ignore_index": [-100],
         }
     )
@@ -40,16 +40,18 @@ if __name__ == "__main__":
             "huggingface_model_name": [TRANSFORMER_MODEL_STRINGS["labse"]],
             "append_annotator_ids": [False],
             "use_cuda": [True],
-            "single_texts": [False],
+            "single_texts": [True],
         }
     )
     trainer_kwargs_list = product_kwargs(
         {
             "epochs": [6],
             "lr": [1e-5],
+            # "lr": [2e-4],
             "regression": [True],
             "use_cuda": [True],
-            "model_type": ["transformer_multihead"],
+            "model_type": ["transformer_multihead_single_text"],
+            "multi_annotator_output": [True],
         }
     )
 

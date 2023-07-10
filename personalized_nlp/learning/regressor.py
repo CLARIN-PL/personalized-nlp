@@ -18,7 +18,7 @@ class Regressor(pl.LightningModule):
         class_names: List[str],
         log_valid_metrics: bool = False,
         ignore_index: Optional[int] = None,
-        round_outputs: bool = False,
+        multi_annotator_output: bool = False,
     ):
         super().__init__()
         self.save_hyperparameters()
@@ -26,7 +26,7 @@ class Regressor(pl.LightningModule):
         self.lr = lr
         self.log_valid_metrics = log_valid_metrics
         self.class_names = class_names
-        self.round_outputs = round_outputs
+        self.multi_annotator_output = multi_annotator_output
 
         self.metric_types = ["r2", "mae", "mse", "mape"]
 
@@ -59,7 +59,16 @@ class Regressor(pl.LightningModule):
 
     def training_step(self, batch, batch_idx):
         x, y = batch
+
         y = y.float()
+        if self.multi_annotator_output:
+            class_num = len(self.class_names)
+            y = y.reshape(y.shape[0], class_num, -1)
+
+        # mask = torch.randint_like(y, high=15)
+        # y[mask != 0] = self.ignore_index
+
+        # print("masking y:", (y == self.ignore_index).float().mean())
 
         output = self.forward(x)
 
@@ -80,7 +89,14 @@ class Regressor(pl.LightningModule):
         x, y = batch
         y = y.float()
 
+        if self.multi_annotator_output:
+            class_num = len(self.class_names)
+            y = y.reshape(y.shape[0], class_num, -1)
+
+        y_original = y.clone()
+
         output = self.forward(x)
+        output_original = output.clone()
 
         if self.ignore_index is not None:
             output = output[y != self.ignore_index]
@@ -91,7 +107,7 @@ class Regressor(pl.LightningModule):
         self.log("valid_loss", loss, prog_bar=True)
 
         if self.log_valid_metrics:
-            self.log_all_metrics(output=output, y=y, split="valid")
+            self.log_all_metrics(output=output_original, y=y_original, split="valid")
 
         return loss
 
@@ -99,13 +115,27 @@ class Regressor(pl.LightningModule):
         x, y = batch
         y = y.float()
 
+        if self.multi_annotator_output:
+            class_num = len(self.class_names)
+            y = y.reshape(y.shape[0], class_num, -1)
+        y_original = y.clone()
+
         output = self.forward(x)
+        output_original = output.clone()
+
+        if self.ignore_index is not None:
+            output = output[y != self.ignore_index]
+            y = y[y != self.ignore_index]
 
         loss = nn.MSELoss()(output, y)
 
         self.log("test_loss", loss, on_step=False, on_epoch=True)
         self.log_all_metrics(
-            output=output, y=y, split="test", on_step=False, on_epoch=True
+            output=output_original,
+            y=y_original,
+            split="test",
+            on_step=False,
+            on_epoch=True,
         )
 
         return {
@@ -135,9 +165,6 @@ class Regressor(pl.LightningModule):
                     class_output = class_output[class_y != self.ignore_index]
                     class_y = class_y[class_y != self.ignore_index]
 
-                if self.round_outputs:
-                    class_output = class_output.round(decimals=1)
-
                 metric_key = f"{split}_{metric_type}_{class_name}"
                 self.metrics[metric_key].update(class_output, class_y)
 
@@ -145,7 +172,12 @@ class Regressor(pl.LightningModule):
 
             mean_metric_key = f"{split}_{metric_type}_mean"
 
-            self.metrics[mean_metric_key].update(output, y)
+            mean_output, mean_y = output, y
+            if self.ignore_index is not None:
+                mean_output = mean_output[mean_y != self.ignore_index]
+                mean_y = mean_y[mean_y != self.ignore_index]
+
+            self.metrics[mean_metric_key].update(mean_output, mean_y)
             log_dict[mean_metric_key] = self.metrics[mean_metric_key]
 
             self.log_dict(log_dict, on_step=on_step, on_epoch=on_epoch)

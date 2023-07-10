@@ -19,6 +19,7 @@ from torch.utils.data import DataLoader
 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
+
 # TODO specify types!
 # TODO add docstring!
 class BaseDataModule(LightningDataModule, abc.ABC):
@@ -110,8 +111,10 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         use_finetuned_embeddings: bool = False,
         test_fold: Optional[int] = None,
         min_annotations_per_user_in_fold: Optional[int] = None,
+        multi_annotator_output: bool = False,
         seed: int = 22,
         use_cuda: bool = False,
+        ignore_index: int = -100,
         **kwargs,
     ):
         """_summary_
@@ -147,7 +150,9 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         self.regression = regression
         self.past_annotations_limit = past_annotations_limit
         self.stratify_folds_by = stratify_folds_by
+        self.multi_annotator_output = multi_annotator_output
         self.use_cuda = use_cuda
+        self.ignore_index = ignore_index
 
         self._test_fold = test_fold if test_fold is not None else 0
         self.use_finetuned_embeddings = use_finetuned_embeddings
@@ -202,6 +207,8 @@ class BaseDataModule(LightningDataModule, abc.ABC):
 
         if self.major_voting:
             self.compute_major_votes()
+        elif self.multi_annotator_output:
+            self.compute_multi_annotator_output()
 
         if not os.path.exists(self.embeddings_path):
             self._create_embeddings()
@@ -347,6 +354,15 @@ class BaseDataModule(LightningDataModule, abc.ABC):
 
         self.annotations = pd.concat(annotations_to_concat)
 
+    def compute_multi_annotator_output(self):
+        self.y_multioutput = (
+            self.annotations.loc[:, ["text_id", "user_id"] + self.annotation_columns]
+            .pivot_table(index=["text_id"], columns=["user_id"])
+            .loc[:, self.annotation_columns]
+            .fillna(self.ignore_index)
+            .values
+        )
+
     def compute_annotator_biases(self):
         annotations_with_data = self.annotations_with_data
 
@@ -402,6 +418,9 @@ class BaseDataModule(LightningDataModule, abc.ABC):
     def _get_dataloader(self, split: str, shuffle: bool) -> DataLoader:
         annotations = self.annotations
         annotations = annotations.loc[annotations.split == split]
+
+        if self.multi_annotator_output:
+            annotations = annotations.drop_duplicates(subset=["text_id"])
 
         X, y = self._get_data_by_split(annotations)
         text_features = self._get_text_features()
@@ -474,14 +493,17 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         df = annotations
 
         X = df.loc[:, ["text_id", "annotator_id"]]
-        y = df[self.annotation_columns]
+
+        if self.multi_annotator_output:
+            y = self.y_multioutput
+        else:
+            y = df[self.annotation_columns].values
 
         # X["text_id"] = X["text_id"].apply(lambda r_id: self.text_id_idx_dict[r_id])
         # X["annotator_id"] = X["annotator_id"].apply(
         #     lambda w_id: self.annotator_id_idx_dict[w_id]
         # )
-
-        X, y = X.values, y.values
+        X = X.values
 
         if y.ndim < 2:
             y = y[:, None]
