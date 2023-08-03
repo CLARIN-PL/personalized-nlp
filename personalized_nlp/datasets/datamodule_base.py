@@ -19,6 +19,7 @@ from torch.utils.data import DataLoader
 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
+
 # TODO specify types!
 # TODO add docstring!
 class BaseDataModule(LightningDataModule, abc.ABC):
@@ -195,7 +196,7 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         if self.min_annotations_per_user_in_fold is not None:
             self.filter_annotators()
 
-        self.compute_annotator_biases()
+        self._compute_annotator_stats()
 
         if self.regression:
             self._normalize_labels()
@@ -347,8 +348,9 @@ class BaseDataModule(LightningDataModule, abc.ABC):
 
         self.annotations = pd.concat(annotations_to_concat)
 
-    def compute_annotator_biases(self):
+    def _compute_annotator_stats(self):
         annotations_with_data = self.annotations_with_data
+        annotation_columns = self.annotation_columns
 
         if self.stratify_folds_by == "users":
             personal_df_mask = annotations_with_data.text_split == "past"
@@ -356,19 +358,27 @@ class BaseDataModule(LightningDataModule, abc.ABC):
             personal_df_mask = annotations_with_data.split == "train"
 
         personal_df = annotations_with_data.loc[personal_df_mask]
-
-        annotation_columns = self.annotation_columns
-        annotator_biases = get_annotator_biases(personal_df, annotation_columns)
-
         all_annotator_ids = self._original_annotations.annotator_id.unique()
         annotator_id_df = pd.DataFrame(all_annotator_ids, columns=["annotator_id"])
 
+        annotator_biases = get_annotator_biases(personal_df, annotation_columns)
         annotator_biases = annotator_id_df.merge(
             annotator_biases.reset_index(), how="left"
         )
         self.annotator_biases = (
             annotator_biases.set_index("annotator_id").sort_index().fillna(0)
         )
+
+        if not self.regression:
+            annotator_conformities = get_conformity(personal_df, annotation_columns)
+            annotator_conformities = annotator_id_df.merge(
+                annotator_conformities.reset_index(), how="left"
+            )
+            self.annotator_conformities = (
+                annotator_conformities.set_index("annotator_id").sort_index().fillna(0)
+            )
+        else:
+            self.annotator_conformities = self.annotator_biases
 
     def train_dataloader(self) -> DataLoader:
         """Returns dataloader for training part of the dataset.
@@ -447,7 +457,7 @@ class BaseDataModule(LightningDataModule, abc.ABC):
             "raw_texts": self.data["text"].values,
         }
 
-    def _get_annotator_features(self):
+    def _get_annotator_features(self) -> Dict[str, np.ndarray]:
         """Returns dictionary of features of all annotators in the dataset.
         Each feature should be a numpy array of whatever dtype, with length
         equal to number of annotators in the dataset. Features can be used by
@@ -455,7 +465,12 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         :return: dictionary of annotator features
         :rtype: Dict[str, Any]
         """
-        return {"annotator_biases": self.annotator_biases.values.astype(float)}
+        data = {
+            "annotator_biases": self.annotator_biases.values.astype(float),
+            "conformity": self.annotator_conformities.values.astype(float),
+        }
+
+        return data
 
     def _get_data_by_split(
         self, annotations: pd.DataFrame
@@ -512,10 +527,6 @@ class BaseDataModule(LightningDataModule, abc.ABC):
 
         return X, y
 
-    def get_conformity(self, annotations: pd.DataFrame = None) -> pd.DataFrame:
-        """Computes conformity for each annotator. Works only for binary classification problems."""
-        return get_conformity(self.annotations, self.annotation_columns)
-
     def limit_past_annotations(self, limit: int):
         past_annotations = self.annotations.merge(self.data[self.data.split == "past"])
 
@@ -541,7 +552,7 @@ class BaseDataModule(LightningDataModule, abc.ABC):
 
     def filter_annotators(self) -> None:
         """Filters annotators with less than `min_annotations_per_user_in_fold` annotations
-        in each fold and with less than one annotations per each (class_dim, fold) pair.
+        in each fold and with less than one annotation per each (class_dim, fold) pair.
         """
         if self.stratify_folds_by == "users":
             raise Exception(
