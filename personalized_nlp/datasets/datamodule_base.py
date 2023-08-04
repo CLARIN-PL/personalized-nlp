@@ -19,6 +19,7 @@ from torch.utils.data import DataLoader
 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
+
 # TODO specify types!
 # TODO add docstring!
 class BaseDataModule(LightningDataModule, abc.ABC):
@@ -348,7 +349,9 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         self.annotations = pd.concat(annotations_to_concat)
 
     def compute_annotator_biases(self):
-        annotations_with_data = self.annotations_with_data
+        annotations_with_data = self.annotations.merge(
+            self.data[["text_id", "text_split"]]
+        )
 
         if self.stratify_folds_by == "users":
             personal_df_mask = annotations_with_data.text_split == "past"
