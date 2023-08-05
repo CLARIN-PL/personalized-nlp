@@ -19,7 +19,7 @@ os.environ["WANDB_START_METHOD"] = "thread"
 os.environ["WANDB_DIR"] = str(LOGS_DIR)
 
 if __name__ == "__main__":
-    wandb_project_name = "MergedHumorDatasetsPersonalized"
+    wandb_project_name = "MergedHumorDatasetsPersonalizedWithDoccanoDatasets"
     datamodule_cls = MergedHumorDatasetsPersonalizedDataModule
 
     datamodule_kwargs_list = product_kwargs({
