@@ -4,3 +4,8 @@
 /annotations_users_folds.csv
 /texts.csv
 /texts_processed.csv
+/uc_texts.csv
+/uc_texts_processed.csv
+/uc_annotations.csv
+/uc_annotations_texts_folds.csv
+/uc_annotations_users_folds.csv
