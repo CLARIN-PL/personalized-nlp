@@ -47,7 +47,7 @@ if __name__ == "__main__":
         "lr": [0.008],
         "regression": [False],
         "use_cuda": [True],
-        "model_type": ["baseline", "onehot", "peb", "bias", "embedding"][:1],
+        "model_type": ["baseline", "onehot", "peb", "bias", "embedding"],
     })
 
     for datamodule_kwargs in datamodule_kwargs_list:

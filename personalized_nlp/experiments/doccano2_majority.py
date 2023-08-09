@@ -1,8 +1,8 @@
 import os
 from itertools import product
 
-from personalized_nlp.datasets.cockamamie_gobbledegook.cockamamie_gobbledegook import (
-    CockamamieGobbledegookDataModule)
+from personalized_nlp.datasets.doccano2.doccano2_majority import (
+    Doccano2MajorityDataModule)
 from personalized_nlp.utils.callbacks import (SaveOutputsLocal,
                                               PersonalizedMetricsCallback)
 
@@ -19,8 +19,8 @@ os.environ["WANDB_START_METHOD"] = "thread"
 os.environ["WANDB_DIR"] = str(LOGS_DIR)
 
 if __name__ == "__main__":
-    wandb_project_name = "MergedHumorDatasetsPersonalized"
-    datamodule_cls = CockamamieGobbledegookDataModule
+    wandb_project_name = "MergedHumorDatasets"
+    datamodule_cls = Doccano2MajorityDataModule
 
     datamodule_kwargs_list = product_kwargs({
         "use_cuda": [True],

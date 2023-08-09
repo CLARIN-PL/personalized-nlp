@@ -19,7 +19,7 @@ os.environ["WANDB_START_METHOD"] = "thread"
 os.environ["WANDB_DIR"] = str(LOGS_DIR)
 
 if __name__ == "__main__":
-    wandb_project_name = "MergedHumorDatasetsPersonalizedWithDoccanoDatasets"
+    wandb_project_name = "MergedHumorDatasetsPersonalized"
     datamodule_cls = MergedHumorDatasetsPersonalizedDataModule
 
     datamodule_kwargs_list = product_kwargs({
@@ -47,7 +47,7 @@ if __name__ == "__main__":
         "lr": [0.008],
         "regression": [False],
         "use_cuda": [True],
-        "model_type": ["baseline", "onehot", "peb", "bias", "embedding"][:],
+        "model_type": ["baseline", "onehot", "peb", "bias", "embedding"],
     })
 
     for datamodule_kwargs in datamodule_kwargs_list:
