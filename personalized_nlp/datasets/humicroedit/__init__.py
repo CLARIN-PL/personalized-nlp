@@ -1,1 +1,3 @@
 from personalized_nlp.datasets.humicroedit.humicroedit import HumicroeditDataModule
+from personalized_nlp.datasets.humicroedit.humicroedit_binarized import HumicroeditBinarizedDataModule
+from personalized_nlp.datasets.humicroedit.humicroedit_majority import HumicroeditMajorityDataModule

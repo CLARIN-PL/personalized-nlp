@@ -8,7 +8,7 @@ from settings import DATA_DIR
 from personalized_nlp.datasets.datamodule_base import BaseDataModule
 
 
-class CockamamieGobbledegookDataModule(BaseDataModule):
+class HumicroeditMajorityDataModule(BaseDataModule):
     @property
     def annotations_file(self) -> str:
         return f"annotations_{self.stratify_folds_by}_folds.csv"
@@ -19,7 +19,7 @@ class CockamamieGobbledegookDataModule(BaseDataModule):
 
     @property
     def data_dir(self) -> Path:
-        return DATA_DIR / "cockamamie_gobbledegook"
+        return DATA_DIR / "humicroedit" / "majority_voting"
 
     @property
     def annotation_columns(self) -> List[str]:

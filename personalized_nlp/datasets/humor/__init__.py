@@ -1,1 +1,3 @@
 from personalized_nlp.datasets.humor.humor import HumorDataModule
+from personalized_nlp.datasets.humor.humor_binarized import HumorBinarizedDataModule
+from personalized_nlp.datasets.humor.humor_majority import HumorMajorityDataModule

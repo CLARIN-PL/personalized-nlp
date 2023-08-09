@@ -1,1 +1,2 @@
 from personalized_nlp.datasets.merged_humor_datasets.merged_humor_datasets import MergedHumorDatasetsDataModule
+from personalized_nlp.datasets.merged_humor_datasets.merged_humor_datasets_majority import MergedHumorDatasetsMajorityDataModule
