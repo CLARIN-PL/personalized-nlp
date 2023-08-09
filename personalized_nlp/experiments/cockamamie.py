@@ -1,5 +1,6 @@
 import os
 from itertools import product
+from datetime import datetime
 
 from personalized_nlp.datasets.cockamamie_gobbledegook.cockamamie_gobbledegook import (
     CockamamieGobbledegookDataModule)
@@ -14,7 +15,7 @@ from personalized_nlp.utils.experiments import product_kwargs
 from pytorch_lightning import loggers as pl_loggers
 from pytorch_lightning.callbacks import EarlyStopping
 
-os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 os.environ["WANDB_START_METHOD"] = "thread"
 os.environ["WANDB_DIR"] = str(LOGS_DIR)
 
@@ -83,7 +84,9 @@ if __name__ == "__main__":
                         monitor="valid_personal_macro_f1",
                         mode="max",
                         patience=5),
-                    SaveOutputsLocal(save_dir=str(LOGS_DIR),
+                    SaveOutputsLocal(save_dir=(str(LOGS_DIR /
+                                                   f"{datetime.now().strftime('%m-%d-%Y-%h')}_{str(type(data_module).__name__)}" /
+                                                   trainer_kwargs["model_type"])),
                                      model=trainer_kwargs["model_type"],
                                      dataset=type(data_module).__name__,
                                      seed=datamodule_kwargs["seed"],

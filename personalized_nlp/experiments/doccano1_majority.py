@@ -1,5 +1,6 @@
 import os
 from itertools import product
+from datetime import datetime
 
 from personalized_nlp.datasets.doccano1.doccano1_majority import (
     Doccano1MajorityDataModule)
@@ -83,7 +84,9 @@ if __name__ == "__main__":
                         monitor="valid_personal_macro_f1",
                         mode="max",
                         patience=5),
-                    SaveOutputsLocal(save_dir=str(LOGS_DIR),
+                    SaveOutputsLocal(save_dir=(str(LOGS_DIR /
+                                                   f"{datetime.now().strftime('%m-%d-%Y-%h')}_{str(type(data_module).__name__)}" /
+                                                   trainer_kwargs["model_type"])),
                                      model=trainer_kwargs["model_type"],
                                      dataset=type(data_module).__name__,
                                      seed=datamodule_kwargs["seed"],
