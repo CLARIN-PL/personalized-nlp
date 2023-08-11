@@ -32,7 +32,7 @@ if __name__ == "__main__":
         "stratify_folds_by": ["users", "texts"][1:],
         "folds_num": [10],
         # batch_size = [10] for UserId model, [32] otherwise, [3000] as default
-        "batch_size": [3000],
+        "batch_size": [10],
         "use_finetuned_embeddings":
         [False],  # [False] for UserId model, [True] otherwise
         "seed":
@@ -51,7 +51,7 @@ if __name__ == "__main__":
     trainer_kwargs_list = product_kwargs({
         # [3] for UserId model or [10] for UserId model with early stopping, [20] otherwise
         "epochs": [3],
-        "lr": [0.00001],  # [0.00001] for UserId model, [0.008] otherwise
+        "lr": [0.00001],  # [0.00001] or [8e-6] for UserId model, [0.008] otherwise
         "regression": [False],
         "use_cuda": [True],
         "model_type": ["baseline", "onehot", "peb", "bias", "embedding",

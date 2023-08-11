@@ -8,5 +8,4 @@ pytorch-lightning==2.0.4
 pytorch-triton-rocm==2.0.2
 sentence-transformers==2.2.0
 tensorflow==2.8.0
-torchaudio==2.0.1+cu117
 wandb==0.12.11
