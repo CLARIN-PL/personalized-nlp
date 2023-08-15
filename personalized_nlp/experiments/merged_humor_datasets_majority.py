@@ -31,7 +31,10 @@ if __name__ == "__main__":
         "limit_past_annotations_list": [None],
         "stratify_folds_by": ["users", "texts"][1:],
         "folds_num": [10],
-        "batch_size": [3000],
+        # batch_size = [10] for UserId model, [32] otherwise, [3000] as default
+        "batch_size": [10],
+        "use_finetuned_embeddings":
+        [False],  # [False] for UserId model, [True] otherwise
         "seed":
         list(range(42, 52))[:1],
         "test_fold":
@@ -42,15 +45,20 @@ if __name__ == "__main__":
         "dp_emb": [0.25],
         "dp": [0.0],
         "hidden_dim": [100],
+        "append_annotator_ids":
+        [True]  # [True] for UserId model, [False] otherwise
     })
     trainer_kwargs_list = product_kwargs({
-        "epochs": [20],
-        "lr": [0.008],
+        # [3] for UserId model or [10] for UserId model with early stopping, [20] otherwise
+        "epochs": [3],
+        # [0.00001] or [8e-6] for UserId model, [0.008] otherwise
+        "lr": [0.00001],
         "regression": [False],
         "use_cuda": [True],
-        "model_type": ["baseline", "onehot", "peb", "bias", "embedding"],
+        "model_type": ["baseline", "onehot", "peb", "bias", "embedding",
+                       "transformer_user_id"][-1:],
     })
-
+    
     for datamodule_kwargs in datamodule_kwargs_list:
         seed_everything()
         data_module = datamodule_cls(**datamodule_kwargs)
@@ -85,8 +93,8 @@ if __name__ == "__main__":
                         mode="max",
                         patience=5),
                     SaveOutputsLocal(save_dir=(str(LOGS_DIR /
-                                                    f"{datetime.now().strftime('%m-%d-%Y-%h')}_{str(type(data_module).__name__)}" / 
-                                                    trainer_kwargs["model_type"])),
+                                                   f"{datetime.now().strftime('%m-%d-%Y-%h')}_{str(type(data_module).__name__)}" /
+                                                   trainer_kwargs["model_type"])),
                                      model=trainer_kwargs["model_type"],
                                      dataset=type(data_module).__name__,
                                      seed=datamodule_kwargs["seed"],

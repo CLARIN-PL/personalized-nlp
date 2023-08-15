@@ -51,7 +51,8 @@ if __name__ == "__main__":
     trainer_kwargs_list = product_kwargs({
         # [3] for UserId model or [10] for UserId model with early stopping, [20] otherwise
         "epochs": [3],
-        "lr": [0.00001],  # [0.00001] or [8e-6] for UserId model, [0.008] otherwise
+        # [0.00001] or [8e-6] for UserId model, [0.008] otherwise
+        "lr": [0.00001],
         "regression": [False],
         "use_cuda": [True],
         "model_type": ["baseline", "onehot", "peb", "bias", "embedding",
