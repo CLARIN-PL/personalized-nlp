@@ -196,14 +196,6 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         if self.min_annotations_per_user_in_fold is not None:
             self.filter_annotators()
 
-        self._compute_annotator_stats()
-
-        if self.regression:
-            self._normalize_labels()
-
-        if self.major_voting:
-            self.compute_major_votes()
-
         if not os.path.exists(self.embeddings_path):
             self._create_embeddings()
 
@@ -225,6 +217,14 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         assert len(self.data.index) == len(embeddings)
 
         self.text_embeddings = torch.tensor(embeddings)
+
+        self._compute_annotator_stats()
+
+        if self.regression:
+            self._normalize_labels()
+
+        if self.major_voting:
+            self.compute_major_votes()
 
         self._after_setup()
 
@@ -379,6 +379,44 @@ class BaseDataModule(LightningDataModule, abc.ABC):
             )
         else:
             self.annotator_conformities = self.annotator_biases
+
+        self.annotator_mean_text_embeddings = self.get_annotator_mean_text_embeddings(
+            personal_df
+        )
+
+    def get_annotator_mean_text_embeddings(
+        self, personal_df: pd.DataFrame
+    ) -> np.ndarray:
+        annotation_col = self.annotation_columns[0]
+        all_annotator_ids = self.annotations[["annotator_id"]].drop_duplicates()
+
+        positive_text_df = personal_df.loc[personal_df[annotation_col] == 1]
+        negative_text_df = personal_df.loc[personal_df[annotation_col] == 0]
+
+        def _get_embeddings(df):
+            mean_embeddings_df = df.groupby(["annotator_id"])["text_id"].apply(
+                lambda text_ids: self.text_embeddings[text_ids.values]
+                .numpy()
+                .mean(axis=0)
+            )
+
+            mean_embeddings_df = mean_embeddings_df.reset_index()
+            mean_embeddings_df = mean_embeddings_df.merge(
+                all_annotator_ids, how="right"
+            )
+            embeddings_dict = mean_embeddings_df.set_index("annotator_id").to_dict()
+            embeddings_dict = embeddings_dict["text_id"]
+            embeddings_dict = {
+                k: v if isinstance(v, np.ndarray) else np.zeros(self.text_embedding_dim)
+                for k, v in embeddings_dict.items()
+            }
+            embedding_list = [embeddings_dict[i] for i in range(len(all_annotator_ids))]
+            return np.vstack(embedding_list)
+
+        positive_embeddings = _get_embeddings(positive_text_df)
+        negative_embeddings = _get_embeddings(negative_text_df)
+
+        return np.hstack([positive_embeddings, negative_embeddings])
 
     def train_dataloader(self) -> DataLoader:
         """Returns dataloader for training part of the dataset.
