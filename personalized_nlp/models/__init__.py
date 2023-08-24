@@ -5,6 +5,9 @@ from personalized_nlp.models.hubi_simple import HuBiSimple
 from personalized_nlp.models.hubi_medium import HuBiMedium
 from personalized_nlp.models.transformer import TransformerUserId
 from personalized_nlp.models.conformity import ConformityModel
+from personalized_nlp.models.annotator_mean_text_embeddings import (
+    AnnotatorMeanTextEmbeddingModel,
+)
 
 models = {
     "baseline": Baseline,
@@ -14,4 +17,5 @@ models = {
     "embedding": HuBiMedium,
     "transformer_user_id": TransformerUserId,
     "conformity": ConformityModel,
+    "annotator_mean_text_embeddings": AnnotatorMeanTextEmbeddingModel,
 }

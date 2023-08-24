@@ -506,6 +506,7 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         data = {
             "annotator_biases": self.annotator_biases.values.astype(float),
             "conformity": self.annotator_conformities.values.astype(float),
+            "annotator_mean_text_embeddings": self.annotator_mean_text_embeddings,
         }
 
         return data
