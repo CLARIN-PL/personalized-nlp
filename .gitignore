@@ -25,3 +25,7 @@ personalized_nlp/notebooks/transformer_experiments
 
 # Visual Studio Code temp dir
 .vscode/
+
+results
+tmp
+wandb
