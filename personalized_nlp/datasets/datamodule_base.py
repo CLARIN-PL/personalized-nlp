@@ -107,10 +107,11 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         regression: bool = False,
         past_annotations_limit: Optional[int] = None,
         stratify_folds_by: Optional[str] = "users",
-        split_sizes: Optional[List[str]] = None,
+        split_sizes: Optional[List[float]] = None,
         use_finetuned_embeddings: bool = False,
-        test_fold: Optional[int] = None,
+        test_fold: int = 0,
         min_annotations_per_user_in_fold: Optional[int] = None,
+        conformity_type: str = "all",
         seed: int = 22,
         use_cuda: bool = False,
         **kwargs,
@@ -125,8 +126,12 @@ class BaseDataModule(LightningDataModule, abc.ABC):
             regression (bool, optional): Normalize labels to [0, 1] range with min-max method. Defaults to False.
             past_annotations_limit (Optional[int], optional): Maximum number of annotations in past dataset part. Defaults to None.
             stratify_folds_by (str, optional): How to stratify annotations: 'texts' or 'users'. Defaults to 'texts'.
+            split_sizes (List[float], optional): List of split sizes, with length equal to 4. Must sum up to 1.0.
             use_finetuned_embeddings (bool, optional): if true, use finetuned embeddings. Defaults to False.
-            filtered_annotations (str, optional): path to dataframe for filter annotations (for example choose only user=1, text=1,2,4 etc). Defaults to None.
+            test_fold (int): fold used as test fold. Defaults to 0.
+            min_annotations_per_user_in_fold (int, optional): minimum number of annotators for user in fold. Annotators with less annotations
+            are filtered out.
+            conformity_type (str): one of ["all", "weighted", "normal"]. Only this type of conformity will be used in conformity based models.
         """
 
         super().__init__(
@@ -149,6 +154,13 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         self.past_annotations_limit = past_annotations_limit
         self.stratify_folds_by = stratify_folds_by
         self.use_cuda = use_cuda
+
+        if conformity_type not in ["all", "weighted", "normal"]:
+            raise ValueError(
+                'conformity_type must be one of "all", "weighted" or "normal"'
+            )
+
+        self.conformity_type = conformity_type
 
         self._test_fold = test_fold if test_fold is not None else 0
         self.use_finetuned_embeddings = use_finetuned_embeddings
@@ -348,10 +360,12 @@ class BaseDataModule(LightningDataModule, abc.ABC):
 
         self.annotations = pd.concat(annotations_to_concat)
 
-    def compute_annotator_biases(self):
-        annotations_with_data = self.annotations.merge(
-            self.data[["text_id", "text_split"]]
-        )
+    def _compute_annotator_stats(self):
+        data_cols = ["text_id"]
+        if self.stratify_folds_by == "users":
+            data_cols += ["text_split"]
+
+        annotations_with_data = self.annotations.merge(self.data[data_cols])
 
         if self.stratify_folds_by == "users":
             personal_df_mask = annotations_with_data.text_split == "past"
@@ -362,7 +376,7 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         all_annotator_ids = self._original_annotations.annotator_id.unique()
         annotator_id_df = pd.DataFrame(all_annotator_ids, columns=["annotator_id"])
 
-        annotator_biases = get_annotator_biases(personal_df, annotation_columns)
+        annotator_biases = get_annotator_biases(personal_df, self.annotation_columns)
         annotator_biases = annotator_id_df.merge(
             annotator_biases.reset_index(), how="left"
         )
@@ -371,7 +385,9 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         )
 
         if not self.regression:
-            annotator_conformities = get_conformity(personal_df, annotation_columns)
+            annotator_conformities = get_conformity(
+                personal_df, self.annotation_columns, self.conformity_type
+            )
             annotator_conformities = annotator_id_df.merge(
                 annotator_conformities.reset_index(), how="left"
             )
