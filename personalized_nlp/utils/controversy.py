@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 
 import numpy as np
 import pandas as pd
@@ -14,11 +14,21 @@ def get_text_controversy(annotations: pd.DataFrame, score_column: str) -> pd.Dat
     return annotations.groupby("text_id")[score_column].apply(_entropy)
 
 
-def get_conformity(annotations: pd.DataFrame, columns: List[str]) -> pd.DataFrame:
-    g_conformity = get_general_conformity(annotations, columns)
-    w_conformity = get_weighted_conformity(annotations, columns)
+def get_conformity(
+    annotations: pd.DataFrame,
+    columns: List[str],
+    conformity_type: Optional[str] = "all",
+) -> pd.DataFrame:
+    conformity_dfs = []
+    if conformity_type != "weighted":
+        g_conformity = get_general_conformity(annotations, columns)
+        conformity_dfs.append(g_conformity)
 
-    return pd.concat([g_conformity, w_conformity], axis=1)
+    if conformity_type != "normal":
+        w_conformity = get_weighted_conformity(annotations, columns)
+        conformity_dfs.append(w_conformity)
+
+    return pd.concat(conformity_dfs, axis=1)
 
 
 def get_general_conformity(
