@@ -215,7 +215,7 @@ class BaseDataModule(LightningDataModule, abc.ABC):
 
         if self.use_finetuned_embeddings:
             finetune_datamodule_embeddings(self)
-            embeddings_path = f"{self.data_dir}/embeddings/{self.embeddings_type}_{self.test_fold}_{self.stratify_folds_by}.p"
+            embeddings_path = f"{self.data_dir}/embeddings/finetuned_{self.embeddings_type}_{self.test_fold}_{self.stratify_folds_by}.p"
 
         with open(embeddings_path, "rb") as f:
             text_idx_to_emb = pickle.load(f)
@@ -405,7 +405,9 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         self, personal_df: pd.DataFrame
     ) -> np.ndarray:
         annotation_col = self.annotation_columns[0]
-        all_annotator_ids = self.annotations[["annotator_id"]].drop_duplicates()
+        all_annotator_ids = self._original_annotations[
+            ["annotator_id"]
+        ].drop_duplicates()
 
         positive_text_df = personal_df.loc[personal_df[annotation_col] == 1]
         negative_text_df = personal_df.loc[personal_df[annotation_col] == 0]
