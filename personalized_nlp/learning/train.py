@@ -49,6 +49,7 @@ def train_test(
 
         model = Regressor(model=model, lr=lr,
                           class_names=class_names, round_outputs=round_outputs)
+  
     else:
         class_dims = datamodule.class_dims
         class_names = datamodule.annotation_columns

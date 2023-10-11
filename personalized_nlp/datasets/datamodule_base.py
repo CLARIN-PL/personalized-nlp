@@ -109,10 +109,11 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         regression: bool = False,
         past_annotations_limit: Optional[int] = None,
         stratify_folds_by: Optional[str] = "users",
-        split_sizes: Optional[List[str]] = None,
+        split_sizes: Optional[List[float]] = None,
         use_finetuned_embeddings: bool = False,
-        test_fold: Optional[int] = None,
+        test_fold: int = 0,
         min_annotations_per_user_in_fold: Optional[int] = None,
+        conformity_type: str = "all",
         seed: int = 22,
         use_cuda: bool = False,
         **kwargs,
@@ -127,8 +128,12 @@ class BaseDataModule(LightningDataModule, abc.ABC):
             regression (bool, optional): Normalize labels to [0, 1] range with min-max method. Defaults to False.
             past_annotations_limit (Optional[int], optional): Maximum number of annotations in past dataset part. Defaults to None.
             stratify_folds_by (str, optional): How to stratify annotations: 'texts' or 'users'. Defaults to 'texts'.
+            split_sizes (List[float], optional): List of split sizes, with length equal to 4. Must sum up to 1.0.
             use_finetuned_embeddings (bool, optional): if true, use finetuned embeddings. Defaults to False.
-            filtered_annotations (str, optional): path to dataframe for filter annotations (for example choose only user=1, text=1,2,4 etc). Defaults to None.
+            test_fold (int): fold used as test fold. Defaults to 0.
+            min_annotations_per_user_in_fold (int, optional): minimum number of annotators for user in fold. Annotators with less annotations
+            are filtered out.
+            conformity_type (str): one of ["all", "weighted", "normal"]. Only this type of conformity will be used in conformity based models.
         """
 
         super().__init__(
@@ -151,6 +156,13 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         self.past_annotations_limit = past_annotations_limit
         self.stratify_folds_by = stratify_folds_by
         self.use_cuda = use_cuda
+
+        if conformity_type not in ["all", "weighted", "normal"]:
+            raise ValueError(
+                'conformity_type must be one of "all", "weighted" or "normal"'
+            )
+
+        self.conformity_type = conformity_type
 
         self._test_fold = test_fold if test_fold is not None else 0
         self.use_finetuned_embeddings = use_finetuned_embeddings
@@ -199,14 +211,6 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         if self.min_annotations_per_user_in_fold is not None:
             self.filter_annotators()
 
-        self.compute_annotator_biases()
-
-        if self.regression:
-            self._normalize_labels()
-
-        if self.major_voting:
-            self.compute_major_votes()
-
         if not os.path.exists(self.embeddings_path):
             self._create_embeddings()
 
@@ -214,7 +218,7 @@ class BaseDataModule(LightningDataModule, abc.ABC):
 
         if self.use_finetuned_embeddings:
             finetune_datamodule_embeddings(self)
-            embeddings_path = f"{self.data_dir}/embeddings/{self.embeddings_type}_{self.test_fold}_{self.stratify_folds_by}.p"
+            embeddings_path = f"{self.data_dir}/embeddings/finetuned_{self.embeddings_type}_{self.test_fold}_{self.stratify_folds_by}.p"
 
         with open(embeddings_path, "rb") as f:
             text_idx_to_emb = pickle.load(f)
@@ -228,6 +232,14 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         assert len(self.data.index) == len(embeddings)
 
         self.text_embeddings = torch.tensor(embeddings)
+
+        self._compute_annotator_stats()
+
+        if self.regression:
+            self._normalize_labels()
+
+        if self.major_voting:
+            self.compute_major_votes()
 
         self._after_setup()
 
@@ -358,7 +370,14 @@ class BaseDataModule(LightningDataModule, abc.ABC):
 
         self.annotations = pd.concat(annotations_to_concat)
 
-    def compute_annotator_biases(self):
+
+    def _compute_annotator_stats(self):
+        data_cols = ["text_id"]
+        if self.stratify_folds_by == "users":
+            data_cols += ["text_split"]
+
+        annotations_with_data = self.annotations.merge(self.data[data_cols])
+
         if self.stratify_folds_by == "users":
             annotations_with_data = self.annotations.merge(
                 self.data[["text_id", "text_split"]]
@@ -370,20 +389,70 @@ class BaseDataModule(LightningDataModule, abc.ABC):
 
         personal_df = annotations_with_data.loc[personal_df_mask]
 
-        annotation_columns = self.annotation_columns
-        annotator_biases = get_annotator_biases(
-            personal_df, annotation_columns)
-
         all_annotator_ids = self._original_annotations.annotator_id.unique()
         annotator_id_df = pd.DataFrame(
             all_annotator_ids, columns=["annotator_id"])
 
+        annotator_biases = get_annotator_biases(personal_df, self.annotation_columns)
         annotator_biases = annotator_id_df.merge(
             annotator_biases.reset_index(), how="left"
         )
         self.annotator_biases = (
             annotator_biases.set_index("annotator_id").sort_index().fillna(0)
         )
+
+        if not self.regression:
+            annotator_conformities = get_conformity(
+                personal_df, self.annotation_columns, self.conformity_type
+            )
+            annotator_conformities = annotator_id_df.merge(
+                annotator_conformities.reset_index(), how="left"
+            )
+            self.annotator_conformities = (
+                annotator_conformities.set_index("annotator_id").sort_index().fillna(0)
+            )
+        else:
+            self.annotator_conformities = self.annotator_biases
+
+        self.annotator_mean_text_embeddings = self.get_annotator_mean_text_embeddings(
+            personal_df
+        )
+
+    def get_annotator_mean_text_embeddings(
+        self, personal_df: pd.DataFrame
+    ) -> np.ndarray:
+        annotation_col = self.annotation_columns[0]
+        all_annotator_ids = self._original_annotations[
+            ["annotator_id"]
+        ].drop_duplicates()
+
+        positive_text_df = personal_df.loc[personal_df[annotation_col] == 1]
+        negative_text_df = personal_df.loc[personal_df[annotation_col] == 0]
+
+        def _get_embeddings(df):
+            mean_embeddings_df = df.groupby(["annotator_id"])["text_id"].apply(
+                lambda text_ids: self.text_embeddings[text_ids.values]
+                .numpy()
+                .mean(axis=0)
+            )
+
+            mean_embeddings_df = mean_embeddings_df.reset_index()
+            mean_embeddings_df = mean_embeddings_df.merge(
+                all_annotator_ids, how="right"
+            )
+            embeddings_dict = mean_embeddings_df.set_index("annotator_id").to_dict()
+            embeddings_dict = embeddings_dict["text_id"]
+            embeddings_dict = {
+                k: v if isinstance(v, np.ndarray) else np.zeros(self.text_embedding_dim)
+                for k, v in embeddings_dict.items()
+            }
+            embedding_list = [embeddings_dict[i] for i in range(len(all_annotator_ids))]
+            return np.vstack(embedding_list)
+
+        positive_embeddings = _get_embeddings(positive_text_df)
+        negative_embeddings = _get_embeddings(negative_text_df)
+
+        return np.hstack([positive_embeddings, negative_embeddings])
 
     def train_dataloader(self) -> DataLoader:
         """Returns dataloader for training part of the dataset.
@@ -462,7 +531,7 @@ class BaseDataModule(LightningDataModule, abc.ABC):
             "raw_texts": self.data["text"].values,
         }
 
-    def _get_annotator_features(self):
+    def _get_annotator_features(self) -> Dict[str, np.ndarray]:
         """Returns dictionary of features of all annotators in the dataset.
         Each feature should be a numpy array of whatever dtype, with length
         equal to number of annotators in the dataset. Features can be used by
@@ -470,7 +539,13 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         :return: dictionary of annotator features
         :rtype: Dict[str, Any]
         """
-        return {"annotator_biases": self.annotator_biases.values.astype(float)}
+        data = {
+            "annotator_biases": self.annotator_biases.values.astype(float),
+            "conformity": self.annotator_conformities.values.astype(float),
+            "annotator_mean_text_embeddings": self.annotator_mean_text_embeddings,
+        }
+
+        return data
 
     def _get_data_by_split(
         self, annotations: pd.DataFrame
@@ -527,10 +602,6 @@ class BaseDataModule(LightningDataModule, abc.ABC):
 
         return X, y
 
-    def get_conformity(self, annotations: pd.DataFrame = None) -> pd.DataFrame:
-        """Computes conformity for each annotator. Works only for binary classification problems."""
-        return get_conformity(self.annotations, self.annotation_columns)
-
     def limit_past_annotations(self, limit: int):
         past_annotations = self.annotations.merge(
             self.data[self.data.split == "past"])
@@ -559,7 +630,7 @@ class BaseDataModule(LightningDataModule, abc.ABC):
 
     def filter_annotators(self) -> None:
         """Filters annotators with less than `min_annotations_per_user_in_fold` annotations
-        in each fold and with less than one annotations per each (class_dim, fold) pair.
+        in each fold and with less than one annotation per each (class_dim, fold) pair.
         """
         if self.stratify_folds_by == "users":
             raise Exception(
