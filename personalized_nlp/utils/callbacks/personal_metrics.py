@@ -75,7 +75,7 @@ class PersonalizedMetricsCallback(Callback):
                 )
 
                 personal_metrics = classification_report(
-                    person_y_true, person_y_pred, output_dict=True
+                    person_y_true, person_y_pred, output_dict=True, zero_division=0
                 )
 
                 class_name = (

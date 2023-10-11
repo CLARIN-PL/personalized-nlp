@@ -1,4 +1,4 @@
 outs:
 - md5: e4abe9de48c69afcb148dfe1731ca0eb
   size: 6236953
-  path: uc_texts_processed.csv
+  path: data_processed.csv
