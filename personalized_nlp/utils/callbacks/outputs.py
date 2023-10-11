@@ -107,7 +107,7 @@ class SaveOutputsWandb(AbstractSaveOutputsCallback):
 
 class SaveOutputsLocal(AbstractSaveOutputsCallback):
 
-    def __init__(self, save_dir: str, save_text: bool = True, sep: str = '_', strftime='%m-%d-%Y-%h', **kwargs) -> None:
+    def __init__(self, save_dir: str, save_text: bool = True, sep: str = '_', strftime='%Y-%m-%d', **kwargs) -> None:
         """Callback for loging outputs in local dir. Outputs in .csv file will be saved in $GLOBAL_OUTPUT_PATH/{save_dir},
         and will be named: $TIME_{kwargs.key[0]}={kwargs.value[0]}_{kwargs.key[1]}={kwargs.value[1]}_..._{kwargs.key[N-1]}={kwargs.value[N-1]}
 
@@ -123,10 +123,11 @@ class SaveOutputsLocal(AbstractSaveOutputsCallback):
         self.save_dir = os.path.join(
             STORAGE_DIR,
             OUTPUTS_DIR_NAME,
-            save_dir)
+            save_dir,
+            str(datetime.now().strftime(strftime)))
         if not os.path.exists(self.save_dir):
             os.makedirs(self.save_dir)
-        self.save_name = f"{datetime.now().strftime(strftime)}_" + sep.join(
+        self.save_name = f'{str(datetime.now().strftime(strftime))}_' + sep.join(
             f'{key}={value}' for key, value in kwargs.items()) + ".csv"
 
     def on_test_end(self, *args, **kwargs):
