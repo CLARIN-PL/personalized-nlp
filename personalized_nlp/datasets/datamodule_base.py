@@ -370,17 +370,13 @@ class BaseDataModule(LightningDataModule, abc.ABC):
 
         self.annotations = pd.concat(annotations_to_concat)
 
-
     def _compute_annotator_stats(self):
         data_cols = ["text_id"]
+
         if self.stratify_folds_by == "users":
             data_cols += ["text_split"]
-
-        annotations_with_data = self.annotations.merge(self.data[data_cols])
-
-        if self.stratify_folds_by == "users":
             annotations_with_data = self.annotations.merge(
-                self.data[["text_id", "text_split"]]
+                self.data[data_cols]
             )
             personal_df_mask = annotations_with_data.text_split == "past"
         else:
@@ -393,7 +389,8 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         annotator_id_df = pd.DataFrame(
             all_annotator_ids, columns=["annotator_id"])
 
-        annotator_biases = get_annotator_biases(personal_df, self.annotation_columns)
+        annotator_biases = get_annotator_biases(
+            personal_df, self.annotation_columns)
         annotator_biases = annotator_id_df.merge(
             annotator_biases.reset_index(), how="left"
         )
@@ -409,7 +406,8 @@ class BaseDataModule(LightningDataModule, abc.ABC):
                 annotator_conformities.reset_index(), how="left"
             )
             self.annotator_conformities = (
-                annotator_conformities.set_index("annotator_id").sort_index().fillna(0)
+                annotator_conformities.set_index(
+                    "annotator_id").sort_index().fillna(0)
             )
         else:
             self.annotator_conformities = self.annotator_biases
@@ -440,13 +438,16 @@ class BaseDataModule(LightningDataModule, abc.ABC):
             mean_embeddings_df = mean_embeddings_df.merge(
                 all_annotator_ids, how="right"
             )
-            embeddings_dict = mean_embeddings_df.set_index("annotator_id").to_dict()
+            embeddings_dict = mean_embeddings_df.set_index(
+                "annotator_id").to_dict()
             embeddings_dict = embeddings_dict["text_id"]
             embeddings_dict = {
-                k: v if isinstance(v, np.ndarray) else np.zeros(self.text_embedding_dim)
+                k: v if isinstance(v, np.ndarray) else np.zeros(
+                    self.text_embedding_dim)
                 for k, v in embeddings_dict.items()
             }
-            embedding_list = [embeddings_dict[i] for i in range(len(all_annotator_ids))]
+            embedding_list = [embeddings_dict[i]
+                              for i in range(len(all_annotator_ids))]
             return np.vstack(embedding_list)
 
         positive_embeddings = _get_embeddings(positive_text_df)
