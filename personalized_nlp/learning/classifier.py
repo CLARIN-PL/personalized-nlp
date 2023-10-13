@@ -3,8 +3,8 @@ import pytorch_lightning as pl
 import torch
 import torch.nn as nn
 import numpy as np
-from torchmetrics.classification.f_beta import F1Score
-from torchmetrics.classification.accuracy import Accuracy
+from torchmetrics.classification import MulticlassF1Score
+from torchmetrics.classification import MulticlassAccuracy
 from personalized_nlp.utils.metrics import F1Class, PrecisionClass, RecallClass
 
 
@@ -28,7 +28,8 @@ class Classifier(pl.LightningModule):
         self.class_dims = class_dims
         self.class_names = class_names
 
-        self.metric_types = ("accuracy", "precision", "recall", "f1", "macro_f1")
+        self.metric_types = ("accuracy", "precision",
+                             "recall", "f1", "macro_f1")
         self.log_valid_metrics = log_valid_metrics
         self.ignore_index = ignore_index
 
@@ -36,18 +37,18 @@ class Classifier(pl.LightningModule):
 
         for split in ["train", "valid", "test"]:
             for class_idx in range(len(class_dims)):
-                class_name = class_names[class_idx] if class_names else str(class_idx)
+                class_name = class_names[class_idx] if class_names else str(
+                    class_idx)
                 num_classes = class_dims[class_idx]
 
-                class_metrics[f"{split}_accuracy_{class_name}"] = Accuracy(
-                    task="multiclass", num_classes=num_classes, ignore_index=self.ignore_index
+                class_metrics[f"{split}_accuracy_{class_name}"] = MulticlassAccuracy(
+                    num_classes=num_classes, ignore_index=self.ignore_index
                 )
 
                 for class_dim in range(num_classes):
                     class_metrics[
                         f"{split}_precision_{class_name}_{class_dim}"
                     ] = PrecisionClass(
-                        task='multiclass',
                         num_classes=num_classes,
                         average=None,
                         class_idx=class_dim,
@@ -56,21 +57,18 @@ class Classifier(pl.LightningModule):
                     class_metrics[
                         f"{split}_recall_{class_name}_{class_dim}"
                     ] = RecallClass(
-                        task='multiclass',
                         num_classes=num_classes,
                         average=None,
                         class_idx=class_dim,
                         ignore_index=self.ignore_index,
                     )
                     class_metrics[f"{split}_f1_{class_name}_{class_dim}"] = F1Class(
-                        task='multiclass',
                         average="none",
                         num_classes=num_classes,
                         class_idx=class_dim,
                         ignore_index=self.ignore_index,
                     )
-                class_metrics[f"{split}_macro_f1_{class_name}"] = F1Score(
-                    task='multiclass',
+                class_metrics[f"{split}_macro_f1_{class_name}"] = MulticlassF1Score(
                     average="macro",
                     num_classes=num_classes,
                     ignore_index=self.ignore_index,

@@ -1,1 +1,2 @@
 from personalized_nlp.datasets.cockamamie_gobbledegook.cockamamie_gobbledegook import CockamamieGobbledegookDataModule
+from personalized_nlp.datasets.cockamamie_gobbledegook.cockamamie_gobbledegook_majority import CockamamieGobbledegookMajorityDataModule

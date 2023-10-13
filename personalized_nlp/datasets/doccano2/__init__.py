@@ -1,0 +1,2 @@
+from personalized_nlp.datasets.doccano2.doccano2 import Doccano2DataModule
+from personalized_nlp.datasets.doccano2.doccano2_majority import Doccano2MajorityDataModule

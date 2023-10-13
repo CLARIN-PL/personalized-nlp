@@ -11,12 +11,11 @@ from personalized_nlp.datasets.datamodule_base import BaseDataModule
 class CockamamieGobbledegookDataModule(BaseDataModule):
     @property
     def annotations_file(self) -> str:
-        return f"cockamamie_annotations_only_controversial_a_non_empty_{self.stratify_folds_by}_folds.csv"
+        return f"annotations_{self.stratify_folds_by}_folds.csv"
 
     @property
     def data_file(self) -> str:
-        return "cockamamie_texts_only_controversial_a_non_empty_processed.csv"
-
+        return "data.csv"
 
     @property
     def data_dir(self) -> Path:
@@ -24,7 +23,7 @@ class CockamamieGobbledegookDataModule(BaseDataModule):
 
     @property
     def annotation_columns(self) -> List[str]:
-        return ["is_funny"]
+        return ["is_funny_binarized"]
 
     @property
     def class_dims(self):
@@ -39,9 +38,8 @@ class CockamamieGobbledegookDataModule(BaseDataModule):
         os.makedirs(self.data_dir / "embeddings", exist_ok=True)
 
     def prepare_data(self) -> None:
-        self.data = pd.read_csv(self.data_dir /  self.data_file)
-        self.data["text"] = self.data["text_english"]
+        self.data = pd.read_csv(self.data_dir / self.data_file)
 
         self.annotations = pd.read_csv(
-            self.data_dir /  self.annotations_file
+            self.data_dir / self.annotations_file
         ).dropna()

@@ -29,7 +29,8 @@ class AbstractSaveOutputsCallback(Callback):
 
     def _create_outputs(self, is_reggression: bool, x: Sequence[Any], class_names: Sequence[str], base: str) -> Dict[str, np.ndarray]:
         if is_reggression:
-            assert len(class_names) == x.shape[1], f'Save output callbacks can only accept reggression, if len(class names) == output shape, but got len(class names) = {len(class_names)} and output shape = {x.shape[1]}'
+            assert len(
+                class_names) == x.shape[1], f'Save output callbacks can only accept reggression, if len(class names) == output shape, but got len(class names) = {len(class_names)} and output shape = {x.shape[1]}'
             out_dict = {
                 f'{base}_{class_name}': x[:, i].cpu().reshape(-1).numpy() for i, class_name in enumerate(class_names)
             }
@@ -48,7 +49,6 @@ class AbstractSaveOutputsCallback(Callback):
                     f'{base}_{i}': x[:, i].cpu().reshape(-1).numpy() for i in range(x.shape[1])
                 }
             return out_dict
-
 
     def _create_dataframe(self) -> pd.DataFrame:
         if not self.outputs:
@@ -84,13 +84,12 @@ class AbstractSaveOutputsCallback(Callback):
 
             df = pd.DataFrame(metric_dict)
             dfs.append(df)
-        cat_df = pd.concat(dfs, ignore_index=True)     
-        return cat_df   
+        cat_df = pd.concat(dfs, ignore_index=True)
+        return cat_df
 
     @abc.abstractmethod
     def on_test_end(self, *args, **kwargs):
         pass
-
 
 
 class SaveOutputsWandb(AbstractSaveOutputsCallback):
@@ -107,11 +106,11 @@ class SaveOutputsWandb(AbstractSaveOutputsCallback):
 
 
 class SaveOutputsLocal(AbstractSaveOutputsCallback):
-    
-    def __init__(self, save_dir: str, save_text: bool = True, sep: str = '_', strftime='%m-%d-%Y-%h', **kwargs) -> None:
+
+    def __init__(self, save_dir: str, save_text: bool = True, sep: str = '_', strftime='%Y-%m-%d', **kwargs) -> None:
         """Callback for loging outputs in local dir. Outputs in .csv file will be saved in $GLOBAL_OUTPUT_PATH/{save_dir},
         and will be named: $TIME_{kwargs.key[0]}={kwargs.value[0]}_{kwargs.key[1]}={kwargs.value[1]}_..._{kwargs.key[N-1]}={kwargs.value[N-1]}
-        
+
         For example:
         `SaveOutputsLocal('mysave_dir', experiment='myexperiment', fold_num=0)`
         will yield this file:
@@ -124,10 +123,12 @@ class SaveOutputsLocal(AbstractSaveOutputsCallback):
         self.save_dir = os.path.join(
             STORAGE_DIR,
             OUTPUTS_DIR_NAME,
-            save_dir)
+            save_dir,
+            str(datetime.now().strftime(strftime)))
         if not os.path.exists(self.save_dir):
             os.makedirs(self.save_dir)
-        self.save_name = f"{datetime.now().strftime(strftime)}" + sep.join(f'{key}={value}' for key, value in kwargs.items()) + ".csv"
+        self.save_name = f'{str(datetime.now().strftime(strftime))}_' + sep.join(
+            f'{key}={value}' for key, value in kwargs.items()) + ".csv"
 
     def on_test_end(self, *args, **kwargs):
         df = self._create_dataframe()

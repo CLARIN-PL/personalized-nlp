@@ -20,7 +20,7 @@ class PersonalizedMetricsCallback(Callback):
         outputs,
         batch: Any,
         batch_idx: int,
-        dataloader_idx: int,
+        dataloader_idx: int = 0,
     ) -> None:
         self._valid_outputs.append(outputs)
 
@@ -71,7 +71,8 @@ class PersonalizedMetricsCallback(Callback):
                 )
                 person_y_pred = np.argmax(person_confidences, axis=1)
                 person_y_true = (
-                    y[annotator_ids == annotator_id, cls_dim_idx].long().cpu().numpy()
+                    y[annotator_ids == annotator_id,
+                        cls_dim_idx].long().cpu().numpy()
                 )
 
                 personal_metrics = classification_report(
@@ -79,7 +80,8 @@ class PersonalizedMetricsCallback(Callback):
                 )
 
                 class_name = (
-                    class_names[cls_dim_idx] if class_names else str(cls_dim_idx)
+                    class_names[cls_dim_idx] if class_names else str(
+                        cls_dim_idx)
                 )
 
                 for cls_idx in range(class_dims[cls_dim_idx]):
