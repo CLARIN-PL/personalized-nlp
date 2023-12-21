@@ -8,6 +8,8 @@ from personalized_nlp.models.conformity import ConformityModel
 from personalized_nlp.models.annotator_mean_text_embeddings import (
     AnnotatorMeanTextEmbeddingModel,
 )
+from personalized_nlp.models.attention import AttentionModel
+from personalized_nlp.models.gru import GruModel
 
 models = {
     "baseline": Baseline,
@@ -18,4 +20,6 @@ models = {
     "transformer_user_id": TransformerUserId,
     "conformity": ConformityModel,
     "annotator_mean_text_embeddings": AnnotatorMeanTextEmbeddingModel,
+    "attention": AttentionModel,
+    "gru": GruModel,
 }

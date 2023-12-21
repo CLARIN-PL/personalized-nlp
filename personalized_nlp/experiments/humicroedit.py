@@ -2,7 +2,7 @@ import os
 from itertools import product
 from datetime import datetime
 
-from personalized_nlp.datasets.humor.humor import HumorDataModule
+from personalized_nlp.datasets.humicroedit.humicroedit import HumicroeditDataModule
 from personalized_nlp.utils.callbacks import (SaveOutputsLocal,
                                               PersonalizedMetricsCallback)
 
@@ -14,13 +14,13 @@ from personalized_nlp.utils.experiments import product_kwargs
 from pytorch_lightning import loggers as pl_loggers
 from pytorch_lightning.callbacks import EarlyStopping
 
-os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 os.environ["WANDB_START_METHOD"] = "thread"
 os.environ["WANDB_DIR"] = str(LOGS_DIR)
 
 if __name__ == "__main__":
-    wandb_project_name = "HumorNewArchs"
-    datamodule_cls = HumorDataModule
+    wandb_project_name = "HumicroeditNewArchs"
+    datamodule_cls = HumicroeditDataModule
 
     datamodule_kwargs_list = product_kwargs(
         {

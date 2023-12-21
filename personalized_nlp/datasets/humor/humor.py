@@ -1,14 +1,22 @@
+import os
+from pathlib import Path
 from typing import List
 
 import pandas as pd
-import os
-from pathlib import Path
 
 from settings import DATA_DIR
 from personalized_nlp.datasets.datamodule_base import BaseDataModule
 
 
 class HumorDataModule(BaseDataModule):
+    @property
+    def annotations_file(self) -> str:
+        return f"annotations_{self.stratify_folds_by}_folds.csv"
+
+    @property
+    def data_file(self) -> str:
+        return "data.csv"
+
     @property
     def data_dir(self) -> Path:
         return DATA_DIR / "humor"
@@ -23,27 +31,15 @@ class HumorDataModule(BaseDataModule):
 
     def __init__(
         self,
-        min_annotations_per_text=None,
         **kwargs,
     ):
         super().__init__(**kwargs)
 
-        self.min_annotations_per_text = min_annotations_per_text
-
         os.makedirs(self.data_dir / "embeddings", exist_ok=True)
 
     def prepare_data(self) -> None:
-        self.data = pd.read_csv(self.data_dir / "texts" / self.data_file)
+        self.data = pd.read_csv(self.data_dir / self.data_file)
 
         self.annotations = pd.read_csv(
-            self.data_dir / "texts" / self.annotations_file
+            self.data_dir / self.annotations_file
         ).dropna()
-
-        if self.min_annotations_per_text is not None:
-            text_id_value_counts = self.annotations.text_id.value_counts()
-            text_id_value_counts = text_id_value_counts[
-                text_id_value_counts >= self.min_annotations_per_text
-            ]
-            self.annotations = self.annotations.loc[
-                self.annotations.text_id.isin(text_id_value_counts.index.tolist())
-            ]
