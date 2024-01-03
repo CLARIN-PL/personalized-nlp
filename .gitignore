@@ -11,6 +11,9 @@ storage/emotions_simple_data/embeddings/
 storage/outputs/*
 !.gitkeep
 
+# Pytorch Lightning logs
+lightning_logs/
+
 # VirtualEnv dir
 venv/
 
