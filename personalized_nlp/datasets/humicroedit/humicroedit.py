@@ -43,3 +43,6 @@ class HumicroeditDataModule(BaseDataModule):
         self.annotations = pd.read_csv(
             self.data_dir / self.annotations_file
         ).dropna()
+
+        self.data = self.data.rename(columns={"original": "text"})
+        self.annotations = self.annotations.rename(columns={"original": "text", "user_id": "annotator_id"})

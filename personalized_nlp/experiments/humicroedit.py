@@ -31,8 +31,8 @@ if __name__ == "__main__":
             "limit_past_annotations_list": [None],
             "stratify_folds_by": ["users", "texts"][1:],
             "folds_num": [10],
-            # batch_size = [10] for UserId model, [32] otherwise, [3000] as default
-            "batch_size": [32],
+            # batch_size = [10] for UserId model, [32] otherwise, [3000] as default, [600] for Humicroedit
+            "batch_size": [600],
             "use_finetuned_embeddings":
             [True],  # [False] for UserId model, [True] otherwise
             "seed":
@@ -55,12 +55,12 @@ if __name__ == "__main__":
         {
             # [3] for UserId model or [10] for UserId model with early stopping, [20] otherwise
             "epochs": [20],
-            # [0.00001] or [8e-6] for UserId model, [0.008] otherwise
+            # [0.00001] or [8e-6] for UserId model, [0.00008] for Attention, [0.008] otherwise
             "lr": [0.008],
             "regression": [False],
             "use_cuda": [True],
-            "model_type": ["baseline", "gru", "attention", "bias", "peb", "embedding", "onehot",
-                           "transformer_user_id"][:4],
+            "model_type": ["attention", "gru", "baseline", "bias", "peb", "embedding", "onehot",
+                           "transformer_user_id"][1:-1],
         }
     )
 
@@ -96,9 +96,9 @@ if __name__ == "__main__":
                     EarlyStopping(
                         monitor="valid_personal_macro_f1",
                         mode="max",
-                        patience=5),
+                        patience=20),
                     SaveOutputsLocal(save_dir=(str(LOGS_DIR /
-                                                   f"{datetime.now().strftime('%m-%d-%Y-%h')}_{str(type(data_module).__name__)}" /
+                                                   f"{datetime.now().strftime('%Y-%m-%d')}_{str(type(data_module).__name__)}" /
                                                    trainer_kwargs["model_type"])),
                                      model=trainer_kwargs["model_type"],
                                      dataset=type(data_module).__name__,

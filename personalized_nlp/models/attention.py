@@ -34,8 +34,13 @@ class AttentionModel(nn.Module):
         self.fc1 = nn.Linear(self.text_embedding_dim, self.hidden_dim)
         self.fc2 = nn.Linear(self.embedding_dim, self.hidden_dim)
         self.fc3 = nn.Linear(self.hidden_dim, self.hidden_dim)
-        self.mha1 = nn.MultiheadAttention(self.hidden_dim + self.embedding_dim, 1)
-        self.fc4 = nn.Linear(self.hidden_dim + self.embedding_dim, output_dim)
+
+        self.query = nn.Linear(2 * self.hidden_dim, 2 * self.hidden_dim)
+        self.key = nn.Linear(2 * self.hidden_dim, 2 * self.hidden_dim)
+        self.value = nn.Linear(2 * self.hidden_dim, 2 * self.hidden_dim)
+
+        self.mha1 = nn.MultiheadAttention(2 * self.hidden_dim, num_heads=4)
+        self.fc4 = nn.Linear(2 * self.hidden_dim, output_dim)
         # self.fc_annotator = nn.Linear(self.embedding_dim, self.hidden_dim)
 
         self.softplus = nn.Softplus()
@@ -52,7 +57,13 @@ class AttentionModel(nn.Module):
         annotator_embedding = self.fc2(annotator_embedding)
         annotator_embedding = self.dp_emb(annotator_embedding)
         annotator_embedding = self.softplus(self.fc3(annotator_embedding))
+        q = self.query(torch.cat([x, annotator_embedding], dim=1))
+        k = self.key(torch.cat([x, annotator_embedding], dim=1))
+        v = self.value(torch.cat([x, annotator_embedding], dim=1))
 
-        x = self.fc4(self.mha1(torch.cat([x, annotator_embedding], dim=1)))
+        x = self.fc4(self.mha1(q, k, v)[0])
 
         return x
+
+    def get_scores(self, query: torch.Tensor, key: torch.Tensor):
+        return torch.einsum('ibhd,jbhd->ijbh', query, key)
