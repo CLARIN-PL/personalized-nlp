@@ -56,11 +56,11 @@ if __name__ == "__main__":
             # [3] for UserId model or [10] for UserId model with early stopping, [20] otherwise
             "epochs": [20],
             # [0.00001] or [8e-6] for UserId model, [0.00008] for Attention, [0.008] otherwise
-            "lr": [0.008],
+            "lr": [0.00008],
             "regression": [False],
             "use_cuda": [True],
             "model_type": ["attention", "gru", "baseline", "bias", "peb", "embedding", "onehot",
-                           "transformer_user_id"][1:-1],
+                           "transformer_user_id"][:1],
         }
     )
 

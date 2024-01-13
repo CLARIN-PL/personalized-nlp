@@ -1,2 +1,7 @@
 /annotations_texts_folds.csv
+/annotations_users_folds.csv
 /data.csv
+/data_processed.csv
+/annotations.csv
+/annotations_texts_folds_old.csv
+*.jsonl
