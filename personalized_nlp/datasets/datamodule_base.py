@@ -70,7 +70,7 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         all_folds = range(self.folds_num)
         exclude_folds = [self.val_fold, self.test_fold]
 
-        return [fold for fold in all_folds if fold not in exclude_folds]
+        return [fold for fold in all_folds if fold not in exclude_folds][:self.train_folds_num]
 
     @property
     def num_annotations(self) -> int:
@@ -105,6 +105,7 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         embeddings_type: str = "labse",
         major_voting: bool = False,
         test_major_voting: bool = False,
+        train_folds_num: int = 8,
         folds_num: int = 10,
         regression: bool = False,
         past_annotations_limit: Optional[int] = None,
@@ -151,11 +152,16 @@ class BaseDataModule(LightningDataModule, abc.ABC):
         self.embeddings_type = embeddings_type
         self.major_voting = major_voting
         self.test_major_voting = test_major_voting
+        self.train_folds_num = train_folds_num
         self.folds_num = folds_num
         self.regression = regression
         self.past_annotations_limit = past_annotations_limit
         self.stratify_folds_by = stratify_folds_by
         self.use_cuda = use_cuda
+
+        if self.train_folds_num > self.folds_num:
+            raise ValueError(
+                f"train_folds_num ({self.train_folds_num}) cannot be greater than folds_num ({self.folds_num})")
 
         if conformity_type not in ["all", "weighted", "normal"]:
             raise ValueError(

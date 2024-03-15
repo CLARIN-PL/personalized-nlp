@@ -19,7 +19,7 @@ os.environ["WANDB_START_METHOD"] = "thread"
 os.environ["WANDB_DIR"] = str(LOGS_DIR)
 
 if __name__ == "__main__":
-    wandb_project_name = "HumorNewArchs"
+    wandb_project_name = "HumorNewArchsTrainFoldsNum"
     datamodule_cls = HumorDataModule
 
     datamodule_kwargs_list = product_kwargs(
@@ -31,14 +31,15 @@ if __name__ == "__main__":
             "limit_past_annotations_list": [None],
             "stratify_folds_by": ["users", "texts"][1:],
             "folds_num": [10],
+            "train_folds_num": list(range(8)),
+            "test_fold":
+            list(range(10)),
             # batch_size = [10] for UserId model, [32] otherwise, [3000] as default, [300] for Humor
             "batch_size": [300],
             "use_finetuned_embeddings":
-            [True],  # [False] for UserId model, [True] otherwise
+            [False],  # [False] for UserId model, [True] otherwise
             "seed":
             list(range(42, 52))[:1],
-            "test_fold":
-            list(range(10)),
         }
     )
     model_kwargs_list = product_kwargs(
@@ -55,12 +56,12 @@ if __name__ == "__main__":
         {
             # [3] for UserId model or [10] for UserId model with early stopping, [20] otherwise
             "epochs": [20],
-            # [0.00001] or [8e-6] for UserId model, [0.0008] for Attention, [0.008] otherwise
-            "lr": [0.00008],
+            # [0.00001] or [8e-6] for UserId model, [0.0008] or [0.00008] for Attention, [0.008] otherwise
+            "lr": [0.008],
             "regression": [False],
             "use_cuda": [True],
             "model_type": ["attention", "gru", "baseline", "bias", "peb", "embedding", "onehot",
-                           "transformer_user_id"][:1],
+                           "transformer_user_id"][1:5],
         }
     )
 
@@ -103,7 +104,8 @@ if __name__ == "__main__":
                                      model=trainer_kwargs["model_type"],
                                      dataset=type(data_module).__name__,
                                      seed=datamodule_kwargs["seed"],
-                                     test_fold=datamodule_kwargs["test_fold"])
+                                     test_fold=datamodule_kwargs["test_fold"],
+                                     train_folds_num=datamodule_kwargs["train_folds_num"],)
                 ])
 
             logger.experiment.finish()
