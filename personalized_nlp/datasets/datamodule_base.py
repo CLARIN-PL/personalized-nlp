@@ -257,14 +257,18 @@ class BaseDataModule(LightningDataModule, abc.ABC):
             return
 
         if self.stratify_folds_by == "texts":
+            train_folds = self.train_folds
             val_fold = self.val_fold
             test_fold = self.test_fold
 
-            self.annotations["split"] = "train"
+            self.annotations["split"] = "none"
+            self.annotations.loc[self.annotations.fold.isin(
+                train_folds), "split"] = "train"
             self.annotations.loc[self.annotations.fold ==
                                  val_fold, "split"] = "val"
             self.annotations.loc[self.annotations.fold ==
                                  test_fold, "split"] = "test"
+            self.annotations = self.annotations.loc[self.annotations.split != "none"]
         else:
             self.data = split_texts(self.data, self.split_sizes)
 

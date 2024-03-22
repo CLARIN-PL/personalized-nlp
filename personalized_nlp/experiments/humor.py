@@ -31,9 +31,9 @@ if __name__ == "__main__":
             "limit_past_annotations_list": [None],
             "stratify_folds_by": ["users", "texts"][1:],
             "folds_num": [10],
-            "train_folds_num": list(range(8)),
+            "train_folds_num": list(range(1, 9)),
             "test_fold":
-            list(range(10)),
+            list(range(10))[:1],
             # batch_size = [10] for UserId model, [32] otherwise, [3000] as default, [300] for Humor
             "batch_size": [300],
             "use_finetuned_embeddings":
