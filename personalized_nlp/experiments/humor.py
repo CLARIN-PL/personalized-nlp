@@ -32,12 +32,11 @@ if __name__ == "__main__":
             "stratify_folds_by": ["users", "texts"][1:],
             "folds_num": [10],
             "train_folds_num": list(range(1, 9)),
-            "test_fold":
-            list(range(10))[:1],
+            "test_fold": list(range(10))[:],
             # batch_size = [10] for UserId model, [32] otherwise, [3000] as default, [300] for Humor
             "batch_size": [300],
             "use_finetuned_embeddings":
-            [False],  # [False] for UserId model, [True] otherwise
+            [True],  # [False] for UserId model, [True] otherwise
             "seed":
             list(range(42, 52))[:1],
         }
@@ -101,6 +100,7 @@ if __name__ == "__main__":
                     SaveOutputsLocal(save_dir=(str(LOGS_DIR /
                                                    f"{datetime.now().strftime('%Y-%m-%d')}_{str(type(data_module).__name__)}" /
                                                    trainer_kwargs["model_type"])),
+                                     time=datetime.now().strftime("%H:%M:%S"),
                                      model=trainer_kwargs["model_type"],
                                      dataset=type(data_module).__name__,
                                      seed=datamodule_kwargs["seed"],

@@ -15,12 +15,12 @@ from personalized_nlp.utils.experiments import product_kwargs
 from pytorch_lightning import loggers as pl_loggers
 from pytorch_lightning.callbacks import EarlyStopping
 
-os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 os.environ["WANDB_START_METHOD"] = "thread"
 os.environ["WANDB_DIR"] = str(LOGS_DIR)
 
 if __name__ == "__main__":
-    wandb_project_name = "CockamamieGobbledegookNewArchs"
+    wandb_project_name = "CockamamieGobbledegookNewArchsTrainFoldsNum"
     datamodule_cls = CockamamieGobbledegookDataModule
 
     datamodule_kwargs_list = product_kwargs({
@@ -31,14 +31,14 @@ if __name__ == "__main__":
         "limit_past_annotations_list": [None],
         "stratify_folds_by": ["users", "texts"][1:],
         "folds_num": [10],
+        "train_folds_num": list(range(1, 9)),
+        "test_fold": list(range(10)),
         # batch_size = [10] for UserId model, [32] otherwise, [3000] as default
         "batch_size": [3000],
         "use_finetuned_embeddings":
         [True],  # [False] for UserId model, [True] otherwise
         "seed":
         list(range(42, 52))[:1],
-        "test_fold":
-        list(range(10)),
     })
     model_kwargs_list = product_kwargs({
         "embedding_dim": [50],
@@ -52,11 +52,11 @@ if __name__ == "__main__":
         # [3] for UserId model or [10] for UserId model with early stopping, [20] otherwise
         "epochs": [20],
         # [0.00001] or [8e-6] for UserId model, [0.0008] for Attention, [0.008] otherwise
-        "lr": [0.0008],
+        "lr": [0.008],
         "regression": [False],
         "use_cuda": [True],
         "model_type": ["attention", "gru", "baseline", "bias", "peb", "embedding", "onehot",
-                       "transformer_user_id"][:1],
+                       "transformer_user_id"][1:-1],
     })
 
     for datamodule_kwargs in datamodule_kwargs_list:
@@ -95,6 +95,7 @@ if __name__ == "__main__":
                     SaveOutputsLocal(save_dir=(str(LOGS_DIR /
                                                    f"{datetime.now().strftime('%Y-%m-%d')}_{str(type(data_module).__name__)}" /
                                                    trainer_kwargs["model_type"])),
+                                     time=datetime.now().strftime("%H:%M:%S"),
                                      model=trainer_kwargs["model_type"],
                                      dataset=type(data_module).__name__,
                                      seed=datamodule_kwargs["seed"],
